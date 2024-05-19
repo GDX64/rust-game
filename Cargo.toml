@@ -1,0 +1,11 @@
+[package]
+edition = "2021"
+name = "truco"
+version = "0.1.0"
+
+[dependencies]
+anyhow = "1.0.86"
+axum = {version = "0.7.5", features = ["macros"]}
+fastrand = "2.1.0"
+serde = { version = "1.0.202", features = ["derive"] }
+tokio = {version = "1.37.0", features = ["full"]}
