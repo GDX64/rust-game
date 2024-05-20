@@ -17,6 +17,8 @@ async fn main() {
     // build our application with a single route
     let app = Router::new()
         .route("/new_user", get(new_user_handler))
+        .route("/new_room", get(new_room_handler))
+        .route("/rooms", get(rooms_handler))
         .with_state(state);
 
     // run our app with hyper, listening globally on port 3000
@@ -46,5 +48,14 @@ struct RoomParms {
 async fn new_room_handler(params: Query<RoomParms>, state: State<AppState>) -> impl IntoResponse {
     if let Ok(mut lock) = state.0.lock() {
         lock.create_room(&params.name);
+    }
+}
+
+async fn rooms_handler(state: State<AppState>) -> impl IntoResponse {
+    if let Ok(lock) = state.0.lock() {
+        let rooms = lock.get_rooms();
+        Json(rooms).into_response()
+    } else {
+        Json(()).into_response()
     }
 }

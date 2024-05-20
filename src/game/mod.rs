@@ -61,6 +61,12 @@ impl Room {
     }
 }
 
+#[derive(Clone, Serialize)]
+pub struct RoomInfo {
+    pub name: String,
+    pub players: Vec<String>,
+}
+
 pub struct TrucoApp {
     rooms: HashMap<String, Room>,
     players: HashMap<u64, Player>,
@@ -86,5 +92,21 @@ impl TrucoApp {
     pub fn create_room(&mut self, name: &str) {
         let room = Room::new(name.to_string());
         self.rooms.insert(name.to_string(), room);
+    }
+
+    pub fn get_rooms(&self) -> Vec<RoomInfo> {
+        self.rooms
+            .values()
+            .map(|room| {
+                RoomInfo {
+                    name: room.name.clone(),
+                    players: room
+                        .players
+                        .iter()
+                        .map(|player| player.name.clone())
+                        .collect(),
+                }
+            })
+            .collect()
     }
 }
