@@ -94,6 +94,14 @@ impl TrucoApp {
         self.rooms.insert(name.to_string(), room);
     }
 
+    pub fn add_user_to_room(&mut self, room_name: &str, user_id: u64) {
+        if let Some(room) = self.rooms.get_mut(room_name) {
+            if let Some(player) = self.players.get(&user_id) {
+                room.add_player(player.clone());
+            }
+        }
+    }
+
     pub fn get_rooms(&self) -> Vec<RoomInfo> {
         self.rooms
             .values()

@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Add,
+    sync::{Arc, Mutex},
+};
 
 use axum::{
     extract::{Query, State},
@@ -19,6 +22,7 @@ async fn main() {
         .route("/new_user", get(new_user_handler))
         .route("/new_room", get(new_room_handler))
         .route("/rooms", get(rooms_handler))
+        .route("/add_user_to_room", get(add_user_to_room_handler))
         .with_state(state);
 
     // run our app with hyper, listening globally on port 3000
@@ -57,5 +61,23 @@ async fn rooms_handler(state: State<AppState>) -> impl IntoResponse {
         Json(rooms).into_response()
     } else {
         Json(()).into_response()
+    }
+}
+
+#[derive(Deserialize)]
+struct AddUserToRoomParms {
+    room: String,
+    user_id: u64,
+}
+
+async fn add_user_to_room_handler(
+    params: Query<AddUserToRoomParms>,
+    state: State<AppState>,
+) -> impl IntoResponse {
+    if let Ok(mut lock) = state.0.lock() {
+        let player = lock.add_user_to_room(&params.room, params.user_id);
+        Json(player).into_response()
+    } else {
+        Json("").into_response()
     }
 }
