@@ -4,11 +4,12 @@ use std::{
 };
 
 use axum::{
-    extract::{Query, State},
-    response::IntoResponse,
+    extract::{Query, State, WebSocketUpgrade},
+    response::{IntoResponse, Response},
     routing::get,
     Json, Router,
 };
+use futures_util::{SinkExt, StreamExt};
 use serde::Deserialize;
 mod game;
 
@@ -22,12 +23,32 @@ async fn main() {
         .route("/new_user", get(new_user_handler))
         .route("/new_room", get(new_room_handler))
         .route("/rooms", get(rooms_handler))
+        .route("/ws", get(ws_handler))
         .route("/add_user_to_room", get(add_user_to_room_handler))
         .with_state(state);
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
+    let res = ws.on_upgrade(|ws| {
+        async {
+            let (mut send, mut receive) = ws.split();
+            loop {
+                let msg = receive.next().await;
+                match msg {
+                    Some(Ok(msg)) => {
+                        println!("{:?}", msg);
+                        send.send(msg).await.unwrap();
+                    }
+                    _ => break,
+                }
+            }
+        }
+    });
+    res
 }
 
 #[derive(Deserialize)]

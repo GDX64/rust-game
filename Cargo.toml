@@ -5,7 +5,8 @@ version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0.86"
-axum = {version = "0.7.5", features = ["macros"]}
+axum = {version = "0.7.5", features = ["macros", "ws"]}
 fastrand = "2.1.0"
-serde = { version = "1.0.202", features = ["derive"] }
+futures-util = "0.3.30"
+serde = {version = "1.0.202", features = ["derive"]}
 tokio = {version = "1.37.0", features = ["full"]}
