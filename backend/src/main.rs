@@ -38,6 +38,7 @@ async fn main() {
     let app = Router::new()
         .route("/new_user", get(new_user_handler))
         .route("/new_room", get(new_room_handler))
+        .route("/", get(|| async { "Hello, World!" }))
         .route("/rooms", get(rooms_handler))
         .route("/ws", get(ws_handler))
         .route("/add_user_to_room", get(add_user_to_room_handler))
