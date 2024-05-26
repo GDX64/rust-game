@@ -281,6 +281,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "game"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "fastrand",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -893,19 +906,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c06d3da6113f116aaee68e4d601191614c9053067f9ab7f6edbcb161237daa54"
 dependencies = [
  "once_cell",
-]
-
-[[package]]
-name = "truco"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "fastrand",
- "futures-util",
- "serde",
- "serde_json",
- "tokio",
 ]
 
 [[package]]
