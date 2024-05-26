@@ -136,7 +136,7 @@ impl CanvasGame {
             match player.sender.send(Message::Text(msg.clone())).await {
                 Ok(_) => {}
                 Err(e) => {
-                    println!("Error sending message: {:?}", e);
+                    eprintln!("Error sending message: {:?}", e);
                 }
             }
         }
@@ -145,14 +145,12 @@ impl CanvasGame {
     async fn on_message(&mut self, msg: GameMessage) -> anyhow::Result<()> {
         match msg {
             GameMessage::ClientMessage(msg) => {
-                println!("Received message: {:?}", msg);
                 let client_msg: ClientMessage = serde_json::from_str(&msg)?;
                 match client_msg {
                     ClientMessage::SetPlayerName { name, id } => {
                         self.handle_set_player_name(name, id);
                     }
                     ClientMessage::MovePlayer { position, id } => {
-                        println!("Move player: {:?}", position);
                         self.handle_move_player(id, position);
                     }
                     _ => {}
