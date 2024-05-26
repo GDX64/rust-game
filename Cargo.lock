@@ -904,6 +904,7 @@ dependencies = [
  "fastrand",
  "futures-util",
  "serde",
+ "serde_json",
  "tokio",
 ]
 

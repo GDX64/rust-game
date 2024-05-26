@@ -1,23 +1,39 @@
-use std::{
-    ops::Add,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 use axum::{
     extract::{Query, State, WebSocketUpgrade},
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     routing::get,
     Json, Router,
 };
-use futures_util::{SinkExt, StreamExt};
+use canvas_game::GameMessage;
+use futures_util::StreamExt;
 use serde::Deserialize;
+use tokio::sync::oneshot;
+mod canvas_game;
 mod game;
 
-type AppState = Arc<Mutex<game::TrucoApp>>;
+struct Apps {
+    truco: game::TrucoApp,
+    canvas_tx: tokio::sync::mpsc::Sender<GameMessage>,
+}
+
+impl Apps {
+    fn new(tx: tokio::sync::mpsc::Sender<GameMessage>) -> Apps {
+        Apps {
+            truco: game::TrucoApp::new(),
+            canvas_tx: tx,
+        }
+    }
+}
+
+type AppState = Arc<Mutex<Apps>>;
 
 #[tokio::main]
 async fn main() {
-    let state: AppState = Arc::new(Mutex::new(game::TrucoApp::new()));
+    let (tx, rx) = tokio::sync::mpsc::channel(100);
+    tokio::spawn(canvas_game::CanvasGame::run(rx));
+    let state: AppState = Arc::new(Mutex::new(Apps::new(tx)));
     // build our application with a single route
     let app = Router::new()
         .route("/new_user", get(new_user_handler))
@@ -32,18 +48,40 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn ws_handler(ws: WebSocketUpgrade) -> impl IntoResponse {
-    let res = ws.on_upgrade(|ws| {
-        async {
-            let (mut send, mut receive) = ws.split();
+async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoResponse {
+    let tx = state.lock().unwrap().canvas_tx.clone();
+    let res = ws.on_upgrade(move |ws| {
+        async move {
+            let (send, mut receive) = ws.split();
+            let (send_id, receive_id) = oneshot::channel();
+            let send_result = tx
+                .send(GameMessage::NewConnection {
+                    id_sender: send_id,
+                    sender: send,
+                })
+                .await;
+
+            if let Err(err) = send_result {
+                println!("Error: {:?}", err)
+            }
+
+            let id = receive_id.await.unwrap();
             loop {
                 let msg = receive.next().await;
                 match msg {
                     Some(Ok(msg)) => {
-                        println!("{:?}", msg);
-                        send.send(msg).await.unwrap();
+                        let txt = msg.to_text().unwrap_or("msg is not a text");
+                        let send_result =
+                            tx.send(GameMessage::ClientMessage(txt.to_string())).await;
+                        if let Err(err) = send_result {
+                            println!("Error: {:?}", err)
+                        }
                     }
-                    _ => break,
+                    _ => {
+                        println!("Connection closed");
+                        tx.send(GameMessage::ClientDisconnect(id)).await.unwrap();
+                        return;
+                    }
                 }
             }
         }
@@ -58,7 +96,7 @@ struct UserParms {
 
 async fn new_user_handler(params: Query<UserParms>, state: State<AppState>) -> impl IntoResponse {
     if let Ok(mut lock) = state.0.lock() {
-        let player = lock.create_player(&params.name);
+        let player = lock.truco.create_player(&params.name);
         Json(player).into_response()
     } else {
         Json("").into_response()
@@ -72,13 +110,13 @@ struct RoomParms {
 
 async fn new_room_handler(params: Query<RoomParms>, state: State<AppState>) -> impl IntoResponse {
     if let Ok(mut lock) = state.0.lock() {
-        lock.create_room(&params.name);
+        lock.truco.create_room(&params.name);
     }
 }
 
 async fn rooms_handler(state: State<AppState>) -> impl IntoResponse {
     if let Ok(lock) = state.0.lock() {
-        let rooms = lock.get_rooms();
+        let rooms = lock.truco.get_rooms();
         Json(rooms).into_response()
     } else {
         Json(()).into_response()
@@ -96,7 +134,7 @@ async fn add_user_to_room_handler(
     state: State<AppState>,
 ) -> impl IntoResponse {
     if let Ok(mut lock) = state.0.lock() {
-        let player = lock.add_user_to_room(&params.room, params.user_id);
+        let player = lock.truco.add_user_to_room(&params.room, params.user_id);
         Json(player).into_response()
     } else {
         Json("").into_response()
