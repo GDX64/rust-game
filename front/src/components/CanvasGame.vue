@@ -17,6 +17,7 @@
 import { ShallowRef, computed, onUnmounted, reactive, shallowRef } from "vue";
 import { useCanvasDPI, useAnimationFrames } from "../utils/hooks";
 import { vec2 } from "gl-matrix";
+import MainAppConfig from "../config/MainAppConfig";
 
 const { canvas, size, pixelSize } = useCanvasDPI();
 const state: ShallowRef<BroadCastState["BroadCastState"]> = shallowRef({
@@ -36,10 +37,7 @@ const me: PlayerState = reactive({
   id: -1,
 });
 
-const DEV_ADDR = "ws://localhost:8080/ws";
-// const PROD_ADDR = "wss://professional-pamela-nelogica-4a911bbc.koyeb.app/ws";
-
-const ws = new WebSocket(DEV_ADDR);
+const ws = new WebSocket(MainAppConfig.sockerUrl);
 
 ws.onmessage = onmessage;
 
