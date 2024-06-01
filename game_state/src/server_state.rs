@@ -16,19 +16,22 @@ pub struct BroadCastState {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ClientMessage {
     SetPlayerName { name: String, id: u64 },
-    PlayerCreatedResponse { id: u64 },
     MovePlayer { position: (f64, f64), id: u64 },
     BroadCastState { state: BroadCastState },
+    CreatePlayer { id: u64 },
+    MarkMyID { id: u64 },
 }
 
 pub struct ServerState {
-    players: HashMap<u64, PlayerState>,
+    pub players: HashMap<u64, PlayerState>,
+    pub my_id: Option<u64>,
 }
 
 impl ServerState {
     pub fn new() -> Self {
         Self {
             players: HashMap::new(),
+            my_id: None,
         }
     }
 
@@ -50,13 +53,26 @@ impl ServerState {
         Ok(msg)
     }
 
-    fn on_message(&mut self, msg: ClientMessage) {
+    pub fn on_message(&mut self, msg: ClientMessage) {
         match msg {
             ClientMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
             }
             ClientMessage::MovePlayer { position, id } => {
                 self.handle_move_player(id, position);
+            }
+            ClientMessage::CreatePlayer { id } => {
+                self.players.insert(
+                    id,
+                    PlayerState {
+                        name: "Player".to_string(),
+                        position: (0.0, 0.0),
+                        id,
+                    },
+                );
+            }
+            ClientMessage::MarkMyID { id } => {
+                self.my_id = Some(id);
             }
             _ => {}
         }

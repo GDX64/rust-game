@@ -6,7 +6,7 @@
       class="w-full h-full absolute"
     ></canvas>
     <input
-      v-model="me.name"
+      v-model="name"
       class="right-2 top-2 absolute bg-yellow-100 z-10"
       @input="onNameChange"
     />
@@ -14,28 +14,20 @@
 </template>
 
 <script setup lang="ts">
-import { ShallowRef, computed, onUnmounted, reactive, shallowRef } from "vue";
+import { onUnmounted, ref } from "vue";
 import { useCanvasDPI, useAnimationFrames } from "../utils/hooks";
 import { vec2 } from "gl-matrix";
 import MainAppConfig from "../config/MainAppConfig";
+import { GameWasmState } from "game_state/pkg";
 
 const { canvas, size, pixelSize } = useCanvasDPI();
-const state: ShallowRef<BroadCastState["BroadCastState"]> = shallowRef({
-  state: {
-    players: [],
-  },
-});
+const name = ref("Player");
 
-const myGhost = computed(() => {
-  const val = state.value.state.players.find((player) => player.id === me.id);
-  return val;
-});
+const gameState = GameWasmState.new();
 
-const me: PlayerState = reactive({
-  name: "",
-  position: [0, 0],
-  id: -1,
-});
+function myID() {
+  return gameState.my_id();
+}
 
 const ws = new WebSocket(MainAppConfig.sockerUrl);
 
@@ -58,14 +50,12 @@ useAnimationFrames(() => {
   ctx.save();
   ctx.clearRect(0, 0, pixelSize.value.width, pixelSize.value.height);
   ctx.setTransform(getMatrix());
-  state.value.state.players.forEach((player) => {
-    const isMe = player.id === me.id;
-    ctx.fillStyle = isMe ? "#49494962" : "black";
+  getPlayers().forEach((player) => {
+    const isMe = player.id === myID();
+    ctx.fillStyle = isMe ? "#248124" : "black";
     drawPlayer(ctx, player);
   });
 
-  ctx.fillStyle = "#248124";
-  drawPlayer(ctx, me);
   ctx.restore();
 });
 
@@ -85,10 +75,12 @@ function drawPlayer(ctx: CanvasRenderingContext2D, player: PlayerState) {
 }
 
 function onNameChange() {
-  const setPlayerName: SetPlayerName = {
-    SetPlayerName: { id: me.id, name: me.name },
-  };
-  ws.send(JSON.stringify(setPlayerName));
+  if (myID) {
+    const setPlayerName: SetPlayerName = {
+      SetPlayerName: { id: myID() ?? -1, name: name.value },
+    };
+    ws.send(JSON.stringify(setPlayerName));
+  }
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -98,6 +90,10 @@ function onPointerDown(event: PointerEvent) {
       x: event.offsetX * devicePixelRatio,
       y: event.offsetY * devicePixelRatio,
     });
+  const me = findMe();
+
+  if (!me) return;
+
   const deltaX = pointClick.x - me.position[0];
   const deltaY = pointClick.y - me.position[1];
   const p = vec2.fromValues(deltaX, deltaY);
@@ -113,16 +109,16 @@ function onPointerDown(event: PointerEvent) {
 }
 
 function onmessage(event: MessageEvent) {
-  const message: Messages = JSON.parse(event.data);
-  if ("BroadCastState" in message) {
-    state.value = message.BroadCastState;
-    if (!me.name) {
-      me.name = myGhost.value?.name ?? "";
-    }
-  }
-  if ("PlayerCreatedResponse" in message) {
-    me.id = message.PlayerCreatedResponse.id;
-  }
+  gameState.on_string_message(event.data);
+}
+
+function getPlayers() {
+  const players: PlayerState[] = JSON.parse(gameState.get_players());
+  return players;
+}
+
+function findMe() {
+  return getPlayers().find((player) => player.id === myID()) ?? null;
 }
 
 interface PlayerState {

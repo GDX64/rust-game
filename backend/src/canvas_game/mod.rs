@@ -66,8 +66,6 @@ impl CanvasGame {
         let id = self.current_id;
         self.current_id += 1;
         self.players_senders.insert(id, sender);
-        self.send_message_to_player(id, ClientMessage::PlayerCreatedResponse { id })
-            .await;
         id
     }
 
@@ -86,6 +84,11 @@ impl CanvasGame {
             }
             GameMessage::NewConnection { sender, id_sender } => {
                 let id = self.handle_create_player(sender).await;
+                let msg = ClientMessage::CreatePlayer { id };
+                let my_id = ClientMessage::MarkMyID { id };
+                self.send_message_to_player(id, my_id).await;
+                self.game_state.on_message(msg.clone());
+                self.broadcast_message(msg).await;
                 id_sender.send(id).unwrap();
             }
             GameMessage::ClientDisconnect(id) => {

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "gl-matrix": "^3.4.3",
+    "vite-plugin-wasm": "^3.3.0",
     "vue": "^3.4.21"
   },
   "devDependencies": {
