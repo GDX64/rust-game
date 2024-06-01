@@ -19,6 +19,7 @@ pub enum ClientMessage {
     MovePlayer { position: (f64, f64), id: u64 },
     BroadCastState { state: BroadCastState },
     CreatePlayer { id: u64 },
+    RemovePlayer { id: u64 },
     MarkMyID { id: u64 },
 }
 
@@ -47,6 +48,14 @@ impl ServerState {
         }
     }
 
+    pub fn state_message(&self) -> ClientMessage {
+        ClientMessage::BroadCastState {
+            state: BroadCastState {
+                players: self.players.values().cloned().collect(),
+            },
+        }
+    }
+
     pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
         let msg: ClientMessage = serde_json::from_str(&msg)?;
         self.on_message(msg.clone());
@@ -70,6 +79,14 @@ impl ServerState {
                         id,
                     },
                 );
+            }
+            ClientMessage::RemovePlayer { id } => {
+                self.players.remove(&id);
+            }
+            ClientMessage::BroadCastState { state } => {
+                for player in state.players {
+                    self.players.insert(player.id, player);
+                }
             }
             ClientMessage::MarkMyID { id } => {
                 self.my_id = Some(id);

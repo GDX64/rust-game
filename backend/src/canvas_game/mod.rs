@@ -87,12 +87,17 @@ impl CanvasGame {
                 let msg = ClientMessage::CreatePlayer { id };
                 let my_id = ClientMessage::MarkMyID { id };
                 self.send_message_to_player(id, my_id).await;
+                let state = self.game_state.state_message();
+                self.send_message_to_player(id, state).await;
                 self.game_state.on_message(msg.clone());
                 self.broadcast_message(msg).await;
                 id_sender.send(id).unwrap();
             }
             GameMessage::ClientDisconnect(id) => {
                 self.players_senders.remove(&id);
+                let msg = ClientMessage::RemovePlayer { id };
+                self.game_state.on_message(msg.clone());
+                self.broadcast_message(msg).await;
             }
         }
         Ok(())
