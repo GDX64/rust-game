@@ -10,6 +10,7 @@ use canvas_game::GameMessage;
 use futures_util::StreamExt;
 use serde::Deserialize;
 use tokio::sync::oneshot;
+use tower_http::services::ServeDir;
 mod canvas_game;
 mod game;
 
@@ -35,7 +36,7 @@ async fn main() {
     tokio::spawn(canvas_game::CanvasGame::run(rx));
     let state: AppState = Arc::new(Mutex::new(Apps::new(tx)));
     // build our application with a single route
-    let app = Router::new()
+    let backend_app = Router::new()
         .route("/new_user", get(new_user_handler))
         .route("/new_room", get(new_room_handler))
         .route("/", get(|| async { "Hello, World!" }))
@@ -44,8 +45,14 @@ async fn main() {
         .route("/add_user_to_room", get(add_user_to_room_handler))
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    let static_app = Router::new().nest_service("/", ServeDir::new("./dist"));
+
+    let listener_game = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
+    let listener_static = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+
+    let static_axum = axum::serve(listener_static, static_app);
+    let game_axum = axum::serve(listener_game, backend_app);
+    let (_r1, _r2) = tokio::join!(async { game_axum.await }, async { static_axum.await });
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoResponse {

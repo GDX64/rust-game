@@ -155,7 +155,7 @@ type SetPlayerName = {
   };
 };
 
-type Messages =
+export type Messages =
   | BroadCastState
   | MovePlayer
   | PlayerCreatedResponse
