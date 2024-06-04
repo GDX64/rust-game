@@ -8,7 +8,7 @@ declare const process: any;
 export default defineConfig({
   plugins: [vue(), wasm()],
   define: {
-    IS_PROD: process.env.NODE_ENV === "production",
+    FRONT_SERVER: `"${process.env.FRONT_SERVER ?? "ws://localhost:5000/ws"}"`,
   },
   server: {
     open: true,

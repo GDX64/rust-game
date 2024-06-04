@@ -1,8 +1,5 @@
-declare const IS_PROD: boolean;
-const isProd = IS_PROD;
+declare const FRONT_SERVER: string;
 
 export default {
-  sockerUrl: isProd
-    ? "wss://game.glmachado.com:5000/ws"
-    : "ws://localhost:5000/ws",
+  sockerUrl: FRONT_SERVER,
 };

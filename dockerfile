@@ -34,6 +34,12 @@ COPY --from=WasmBuilder /app/game_state/pkg /app/game_state/pkg
 
 RUN npm install
 
+# Define a variable
+ARG FRONT_SERVER
+
+# Use the variable
+ENV FRONT_SERVER=$FRONT_SERVER
+
 RUN cd ./front && npm run build
 
 # Final run stage
