@@ -1,5 +1,6 @@
 mod server_state;
 pub use server_state::*;
+mod game_noise;
 
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]

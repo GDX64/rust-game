@@ -5,7 +5,6 @@
   "files": [
     "pkg/**/*"
   ],
-  "devDependencies": {},
   "scripts": {
     "dev": "wasm-pack build --target web",
     "build": "wasm-pack build --target web --release",
@@ -20,6 +19,9 @@
   "bugs": {
     "url": "https://github.com/GDX64/tailwind-vite-jest/issues"
   },
-  "homepage": "https://github.com/GDX64/tailwind-vite-jest#readme"
+  "homepage": "https://github.com/GDX64/tailwind-vite-jest#readme",
+  "dependencies": {
+    "@types/dat.gui": "^0.7.13",
+    "dat.gui": "^0.7.9"
+  }
 }
-
