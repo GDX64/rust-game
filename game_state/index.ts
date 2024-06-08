@@ -3,26 +3,34 @@ import { GUI } from "dat.gui";
 
 const randSeed = Math.floor(Math.random() * 1000000);
 
-const params = {
-  frequency: 1,
-  frequency2: 1,
-  weight1: 0.9,
-  threshould: 0.5,
-  octaves: 3,
-  octaves2: 3,
-  seed: randSeed,
-  lacunarity: 2.0,
-  persistence: 0.5,
-  resolution: 200,
-  field: "#00ff00",
-  sea: "#0000ff",
-  mountain: "#ffffff",
-  sand: "#ffff00",
-  rgbField: [0, 255, 0],
-  rgbSea: [0, 0, 255],
-  rgbMountain: [255, 255, 255],
-  rgbSand: [255, 255, 0],
-};
+function defaultParams() {
+  return {
+    frequency: 1,
+    frequency2: 1,
+    weight1: 0.9,
+    threshould: 0.5,
+    octaves: 3,
+    octaves2: 3,
+    seed: randSeed,
+    lacunarity: 2.0,
+    persistence: 0.5,
+    resolution: 200,
+    scale: 50,
+    field: "#00ff00",
+    sea: "#0000ff",
+    mountain: "#ffffff",
+    sand: "#ffff00",
+    rgbField: [0, 255, 0],
+    rgbSea: [0, 0, 255],
+    rgbMountain: [255, 255, 255],
+    rgbSand: [255, 255, 0],
+  };
+}
+
+const storedParams = localStorage.getItem("params");
+const params: ReturnType<typeof defaultParams> = storedParams
+  ? JSON.parse(storedParams)
+  : defaultParams();
 
 init().then(() => {
   const canvas = document.createElement("canvas");
@@ -85,6 +93,10 @@ init().then(() => {
     draw();
   });
 
+  gui.add(params, "scale", 1, 1000).onChange((value) => {
+    draw();
+  });
+
   gui.add(params, "lacunarity", 0, 10).onChange((value) => {
     noise.set_lacunarity(value);
     draw();
@@ -108,6 +120,7 @@ init().then(() => {
   draw();
 
   function draw() {
+    localStorage.setItem("params", JSON.stringify(params));
     const data = new Uint8ClampedArray(
       params.resolution * params.resolution * 4
     );
@@ -117,8 +130,8 @@ init().then(() => {
       for (let y = 0; y < params.resolution; y++) {
         const val =
           (noise.get(
-            x / params.resolution / 50,
-            y / params.resolution / 50,
+            x / params.resolution / params.scale,
+            y / params.resolution / params.scale,
             params.weight1
           ) +
             1) /
