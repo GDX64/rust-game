@@ -9,10 +9,38 @@ pub struct GameNoise {
 }
 
 #[wasm_bindgen]
+#[derive(Clone, Copy, Default)]
+pub struct NoiseConfig {
+    pub seed: Option<u32>,
+    pub frequency: Option<f64>,
+    pub octaves: Option<u32>,
+    pub lacunarity: Option<f64>,
+    pub persistence: Option<f64>,
+}
+
+#[wasm_bindgen]
 impl GameNoise {
     pub fn new(seed: Option<u32>) -> Self {
         let fbm1 = Fbm::<NoiseKind>::new(seed.unwrap_or(0));
         Self { fbm1: fbm1.clone() }
+    }
+
+    pub fn set_config(&mut self, config: NoiseConfig) {
+        if let Some(seed) = config.seed {
+            self.fbm1 = self.fbm1.clone().set_seed(seed);
+        }
+        if let Some(frequency) = config.frequency {
+            self.fbm1 = self.fbm1.clone().set_frequency(frequency);
+        }
+        if let Some(octaves) = config.octaves {
+            self.fbm1 = self.fbm1.clone().set_octaves(octaves as usize);
+        }
+        if let Some(lacunarity) = config.lacunarity {
+            self.fbm1 = self.fbm1.clone().set_lacunarity(lacunarity);
+        }
+        if let Some(persistence) = config.persistence {
+            self.fbm1 = self.fbm1.clone().set_persistence(persistence);
+        }
     }
 
     pub fn set_persistence(&mut self, persistence: f64) {

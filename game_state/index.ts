@@ -38,11 +38,13 @@ const params: ReturnType<typeof defaultParams> = storedParams
   ? { ...defaultParams(), ...JSON.parse(storedParams) }
   : defaultParams();
 
+params.offsetX = 0;
+params.offsetY = 0;
+
 init().then(() => {
   const canvas = document.createElement("canvas");
   canvas.style.width = "800px";
   canvas.style.height = "800px";
-  canvasDragEvents(canvas, draw);
   document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d")!;
 
@@ -51,6 +53,7 @@ init().then(() => {
 
   const mapGen = new GameMap(params.seed);
   const { landLowFreqNoise, landHighFreqNoise, forestGen } = mapGen;
+  mapGen.canvasDragEvents(canvas, draw);
 
   landHighFreqNoise.set_frequency(params.frequency2);
   landLowFreqNoise.set_octaves(params.octaves);
@@ -141,13 +144,15 @@ init().then(() => {
 
   draw();
 
-  function draw() {
+  async function draw() {
     localStorage.setItem("params", JSON.stringify(params));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
     const data = new Uint8ClampedArray(
       params.resolution * params.resolution * 4
     );
     canvas.width = params.resolution;
     canvas.height = params.resolution;
+    mapGen.updateMatrix();
     for (let x = 0; x < params.resolution; x++) {
       for (let y = 0; y < params.resolution; y++) {
         const [r, g, b] = mapGen.calcTileColor(x, y);
@@ -192,11 +197,13 @@ function sigmoid(t: number, threshold = 0.5) {
 class GameMap {
   landLowFreqNoise: GameNoise;
   landHighFreqNoise: GameNoise;
+  matrix: DOMMatrix;
   forestGen: GameNoise;
   constructor(seed: number) {
     this.landLowFreqNoise = GameNoise.new(seed);
     this.landHighFreqNoise = GameNoise.new(seed);
     this.forestGen = GameNoise.new(seed);
+    this.matrix = this.buildCameraMatrix();
   }
 
   terrainColor(kind: TerrainKind) {
@@ -214,14 +221,26 @@ class GameMap {
     }
   }
 
+  updateMatrix() {
+    this.matrix = this.buildCameraMatrix();
+  }
+
   calcTileColor(x: number, y: number) {
     const tile = this.calcTile(x, y);
     return this.terrainColor(tile);
   }
 
+  private buildCameraMatrix() {
+    const mat = new DOMMatrix();
+    mat.translateSelf(params.resolution / 2, params.resolution / 2);
+    mat.scaleSelf(1 / params.resolution, 1 / params.resolution);
+    mat.scaleSelf(1 / params.scale, 1 / params.scale);
+    mat.translateSelf(params.offsetX, params.offsetY);
+    return mat;
+  }
+
   calcTile(_x: number, _y: number) {
-    const x = (_x + params.offsetX) / params.resolution / params.scale;
-    const y = (_y + params.offsetY) / params.resolution / params.scale;
+    const { x, y } = this.matrix.transformPoint({ x: _x, y: _y });
     const lowNoise = this.landLowFreqNoise.get(x, y);
     const highNoise = this.landHighFreqNoise.get(x, y);
     const val = params.weight1 * lowNoise + (1 - params.weight1) * highNoise;
@@ -242,25 +261,42 @@ class GameMap {
     if (t > 0.7) return TerrainKind.Sand;
     return TerrainKind.Sea;
   }
+
+  canvasDragEvents(canvas: HTMLCanvasElement, draw: () => void) {
+    let point: { x: number; y: number } | null = null;
+    let initialOffsetX = params.offsetX;
+    let initialOffsetY = params.offsetY;
+    canvas.onpointerdown = (e) => {
+      const scale = linearScale(0, 800, 0, params.resolution);
+      point = this.matrix.transformPoint({
+        x: scale(e.clientX),
+        y: scale(e.clientY),
+      });
+      initialOffsetX = params.offsetX;
+      initialOffsetY = params.offsetY;
+    };
+    canvas.onpointermove = (e) => {
+      if (point) {
+        const scale = linearScale(0, 800, 0, params.resolution);
+        const canvasPoint = this.matrix.transformPoint({
+          x: scale(e.clientX),
+          y: scale(e.clientY),
+        });
+        const deltaX = canvasPoint.x - point.x;
+        const deltaY = canvasPoint.y - point.y;
+        params.offsetY -= deltaY;
+        params.offsetX -= deltaX;
+        draw();
+      }
+    };
+    canvas.onpointerup = (e) => {
+      point = null;
+    };
+  }
 }
 
-function canvasDragEvents(canvas: HTMLCanvasElement, draw: () => void) {
-  let point: { x: number; y: number } | null = null;
-  canvas.onpointerdown = (e) => {
-    point = { x: e.clientX, y: e.clientY };
-  };
-  canvas.onpointermove = (e) => {
-    if (point) {
-      const deltaX = e.clientX - point.x;
-      const deltaY = e.clientY - point.y;
-      console.log("move", params.offsetX);
-      params.offsetY += deltaY;
-      params.offsetX += deltaX;
-      point = { x: e.clientX, y: e.clientY };
-      draw();
-    }
-  };
-  canvas.onpointerup = (e) => {
-    point = null;
-  };
+function linearScale(x0: number, x1: number, y0: number, y1: number) {
+  const alpha = (y1 - y0) / (x1 - x0);
+  const beta = y0 - alpha * x0;
+  return (v: number) => v * alpha + beta;
 }
