@@ -1,4 +1,10 @@
-import init, { GameNoise } from "./pkg/game_state.js";
+import init, {
+  WorldGen,
+  WorldGenConfig,
+  NoiseConfig,
+  ViewInfo,
+  TileKind,
+} from "./pkg/game_state.js";
 import { GUI } from "dat.gui";
 
 const randSeed = Math.floor(Math.random() * 1000000);
@@ -19,7 +25,7 @@ function defaultParams() {
     lacunarity: 2.0,
     persistence: 0.5,
     resolution: 200,
-    scale: 50,
+    scale: 0,
     field: "#00ff00",
     sea: "#0000ff",
     mountain: "#ffffff",
@@ -43,37 +49,35 @@ params.offsetY = 0;
 
 init().then(() => {
   const canvas = document.createElement("canvas");
-  canvas.style.width = "800px";
-  canvas.style.height = "800px";
+  canvas.style.position = "absolute";
+  if (window.screen.width > window.screen.height) {
+    canvas.style.height = "100%";
+  } else {
+    canvas.style.width = "100%";
+  }
+  canvas.style.aspectRatio = "1/1";
   document.body.appendChild(canvas);
   const ctx = canvas.getContext("2d")!;
 
   const gui = new GUI();
   //add gui with a callback
 
-  const mapGen = new GameMap(params.seed);
-  const { landLowFreqNoise, landHighFreqNoise, forestGen } = mapGen;
+  const mapGen = new GameMap();
   mapGen.canvasDragEvents(canvas, draw);
 
-  landHighFreqNoise.set_frequency(params.frequency2);
-  landLowFreqNoise.set_octaves(params.octaves);
-  landLowFreqNoise.set_frequency(params.frequency);
-
   gui.add(params, "seed", 0, 1000000).onChange((value) => {
-    landLowFreqNoise.set_seed(Math.floor(value));
     draw();
   });
 
-  gui.add(params, "threshold", 0, 1).onChange((value) => {
+  gui.add(params, "threshold", -1, 1).onChange((value) => {
     draw();
   });
 
-  gui.add(params, "forestsThreshold", 0, 1).onChange((value) => {
+  gui.add(params, "forestsThreshold", -1, 1).onChange((value) => {
     draw();
   });
 
   gui.add(params, "persistence", 0, 1).onChange((value) => {
-    landLowFreqNoise.set_persistence(value);
     draw();
   });
 
@@ -103,32 +107,27 @@ init().then(() => {
     draw();
   });
 
-  gui.add(params, "frequency2", 1, 1000).onChange((value) => {
-    landHighFreqNoise.set_frequency(value);
+  gui.add(params, "frequency2", 1, 100).onChange((value) => {
     draw();
   });
 
-  gui.add(params, "forestFrequency", 1, 1000).onChange((value) => {
-    forestGen.set_frequency(value);
+  gui.add(params, "forestFrequency", 1, 100).onChange((value) => {
     draw();
   });
 
   gui.add(params, "octaves2", 1, 10).onChange((value) => {
-    landHighFreqNoise.set_octaves(value);
     draw();
   });
 
-  gui.add(params, "scale", 1, 1000).onChange((value) => {
+  gui.add(params, "scale", -3, 2).onChange((value) => {
     draw();
   });
 
   gui.add(params, "lacunarity", 0, 10).onChange((value) => {
-    landLowFreqNoise.set_lacunarity(value);
     draw();
   });
 
   gui.add(params, "octaves", 1, 10).onChange((value) => {
-    landLowFreqNoise.set_octaves(value);
     draw();
   });
 
@@ -137,8 +136,7 @@ init().then(() => {
     draw();
   });
 
-  gui.add(params, "frequency", 1, 1000).onChange((value) => {
-    landLowFreqNoise.set_frequency(value);
+  gui.add(params, "frequency", 1, 100).onChange((value) => {
     draw();
   });
 
@@ -153,10 +151,14 @@ init().then(() => {
     canvas.width = params.resolution;
     canvas.height = params.resolution;
     mapGen.updateMatrix();
+    const tiles = mapGen.calcTiles();
+    if (!tiles) return;
     for (let x = 0; x < params.resolution; x++) {
       for (let y = 0; y < params.resolution; y++) {
-        const [r, g, b] = mapGen.calcTileColor(x, y);
-        const index = (y * params.resolution + x) * 4;
+        const tileIndex = y * params.resolution + x;
+        const index = tileIndex * 4;
+        const terrain = tiles[tileIndex];
+        const [r, g, b] = mapGen.terrainColor(terrain);
         data[index] = r;
         data[index + 1] = g;
         data[index + 2] = b;
@@ -178,112 +180,49 @@ function hexToRgb(hex: string): [number, number, number] {
     .map((x) => parseInt(x, 16)) as any;
 }
 
-function step(t: number, threshold = 0.5) {
-  return t < threshold ? 0 : 1;
-}
-
-enum TerrainKind {
-  Sea,
-  Field,
-  Mountain,
-  Sand,
-  Forest,
-}
-
-function sigmoid(t: number, threshold = 0.5) {
-  return 1 / (1 + Math.exp(-(t - threshold) * 100));
-}
-
 class GameMap {
-  landLowFreqNoise: GameNoise;
-  landHighFreqNoise: GameNoise;
-  matrix: DOMMatrix;
-  forestGen: GameNoise;
-  constructor(seed: number) {
-    this.landLowFreqNoise = GameNoise.new(seed);
-    this.landHighFreqNoise = GameNoise.new(seed);
-    this.forestGen = GameNoise.new(seed);
-    this.matrix = this.buildCameraMatrix();
-  }
+  world = WorldGen.new(params.seed);
 
-  terrainColor(kind: TerrainKind) {
+  terrainColor(kind: TileKind) {
     switch (kind) {
-      case TerrainKind.Sea:
+      case TileKind.Water:
         return params.rgbSea;
-      case TerrainKind.Field:
+      case TileKind.Grass:
         return params.rgbField;
-      case TerrainKind.Mountain:
-        return params.rgbMountain;
-      case TerrainKind.Sand:
-        return params.rgbSand;
-      case TerrainKind.Forest:
+      case TileKind.Forest:
         return params.rgbForest;
+      default:
+        return params.rgbMountain;
     }
   }
 
   updateMatrix() {
-    this.matrix = this.buildCameraMatrix();
+    this.world.set_config(makeConfig());
   }
 
-  calcTileColor(x: number, y: number) {
-    const tile = this.calcTile(x, y);
-    return this.terrainColor(tile);
-  }
-
-  private buildCameraMatrix() {
-    const mat = new DOMMatrix();
-    mat.translateSelf(params.resolution / 2, params.resolution / 2);
-    mat.scaleSelf(1 / params.resolution, 1 / params.resolution);
-    mat.scaleSelf(1 / params.scale, 1 / params.scale);
-    mat.translateSelf(params.offsetX, params.offsetY);
-    return mat;
-  }
-
-  calcTile(_x: number, _y: number) {
-    const { x, y } = this.matrix.transformPoint({ x: _x, y: _y });
-    const lowNoise = this.landLowFreqNoise.get(x, y);
-    const highNoise = this.landHighFreqNoise.get(x, y);
-    const val = params.weight1 * lowNoise + (1 - params.weight1) * highNoise;
-
-    const terrain = this.mapTerrain(val + params.threshold);
-
-    if (terrain === TerrainKind.Field) {
-      const forest = this.forestGen.get(x, y);
-      if (forest + 0.5 > params.forestsThreshold) {
-        return TerrainKind.Forest;
-      }
-    }
-    return terrain;
-  }
-
-  mapTerrain(t: number) {
-    if (t > 0.72) return TerrainKind.Field;
-    if (t > 0.7) return TerrainKind.Sand;
-    return TerrainKind.Sea;
+  calcTiles(): TileKind[] | null {
+    return this.world.get_canvas() ?? null;
   }
 
   canvasDragEvents(canvas: HTMLCanvasElement, draw: () => void) {
     let point: { x: number; y: number } | null = null;
-    let initialOffsetX = params.offsetX;
-    let initialOffsetY = params.offsetY;
     canvas.onpointerdown = (e) => {
       const scale = linearScale(0, 800, 0, params.resolution);
-      point = this.matrix.transformPoint({
-        x: scale(e.clientX),
-        y: scale(e.clientY),
-      });
-      initialOffsetX = params.offsetX;
-      initialOffsetY = params.offsetY;
+      const [canvasX, canvasY] = this.world.transform_point(
+        scale(e.clientX),
+        scale(e.clientY)
+      );
+      point = { x: canvasX, y: canvasY };
     };
     canvas.onpointermove = (e) => {
       if (point) {
         const scale = linearScale(0, 800, 0, params.resolution);
-        const canvasPoint = this.matrix.transformPoint({
-          x: scale(e.clientX),
-          y: scale(e.clientY),
-        });
-        const deltaX = canvasPoint.x - point.x;
-        const deltaY = canvasPoint.y - point.y;
+        const [canvasX, canvasY] = this.world.transform_point(
+          scale(e.clientX),
+          scale(e.clientY)
+        );
+        const deltaX = canvasX - point.x;
+        const deltaY = canvasY - point.y;
         params.offsetY -= deltaY;
         params.offsetX -= deltaX;
         draw();
@@ -299,4 +238,38 @@ function linearScale(x0: number, x1: number, y0: number, y1: number) {
   const alpha = (y1 - y0) / (x1 - x0);
   const beta = y0 - alpha * x0;
   return (v: number) => v * alpha + beta;
+}
+
+function makeConfig() {
+  const worldConfig = WorldGenConfig.new();
+
+  const forestConfig = NoiseConfig.new();
+  forestConfig.frequency = params.forestFrequency;
+  worldConfig.forest = forestConfig;
+
+  const lowLandConfig = NoiseConfig.new();
+  lowLandConfig.frequency = params.frequency;
+  lowLandConfig.octaves = params.octaves;
+  lowLandConfig.persistence = params.persistence;
+  lowLandConfig.lacunarity = params.lacunarity;
+  worldConfig.low_land = lowLandConfig;
+
+  const highLandConfig = NoiseConfig.new();
+  highLandConfig.frequency = params.frequency2;
+  highLandConfig.octaves = params.octaves2;
+  worldConfig.high_land = highLandConfig;
+
+  const viewInfo = ViewInfo.new();
+  viewInfo.x_center = params.offsetX;
+  viewInfo.y_center = params.offsetY;
+  viewInfo.range = 10 ** Math.min(2, params.scale);
+  viewInfo.pixels = params.resolution;
+
+  worldConfig.view_info = viewInfo;
+
+  worldConfig.land_threshold = params.threshold;
+  worldConfig.forest_threshold = params.forestsThreshold;
+  worldConfig.weight_low_land = params.weight1;
+
+  return worldConfig;
 }

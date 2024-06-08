@@ -19,6 +19,13 @@ pub struct NoiseConfig {
 }
 
 #[wasm_bindgen]
+impl NoiseConfig {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+#[wasm_bindgen]
 impl GameNoise {
     pub fn new(seed: Option<u32>) -> Self {
         let fbm1 = Fbm::<NoiseKind>::new(seed.unwrap_or(0));
