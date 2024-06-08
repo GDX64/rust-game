@@ -6,26 +6,13 @@ type NoiseKind = Simplex;
 #[wasm_bindgen]
 pub struct GameNoise {
     fbm1: Fbm<NoiseKind>,
-    fbm2: Fbm<NoiseKind>,
 }
 
 #[wasm_bindgen]
 impl GameNoise {
     pub fn new(seed: Option<u32>) -> Self {
         let fbm1 = Fbm::<NoiseKind>::new(seed.unwrap_or(0));
-        let fbm2 = Fbm::<NoiseKind>::new(seed.unwrap_or(0));
-        Self {
-            fbm1: fbm1.clone(),
-            fbm2: fbm2.clone(),
-        }
-    }
-
-    pub fn set_frequency2(&mut self, frequency: f64) {
-        self.fbm2 = self.fbm2.clone().set_frequency(frequency);
-    }
-
-    pub fn set_octaves2(&mut self, octaves: usize) {
-        self.fbm2 = self.fbm2.clone().set_octaves(octaves);
+        Self { fbm1: fbm1.clone() }
     }
 
     pub fn set_persistence(&mut self, persistence: f64) {
@@ -48,8 +35,8 @@ impl GameNoise {
         self.fbm1 = self.fbm1.clone().set_lacunarity(lacunarity);
     }
 
-    pub fn get(&self, x: f64, y: f64, weight1: f64) -> f64 {
-        self.fbm1.get([x, y]) * weight1 + self.fbm2.get([x, y]) * (1.0 - weight1)
+    pub fn get(&self, x: f64, y: f64) -> f64 {
+        self.fbm1.get([x, y])
     }
 
     pub fn generate(&self, size: usize) -> Vec<u8> {
