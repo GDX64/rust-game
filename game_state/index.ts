@@ -19,11 +19,7 @@ function defaultParams() {
     weight1: 0.9,
     threshold: 0.5,
     forestsThreshold: 0.5,
-    octaves: 3,
-    octaves2: 3,
     seed: randSeed,
-    lacunarity: 2.0,
-    persistence: 0.5,
     resolution: 200,
     scale: 0,
     field: "#00ff00",
@@ -77,10 +73,6 @@ init().then(() => {
     draw();
   });
 
-  gui.add(params, "persistence", 0, 1).onChange((value) => {
-    draw();
-  });
-
   gui.addColor(params, "sea").onChange((value) => {
     params.rgbSea = hexToRgb(params.sea);
     draw();
@@ -115,19 +107,7 @@ init().then(() => {
     draw();
   });
 
-  gui.add(params, "octaves2", 1, 10).onChange((value) => {
-    draw();
-  });
-
   gui.add(params, "scale", -3, 2).onChange((value) => {
-    draw();
-  });
-
-  gui.add(params, "lacunarity", 0, 10).onChange((value) => {
-    draw();
-  });
-
-  gui.add(params, "octaves", 1, 10).onChange((value) => {
     draw();
   });
 
@@ -253,19 +233,15 @@ function makeConfig() {
 
   const forestConfig = NoiseConfig.new();
   forestConfig.frequency = params.forestFrequency;
-  worldConfig.forest = forestConfig;
+  forestConfig.seed = params.seed;
 
   const lowLandConfig = NoiseConfig.new();
+  lowLandConfig.seed = params.seed;
   lowLandConfig.frequency = params.frequency;
-  lowLandConfig.octaves = params.octaves;
-  lowLandConfig.persistence = params.persistence;
-  lowLandConfig.lacunarity = params.lacunarity;
-  worldConfig.low_land = lowLandConfig;
 
   const highLandConfig = NoiseConfig.new();
   highLandConfig.frequency = params.frequency2;
-  highLandConfig.octaves = params.octaves2;
-  worldConfig.high_land = highLandConfig;
+  lowLandConfig.seed = params.seed;
 
   const viewInfo = ViewInfo.new();
   viewInfo.x_center = params.offsetX;
@@ -273,6 +249,9 @@ function makeConfig() {
   viewInfo.range = 10 ** Math.min(2, params.scale);
   viewInfo.pixels = params.resolution;
 
+  worldConfig.high_land = highLandConfig;
+  worldConfig.forest = forestConfig;
+  worldConfig.low_land = lowLandConfig;
   worldConfig.view_info = viewInfo;
 
   worldConfig.land_threshold = params.threshold;

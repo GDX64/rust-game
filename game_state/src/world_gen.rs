@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::game_noise::NoiseConfig;
 
 use super::game_noise::GameNoise;
-use cgmath::{EuclideanSpace, Matrix3, Point2, SquareMatrix, Transform};
+use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -17,12 +17,23 @@ pub struct WorldGen {
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct ViewInfo {
     pub x_center: f64,
     pub y_center: f64,
     pub pixels: f64,
     pub range: f64,
+}
+
+impl Default for ViewInfo {
+    fn default() -> Self {
+        Self {
+            x_center: 0.0,
+            y_center: 0.0,
+            pixels: 100.0,
+            range: 1.0,
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -44,16 +55,43 @@ impl ViewInfo {
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 pub struct WorldGenConfig {
     pub low_land: Option<NoiseConfig>,
     pub high_land: Option<NoiseConfig>,
     pub forest: Option<NoiseConfig>,
-    pub weight_low_land: Option<f64>,
-    pub forest_threshold: Option<f64>,
-    pub land_threshold: Option<f64>,
-    pub tile_size: Option<f64>,
-    pub view_info: Option<ViewInfo>,
+    pub weight_low_land: f64,
+    pub forest_threshold: f64,
+    pub land_threshold: f64,
+    pub tile_size: f64,
+    pub view_info: ViewInfo,
+}
+
+impl Default for WorldGenConfig {
+    fn default() -> Self {
+        let low_land = NoiseConfig {
+            frequency: Some(1.0),
+            ..NoiseConfig::default()
+        };
+        let high_land = NoiseConfig {
+            frequency: Some(23.0),
+            ..NoiseConfig::default()
+        };
+        let forest = NoiseConfig {
+            frequency: Some(5.0),
+            ..NoiseConfig::default()
+        };
+        Self {
+            low_land: Some(low_land),
+            high_land: Some(high_land),
+            forest: Some(forest),
+            weight_low_land: 0.9,
+            forest_threshold: 0.17,
+            land_threshold: 0.17,
+            tile_size: 1.0,
+            view_info: ViewInfo::default(),
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -99,15 +137,13 @@ impl WorldGen {
         if let Some(forest) = config.forest {
             self.forest.set_config(forest);
         }
+        self.matrix = config.view_info.to_matrix();
         self.config = config;
-        if let Some(view_info) = config.view_info {
-            self.matrix = view_info.to_matrix();
-        }
         self.tiles.clear();
     }
 
     pub fn get_tile_at(&mut self, x: f64, y: f64) -> TileKind {
-        let tile_size = self.config.tile_size.unwrap_or(1.0);
+        let tile_size = self.config.tile_size;
         let x = (x / tile_size).floor();
         let y = (y / tile_size).floor();
         let cached = self.tiles.get(x as i32, y as i32);
@@ -121,7 +157,7 @@ impl WorldGen {
     }
 
     pub fn get_canvas(&mut self) -> Option<Vec<TileKind>> {
-        let pixels = self.config.view_info?.pixels;
+        let pixels = self.config.view_info.pixels;
         let mut tiles = Vec::with_capacity(pixels as usize * pixels as usize);
         for y in 0..pixels as i32 {
             for x in 0..pixels as i32 {
@@ -135,13 +171,13 @@ impl WorldGen {
     pub fn get_terrain_at(&self, x: f64, y: f64) -> TileKind {
         let low_land = self.low_land.get(x, y);
         let high_land = self.high_land.get(x, y);
-        let low_land_weight = self.config.weight_low_land.unwrap_or(0.5);
+        let low_land_weight = self.config.weight_low_land;
         let land_value = low_land_weight * low_land + (1.0 - low_land_weight) * high_land;
 
-        let terrain_kind = if land_value < self.config.land_threshold.unwrap_or(0.3) {
+        let terrain_kind = if land_value < self.config.land_threshold {
             TileKind::Water
         } else {
-            if self.forest.get(x, y) > self.config.forest_threshold.unwrap_or(0.5) {
+            if self.forest.get(x, y) > self.config.forest_threshold {
                 TileKind::Forest
             } else {
                 TileKind::Grass
