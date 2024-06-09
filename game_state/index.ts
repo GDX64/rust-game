@@ -257,6 +257,7 @@ function makeConfig() {
   worldConfig.land_threshold = params.threshold;
   worldConfig.forest_threshold = params.forestsThreshold;
   worldConfig.weight_low_land = params.weight1;
+  worldConfig.tile_size = 0.1;
 
   return worldConfig;
 }

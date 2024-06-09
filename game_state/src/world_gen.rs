@@ -1,11 +1,8 @@
-use std::collections::HashMap;
-
-use crate::game_noise::NoiseConfig;
-
 use super::game_noise::GameNoise;
+use super::sparse_matrix::SparseMatrix;
+use crate::game_noise::NoiseConfig;
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
 use wasm_bindgen::prelude::*;
-
 #[wasm_bindgen]
 pub struct WorldGen {
     low_land: GameNoise,
@@ -156,7 +153,7 @@ impl WorldGen {
         }
     }
 
-    pub fn get_canvas(&mut self) -> Option<Vec<TileKind>> {
+    pub fn get_canvas(&mut self) -> Vec<TileKind> {
         let pixels = self.config.view_info.pixels;
         let mut tiles = Vec::with_capacity(pixels as usize * pixels as usize);
         for y in 0..pixels as i32 {
@@ -165,7 +162,7 @@ impl WorldGen {
                 tiles.push(self.get_terrain_at(point.x, point.y));
             }
         }
-        Some(tiles)
+        tiles
     }
 
     pub fn get_terrain_at(&self, x: f64, y: f64) -> TileKind {
@@ -185,30 +182,6 @@ impl WorldGen {
         };
 
         terrain_kind
-    }
-}
-
-struct SparseMatrix<T> {
-    data: HashMap<(i32, i32), T>,
-}
-
-impl<T> SparseMatrix<T> {
-    fn new() -> Self {
-        Self {
-            data: HashMap::new(),
-        }
-    }
-
-    fn get(&self, x: i32, y: i32) -> Option<&T> {
-        self.data.get(&(x, y))
-    }
-
-    fn set(&mut self, x: i32, y: i32, value: T) {
-        self.data.insert((x, y), value);
-    }
-
-    fn clear(&mut self) {
-        self.data.clear();
     }
 }
 
