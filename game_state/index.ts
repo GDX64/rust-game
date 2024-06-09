@@ -228,6 +228,14 @@ class GameMap {
         draw();
       }
     };
+    canvas.onwheel = (e) => {
+      if (e.deltaY > 0) {
+        params.scale += 0.1;
+      } else {
+        params.scale -= 0.1;
+      }
+      draw();
+    };
     canvas.onpointerup = (e) => {
       point = null;
     };
