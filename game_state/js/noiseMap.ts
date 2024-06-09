@@ -1,10 +1,10 @@
-import init, {
+import {
   WorldGen,
   WorldGenConfig,
   NoiseConfig,
   ViewInfo,
   TileKind,
-} from "./pkg/game_state.js";
+} from "../pkg/game_state.js";
 import { GUI } from "dat.gui";
 
 const randSeed = Math.floor(Math.random() * 1000000);
@@ -35,15 +35,15 @@ function defaultParams() {
   };
 }
 
+type NoiseParams = ReturnType<typeof defaultParams>;
+
 const storedParams = localStorage.getItem("params");
-const params: ReturnType<typeof defaultParams> = storedParams
+
+const params: NoiseParams = storedParams
   ? { ...defaultParams(), ...JSON.parse(storedParams) }
   : defaultParams();
 
-params.offsetX = 0;
-params.offsetY = 0;
-
-init().then(() => {
+export function noiseMapGen() {
   const canvas = document.createElement("canvas");
   canvas.style.position = "absolute";
   if (window.screen.width > window.screen.height) {
@@ -56,7 +56,6 @@ init().then(() => {
   const ctx = canvas.getContext("2d")!;
 
   const gui = new GUI();
-  //add gui with a callback
 
   const mapGen = new GameMap();
   mapGen.canvasDragEvents(canvas, draw);
@@ -151,7 +150,7 @@ init().then(() => {
       0
     );
   }
-});
+}
 
 function hexToRgb(hex: string): [number, number, number] {
   return hex

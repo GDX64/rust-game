@@ -6,8 +6,8 @@
     "pkg/**/*"
   ],
   "scripts": {
-    "dev": "wasm-pack build --target web",
-    "build": "wasm-pack build --target web --release",
+    "dev": "npm run build && vite",
+    "build": "wasm-pack build --target bundler --release",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -25,3 +25,4 @@
     "dat.gui": "^0.7.9"
   }
 }
+
