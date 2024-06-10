@@ -2,6 +2,8 @@ import * as THREE from "three";
 import WebgpuRenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { WorldGen } from "../pkg/game_state";
+import { OBJLoader } from "three/addons/loaders/ObjLoader.js";
+import boat from "./assets_ignore/boat.obj?url";
 
 export class Render3D {
   async init() {
@@ -31,23 +33,16 @@ export class Render3D {
     for (let x = 0; x < PLANE_SEGMENTS; x += 1) {
       for (let y = 0; y < PLANE_SEGMENTS; y += 1) {
         const i = (y * PLANE_SEGMENTS + x) * 3;
-        let height = world.get_land_value(x / 100, y / 100) * 40 - 5;
+        let height = world.get_land_value(x / 100, y / 100) * 40;
         height = Math.max(height, 0);
-        arr[i + 2] = height;
 
         const textureIndex = (y * PLANE_SEGMENTS + x) * 4;
         if (height > 0) {
-          if (height > 15) {
-            textureMap[textureIndex] = 170;
-            textureMap[textureIndex + 1] = 170;
-            textureMap[textureIndex + 2] = 170;
-            textureMap[textureIndex + 3] = 255;
-          } else {
-            textureMap[textureIndex] = 0;
-            textureMap[textureIndex + 1] = 255;
-            textureMap[textureIndex + 2] = 0;
-            textureMap[textureIndex + 3] = 255;
-          }
+          arr[i + 2] = height;
+          textureMap[textureIndex] = 0;
+          textureMap[textureIndex + 1] = 255 * (height / 40);
+          textureMap[textureIndex + 2] = 0;
+          textureMap[textureIndex + 3] = 255;
         } else {
           textureMap[textureIndex] = 0;
           textureMap[textureIndex + 1] = 0;
@@ -85,6 +80,7 @@ export class Render3D {
     const planeMaterial = new THREE.MeshPhongMaterial({
       color: 0x555555,
       map: planeTexture,
+      shininess: 5,
     });
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     scene.add(plane);
@@ -105,6 +101,14 @@ export class Render3D {
     light.target.position.set(0, 0, 0);
     scene.add(light);
     scene.add(ambientLight);
+    const loader = new OBJLoader();
+    loader.load(boat, (obj) => {
+      const scale = 0.05;
+      obj.rotateX(Math.PI / 2);
+      obj.position.set(0, 0, 2);
+      obj.scale.set(scale, scale, scale);
+      scene.add(obj);
+    });
 
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
