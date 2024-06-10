@@ -165,12 +165,16 @@ impl WorldGen {
         tiles
     }
 
-    pub fn get_terrain_at(&self, x: f64, y: f64) -> TileKind {
+    pub fn get_land_value(&self, x: f64, y: f64) -> f64 {
         let low_land = self.low_land.get(x, y);
         let high_land = self.high_land.get(x, y);
         let low_land_weight = self.config.weight_low_land;
         let land_value = low_land_weight * low_land + (1.0 - low_land_weight) * high_land;
+        land_value
+    }
 
+    pub fn get_terrain_at(&self, x: f64, y: f64) -> TileKind {
+        let land_value = self.get_land_value(x, y);
         let terrain_kind = if land_value < self.config.land_threshold {
             TileKind::Water
         } else {

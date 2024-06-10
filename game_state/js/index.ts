@@ -1,3 +1,3 @@
-import { noiseMapGen } from "./noiseMap";
+import { Render3D } from "./render3d";
 
-noiseMapGen();
+new Render3D().init();
