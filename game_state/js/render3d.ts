@@ -39,13 +39,13 @@ export class Render3D {
         const textureIndex = (y * PLANE_SEGMENTS + x) * 4;
         if (height > 0) {
           arr[i + 2] = height;
-          textureMap[textureIndex] = 0;
-          textureMap[textureIndex + 1] = 255 * (height / 40);
-          textureMap[textureIndex + 2] = 0;
+          textureMap[textureIndex] = 60;
+          textureMap[textureIndex + 1] = 139;
+          textureMap[textureIndex + 2] = 86;
           textureMap[textureIndex + 3] = 255;
         } else {
-          textureMap[textureIndex] = 0;
-          textureMap[textureIndex + 1] = 0;
+          textureMap[textureIndex] = 30;
+          textureMap[textureIndex + 1] = 144;
           textureMap[textureIndex + 2] = 255;
           textureMap[textureIndex + 3] = 255;
         }
@@ -53,34 +53,19 @@ export class Render3D {
     }
     planeGeometry.computeVertexNormals();
 
-    //downsample
-    const canvas = document.createElement("canvas");
-    canvas.width = 100;
-    canvas.height = 100;
-    const ctx = canvas.getContext("2d")!;
-    const img = new ImageData(textureMap, PLANE_SEGMENTS, PLANE_SEGMENTS);
-    const imageBitmap = await createImageBitmap(img);
-    ctx.drawImage(
-      imageBitmap,
-      0,
-      0,
+    const planeTexture = new THREE.DataTexture(
+      textureMap,
       PLANE_SEGMENTS,
-      PLANE_SEGMENTS,
-      0,
-      0,
-      100,
-      100
+      PLANE_SEGMENTS
     );
-
-    const planeTexture = new THREE.CanvasTexture(canvas);
     planeTexture.wrapS = THREE.ClampToEdgeWrapping;
     planeTexture.wrapT = THREE.ClampToEdgeWrapping;
+    planeTexture.flipY = true;
     planeTexture.needsUpdate = true;
 
-    const planeMaterial = new THREE.MeshPhongMaterial({
+    const planeMaterial = new THREE.MeshLambertMaterial({
       color: 0x555555,
       map: planeTexture,
-      shininess: 5,
     });
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     scene.add(plane);
@@ -94,9 +79,10 @@ export class Render3D {
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     const controls = new OrbitControls(camera, renderer.domElement);
+    renderer.domElement.style.backgroundColor = "skyblue";
 
     const light = new THREE.DirectionalLight(0xffffff, 10);
-    const ambientLight = new THREE.AmbientLight(0x404040, 1);
+    const ambientLight = new THREE.AmbientLight(0x404040, 30);
     light.position.set(20000, 20000, 20000);
     light.target.position.set(0, 0, 0);
     scene.add(light);
