@@ -1,6 +1,6 @@
 use super::game_noise::GameNoise;
 use super::sparse_matrix::SparseMatrix;
-use crate::game_noise::NoiseConfig;
+use crate::{game_noise::NoiseConfig, interpolation::LinearInterpolation};
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
@@ -11,6 +11,7 @@ pub struct WorldGen {
     config: WorldGenConfig,
     tiles: SparseMatrix<TileKind>,
     matrix: Matrix3<f64>,
+    terrain_interpolation: LinearInterpolation,
 }
 
 #[wasm_bindgen]
@@ -110,6 +111,12 @@ pub enum TileKind {
 impl WorldGen {
     pub fn new(seed: u32) -> Self {
         Self {
+            terrain_interpolation: LinearInterpolation::new(vec![
+                Point2::new(-1.0, -1.0),
+                Point2::new(0.0, 0.0),
+                Point2::new(0.3, 0.1),
+                Point2::new(1.0, 1.0),
+            ]),
             low_land: GameNoise::new(Some(seed)),
             high_land: GameNoise::new(Some(seed)),
             forest: GameNoise::new(Some(seed)),
@@ -170,7 +177,9 @@ impl WorldGen {
         let high_land = self.high_land.get(x, y);
         let low_land_weight = self.config.weight_low_land;
         let land_value = low_land_weight * low_land + (1.0 - low_land_weight) * high_land;
-        land_value
+        self.terrain_interpolation
+            .interpolate(land_value)
+            .unwrap_or(0.0)
     }
 
     pub fn get_terrain_at(&self, x: f64, y: f64) -> TileKind {

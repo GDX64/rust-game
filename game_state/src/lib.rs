@@ -1,6 +1,7 @@
 mod server_state;
 pub use server_state::*;
 mod game_noise;
+mod interpolation;
 mod sparse_matrix;
 mod world_gen;
 
