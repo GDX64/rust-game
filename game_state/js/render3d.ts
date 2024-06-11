@@ -1,11 +1,17 @@
 import * as THREE from "three";
 import WebgpuRenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { WorldGen } from "../pkg/game_state";
 import { OBJLoader } from "three/addons/loaders/ObjLoader.js";
 import boat from "./assets_ignore/boat.obj?url";
+import { GUI } from "dat.gui";
 
 export class Render3D {
+  boatScale = 0.002;
+  boatPosition = [0, 0, 0.5];
+  gui = new GUI();
+
   async init() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
@@ -15,7 +21,7 @@ export class Render3D {
       1000
     );
 
-    const PLANE_WIDTH = 1000;
+    const PLANE_WIDTH = 100;
     const PLANE_SEGMENTS = 1000;
     const planeGeometry = new THREE.PlaneGeometry(
       PLANE_WIDTH,
@@ -33,7 +39,7 @@ export class Render3D {
     for (let x = 0; x < PLANE_SEGMENTS; x += 1) {
       for (let y = 0; y < PLANE_SEGMENTS; y += 1) {
         const i = (y * PLANE_SEGMENTS + x) * 3;
-        let height = world.get_land_value(x / 100, y / 100) * 40;
+        let height = world.get_land_value(x / 100, y / 100) * 5;
         height = Math.max(height, 0);
 
         const textureIndex = (y * PLANE_SEGMENTS + x) * 4;
@@ -78,7 +84,7 @@ export class Render3D {
     const renderer = new WebgpuRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-    const controls = new OrbitControls(camera, renderer.domElement);
+    const orbit = new OrbitControls(camera, renderer.domElement);
     renderer.domElement.style.backgroundColor = "skyblue";
 
     const light = new THREE.DirectionalLight(0xffffff, 10);
@@ -88,12 +94,21 @@ export class Render3D {
     scene.add(light);
     scene.add(ambientLight);
     const loader = new OBJLoader();
+    const controls = new TransformControls(camera, renderer.domElement);
+    scene.add(controls);
+    controls.addEventListener("mouseDown", () => {
+      orbit.enabled = false;
+    });
+    controls.addEventListener("mouseUp", () => {
+      orbit.enabled = true;
+    });
     loader.load(boat, (obj) => {
-      const scale = 0.05;
-      obj.rotateX(Math.PI / 2);
-      obj.position.set(0, 0, 2);
+      const scale = 0.002;
+      obj.position.set(0, 0, 0.5);
+      obj.rotation.set(Math.PI / 2, 0, 0);
       obj.scale.set(scale, scale, scale);
       scene.add(obj);
+      controls.attach(obj);
     });
 
     renderer.setAnimationLoop(() => {

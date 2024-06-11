@@ -115,7 +115,7 @@ impl WorldGen {
                 Point2::new(-1.0, -1.0),
                 Point2::new(0.0, 0.0),
                 Point2::new(0.35, 0.1),
-                Point2::new(1.0, 0.5),
+                Point2::new(1.0, 0.7),
             ]),
             low_land: GameNoise::new(Some(seed)),
             high_land: GameNoise::new(Some(seed)),
