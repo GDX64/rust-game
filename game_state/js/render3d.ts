@@ -1,18 +1,66 @@
 import * as THREE from "three";
-import WebgpuRenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { WorldGen } from "../pkg/game_state";
 import { OBJLoader } from "three/addons/loaders/ObjLoader.js";
 import boat from "./assets_ignore/boat.obj?url";
 import { GUI } from "dat.gui";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 
 export class Render3D {
-  boatScale = 0.002;
-  boatPosition = [0, 0, 0.5];
   gui = new GUI();
+  state = {
+    boatScale: 0.002,
+    boatPosition: [0, 0, 0.5],
+    controlsEnabled: false,
+    terrainColor: "#2b5232",
+    waterColor: "#1d3d7d",
+    skyColor: "#2fe6e6",
+    bloomStrength: 1.5,
+    bloomRadius: 0.4,
+    bloomThreshold: 0.85,
+  };
+
+  private saveState() {
+    localStorage.setItem("state", JSON.stringify(this.state));
+  }
+
+  private loadState() {
+    const state = localStorage.getItem("state");
+    if (state) {
+      this.state = { ...this.state, ...JSON.parse(state) };
+    }
+  }
+
+  private addWaterColorControl(waterMaterial: THREE.MeshPhongMaterial) {
+    this.gui.addColor(this.state, "waterColor").onChange((val) => {
+      waterMaterial.color.set(val);
+    });
+  }
+
+  private addTerrainColorControl(terrainMaterial: THREE.MeshLambertMaterial) {
+    this.gui.addColor(this.state, "terrainColor").onChange((val) => {
+      terrainMaterial.color.set(val);
+    });
+  }
+
+  private addBloomControls(bloomPass: UnrealBloomPass) {
+    this.gui.add(this.state, "bloomStrength", 0, 3).onChange((val) => {
+      bloomPass.strength = val;
+    });
+    this.gui.add(this.state, "bloomRadius", 0, 1).onChange((val) => {
+      bloomPass.radius = val;
+    });
+    this.gui.add(this.state, "bloomThreshold", 0, 1).onChange((val) => {
+      bloomPass.threshold = val;
+    });
+  }
 
   async init() {
+    this.loadState();
+    setInterval(() => this.saveState(), 1_000);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -22,7 +70,28 @@ export class Render3D {
     );
 
     const PLANE_WIDTH = 100;
-    const PLANE_SEGMENTS = 1000;
+    const SEGMENTS_DENSITY = 5;
+    const PLANE_SEGMENTS = PLANE_WIDTH * SEGMENTS_DENSITY;
+
+    const waterPlaneGeometry = new THREE.PlaneGeometry(
+      PLANE_WIDTH,
+      PLANE_WIDTH,
+      1,
+      1
+    );
+    const waterMaterial = new THREE.MeshPhongMaterial({
+      color: this.state.waterColor,
+      transparent: true,
+      opacity: 0.9,
+      shininess: 30,
+      side: THREE.DoubleSide,
+      fog: true,
+    });
+
+    this.addWaterColorControl(waterMaterial);
+    const waterMesh = new THREE.Mesh(waterPlaneGeometry, waterMaterial);
+    scene.add(waterMesh);
+
     const planeGeometry = new THREE.PlaneGeometry(
       PLANE_WIDTH,
       PLANE_WIDTH,
@@ -33,46 +102,28 @@ export class Render3D {
     const arr = planeGeometry.attributes.position.array;
 
     const world = WorldGen.new(1);
-    const textureMap = new Uint8ClampedArray(
-      PLANE_SEGMENTS * PLANE_SEGMENTS * 4
-    );
+
     for (let x = 0; x < PLANE_SEGMENTS; x += 1) {
       for (let y = 0; y < PLANE_SEGMENTS; y += 1) {
         const i = (y * PLANE_SEGMENTS + x) * 3;
-        let height = world.get_land_value(x / 100, y / 100) * 5;
-        height = Math.max(height, 0);
+        let height =
+          world.get_land_value(
+            ((x / PLANE_SEGMENTS) * PLANE_WIDTH) / 10,
+            ((y / PLANE_SEGMENTS) * PLANE_WIDTH) / 10
+          ) * 5;
 
-        const textureIndex = (y * PLANE_SEGMENTS + x) * 4;
-        if (height > 0) {
-          arr[i + 2] = height;
-          textureMap[textureIndex] = 60;
-          textureMap[textureIndex + 1] = 139;
-          textureMap[textureIndex + 2] = 86;
-          textureMap[textureIndex + 3] = 255;
-        } else {
-          textureMap[textureIndex] = 30;
-          textureMap[textureIndex + 1] = 144;
-          textureMap[textureIndex + 2] = 255;
-          textureMap[textureIndex + 3] = 255;
-        }
+        arr[i + 2] = height;
       }
     }
     planeGeometry.computeVertexNormals();
 
-    const planeTexture = new THREE.DataTexture(
-      textureMap,
-      PLANE_SEGMENTS,
-      PLANE_SEGMENTS
-    );
-    planeTexture.wrapS = THREE.ClampToEdgeWrapping;
-    planeTexture.wrapT = THREE.ClampToEdgeWrapping;
-    planeTexture.flipY = true;
-    planeTexture.needsUpdate = true;
+    scene.fog = new THREE.Fog(0x999999, 0, 100);
 
     const planeMaterial = new THREE.MeshLambertMaterial({
-      color: 0x555555,
-      map: planeTexture,
+      color: this.state.terrainColor,
+      fog: true,
     });
+    this.addTerrainColorControl(planeMaterial);
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     scene.add(plane);
 
@@ -81,18 +132,16 @@ export class Render3D {
     camera.lookAt(0, 5, 0);
     camera.up.set(0, 0, 1);
 
-    const renderer = new WebgpuRenderer();
+    const renderer = new THREE.WebGLRenderer({});
+    renderer.setClearColor(this.state.skyColor, 1);
+    this.gui.addColor(this.state, "skyColor").onChange(() => {
+      renderer.setClearColor(this.state.skyColor, 1);
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     const orbit = new OrbitControls(camera, renderer.domElement);
     renderer.domElement.style.backgroundColor = "skyblue";
 
-    const light = new THREE.DirectionalLight(0xffffff, 10);
-    const ambientLight = new THREE.AmbientLight(0x404040, 30);
-    light.position.set(20000, 20000, 20000);
-    light.target.position.set(0, 0, 0);
-    scene.add(light);
-    scene.add(ambientLight);
     const loader = new OBJLoader();
     const controls = new TransformControls(camera, renderer.domElement);
     scene.add(controls);
@@ -102,17 +151,62 @@ export class Render3D {
     controls.addEventListener("mouseUp", () => {
       orbit.enabled = true;
     });
+
     loader.load(boat, (obj) => {
       const scale = 0.002;
       obj.position.set(0, 0, 0.5);
       obj.rotation.set(Math.PI / 2, 0, 0);
       obj.scale.set(scale, scale, scale);
       scene.add(obj);
-      controls.attach(obj);
+      this.gui.add(this.state, "controlsEnabled").onChange(() => {
+        if (this.state.controlsEnabled) {
+          controls.attach(obj);
+        } else {
+          controls.detach();
+        }
+      });
+      this.gui.add(this.state, "boatScale", 0.0005, 0.01).onChange((val) => {
+        obj.scale.set(val, val, val);
+      });
     });
 
+    this.makeSun(scene);
+    const composer = new EffectComposer(renderer);
+    const renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
+
+    const bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      this.state.bloomStrength,
+      this.state.bloomRadius,
+      this.state.bloomThreshold
+    );
+    composer.addPass(bloomPass);
     renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
+      composer.render();
     });
+    this.addBloomControls(bloomPass);
+  }
+
+  private makeSun(scene: THREE.Scene) {
+    const sun = new THREE.SphereGeometry(30, 32, 32);
+    const sunMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffff00,
+      reflectivity: 0.0,
+      refractionRatio: 0.0,
+      emissive: 0xffff00,
+      emissiveIntensity: 1,
+      fog: false,
+    });
+    const sunMesh = new THREE.Mesh(sun, sunMaterial);
+    const sunPosition = new THREE.Vector3(500, 0, 100);
+    sunMesh.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+    scene.add(sunMesh);
+    const light = new THREE.DirectionalLight(0xffffff, 10);
+    const ambientLight = new THREE.AmbientLight(0x404040, 30);
+    light.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
+    light.target.position.set(0, 0, 0);
+    scene.add(light);
+    scene.add(ambientLight);
   }
 }
