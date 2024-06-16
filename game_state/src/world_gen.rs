@@ -1,15 +1,16 @@
 use super::game_noise::GameNoise;
-use super::sparse_matrix::SparseMatrix;
-use crate::{game_noise::NoiseConfig, interpolation::LinearInterpolation};
+use crate::{
+    game_noise::NoiseConfig, interpolation::LinearInterpolation, sparse_matrix::WorldGrid,
+};
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct WorldGen {
     low_land: GameNoise,
     high_land: GameNoise,
     forest: GameNoise,
     config: WorldGenConfig,
-    tiles: SparseMatrix<TileKind>,
     matrix: Matrix3<f64>,
     terrain_interpolation: LinearInterpolation,
 }
@@ -62,6 +63,7 @@ pub struct WorldGenConfig {
     pub forest_threshold: f64,
     pub land_threshold: f64,
     pub tile_size: f64,
+    pub noise_scale: f64,
     pub view_info: ViewInfo,
 }
 
@@ -85,8 +87,9 @@ impl Default for WorldGenConfig {
             forest: Some(forest),
             weight_low_land: 0.9,
             forest_threshold: 0.17,
-            land_threshold: 0.17,
-            tile_size: 1.0,
+            land_threshold: 0.0,
+            noise_scale: 0.05,
+            tile_size: 0.5,
             view_info: ViewInfo::default(),
         }
     }
@@ -113,15 +116,14 @@ impl WorldGen {
         Self {
             terrain_interpolation: LinearInterpolation::new(vec![
                 Point2::new(-1.0, -1.0),
-                Point2::new(0.0, 0.0),
-                Point2::new(0.35, 0.1),
-                Point2::new(1.0, 0.7),
+                Point2::new(0.10, 0.0),
+                Point2::new(0.40, 0.1),
+                Point2::new(1.0, 0.6),
             ]),
             low_land: GameNoise::new(Some(seed)),
             high_land: GameNoise::new(Some(seed)),
             forest: GameNoise::new(Some(seed)),
             config: WorldGenConfig::default(),
-            tiles: SparseMatrix::new(),
             matrix: Matrix3::identity(),
         }
     }
@@ -143,21 +145,6 @@ impl WorldGen {
         }
         self.matrix = config.view_info.to_matrix();
         self.config = config;
-        self.tiles.clear();
-    }
-
-    pub fn get_tile_at(&mut self, x: f64, y: f64) -> TileKind {
-        let tile_size = self.config.tile_size;
-        let x = (x / tile_size).floor();
-        let y = (y / tile_size).floor();
-        let cached = self.tiles.get(x as i32, y as i32);
-        if let Some(tile) = cached {
-            return *tile;
-        } else {
-            let tile = self.get_terrain_at(x * tile_size, y * tile_size);
-            self.tiles.set(x as i32, y as i32, tile);
-            return tile;
-        }
     }
 
     pub fn get_canvas(&mut self) -> Vec<TileKind> {
@@ -166,13 +153,15 @@ impl WorldGen {
         for y in 0..pixels as i32 {
             for x in 0..pixels as i32 {
                 let point = self.matrix.transform_point(Point2::new(x as f64, y as f64));
-                tiles.push(self.get_terrain_at(point.x, point.y));
+                tiles.push(self.get_terrain_at(point.x, point.y).1);
             }
         }
         tiles
     }
 
     pub fn get_land_value(&self, x: f64, y: f64) -> f64 {
+        let x = x * self.config.noise_scale;
+        let y = y * self.config.noise_scale;
         let low_land = self.low_land.get(x, y);
         let high_land = self.high_land.get(x, y);
         let low_land_weight = self.config.weight_low_land;
@@ -182,7 +171,7 @@ impl WorldGen {
             .unwrap_or(0.0)
     }
 
-    pub fn get_terrain_at(&self, x: f64, y: f64) -> TileKind {
+    fn get_terrain_at(&self, x: f64, y: f64) -> (f64, TileKind) {
         let land_value = self.get_land_value(x, y);
         let terrain_kind = if land_value < self.config.land_threshold {
             TileKind::Water
@@ -194,7 +183,21 @@ impl WorldGen {
             }
         };
 
-        terrain_kind
+        (land_value, terrain_kind)
+    }
+}
+
+impl WorldGen {
+    pub fn generate_grid(&self, width: f64) -> WorldGrid<(f64, TileKind)> {
+        let mut grid = WorldGrid::new(width, (0.0, TileKind::Water), self.config.tile_size);
+        let data = grid
+            .iter()
+            .map(|(x, y, _)| {
+                return self.get_terrain_at(x, y);
+            })
+            .collect();
+        grid.data = data;
+        grid
     }
 }
 

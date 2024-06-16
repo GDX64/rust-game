@@ -1,9 +1,9 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
-import { WorldGen } from "../pkg/game_state";
-import { OBJLoader } from "three/addons/loaders/ObjLoader.js";
-import boat from "./assets_ignore/boat.obj?url";
+import { GameWasmState } from "../pkg/game_state";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import boat from "./assets/ship.glb?url";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -12,7 +12,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 export class Render3D {
   gui = new GUI();
   state = {
-    boatScale: 0.002,
+    boatScale: 0.06,
     boatPosition: [0, 0, 0.5],
     controlsEnabled: false,
     terrainColor: "#2b5232",
@@ -22,6 +22,31 @@ export class Render3D {
     bloomRadius: 0.4,
     bloomThreshold: 0.85,
   };
+  gameState = GameWasmState.new();
+  planeMesh = new THREE.Mesh();
+  readonly PLANE_WIDTH = this.gameState.map_size();
+  readonly SEGMENTS_DENSITY = 5;
+  readonly PLANE_SEGMENTS = this.PLANE_WIDTH * this.SEGMENTS_DENSITY;
+
+  private updateMesh() {
+    const { geometry } = this.planeMesh;
+    const arr = geometry.attributes.position.array;
+    for (let x = 0; x < this.PLANE_SEGMENTS; x += 1) {
+      for (let y = 0; y < this.PLANE_SEGMENTS; y += 1) {
+        const i = (y * this.PLANE_SEGMENTS + x) * 3;
+        let height =
+          this.gameState.get_land_value(
+            (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
+            (y / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2
+          ) ?? 0;
+        height = height * 5;
+
+        arr[i + 2] = height;
+      }
+    }
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }
 
   private saveState() {
     localStorage.setItem("state", JSON.stringify(this.state));
@@ -69,13 +94,9 @@ export class Render3D {
       1000
     );
 
-    const PLANE_WIDTH = 100;
-    const SEGMENTS_DENSITY = 5;
-    const PLANE_SEGMENTS = PLANE_WIDTH * SEGMENTS_DENSITY;
-
     const waterPlaneGeometry = new THREE.PlaneGeometry(
-      PLANE_WIDTH,
-      PLANE_WIDTH,
+      this.PLANE_WIDTH,
+      this.PLANE_WIDTH,
       1,
       1
     );
@@ -93,29 +114,11 @@ export class Render3D {
     scene.add(waterMesh);
 
     const planeGeometry = new THREE.PlaneGeometry(
-      PLANE_WIDTH,
-      PLANE_WIDTH,
-      PLANE_SEGMENTS - 1,
-      PLANE_SEGMENTS - 1
+      this.PLANE_WIDTH,
+      this.PLANE_WIDTH,
+      this.PLANE_SEGMENTS - 1,
+      this.PLANE_SEGMENTS - 1
     );
-
-    const arr = planeGeometry.attributes.position.array;
-
-    const world = WorldGen.new(1);
-
-    for (let x = 0; x < PLANE_SEGMENTS; x += 1) {
-      for (let y = 0; y < PLANE_SEGMENTS; y += 1) {
-        const i = (y * PLANE_SEGMENTS + x) * 3;
-        let height =
-          world.get_land_value(
-            ((x / PLANE_SEGMENTS) * PLANE_WIDTH) / 10,
-            ((y / PLANE_SEGMENTS) * PLANE_WIDTH) / 10
-          ) * 5;
-
-        arr[i + 2] = height;
-      }
-    }
-    planeGeometry.computeVertexNormals();
 
     scene.fog = new THREE.Fog(0x999999, 0, 100);
 
@@ -126,6 +129,9 @@ export class Render3D {
     this.addTerrainColorControl(planeMaterial);
     const plane = new THREE.Mesh(planeGeometry, planeMaterial);
     scene.add(plane);
+
+    this.planeMesh = plane;
+    this.updateMesh();
 
     camera.position.z = 5;
     camera.position.y = -10;
@@ -142,7 +148,7 @@ export class Render3D {
     const orbit = new OrbitControls(camera, renderer.domElement);
     renderer.domElement.style.backgroundColor = "skyblue";
 
-    const loader = new OBJLoader();
+    const loader = new GLTFLoader();
     const controls = new TransformControls(camera, renderer.domElement);
     scene.add(controls);
     controls.addEventListener("mouseDown", () => {
@@ -152,11 +158,15 @@ export class Render3D {
       orbit.enabled = true;
     });
 
-    loader.load(boat, (obj) => {
-      const scale = 0.002;
-      obj.position.set(0, 0, 0.5);
+    loader.load(boat, (_obj) => {
+      const obj = _obj.scene;
+      obj.scale.set(
+        this.state.boatScale,
+        this.state.boatScale,
+        this.state.boatScale
+      );
+      console.log(_obj.animations);
       obj.rotation.set(Math.PI / 2, 0, 0);
-      obj.scale.set(scale, scale, scale);
       scene.add(obj);
       this.gui.add(this.state, "controlsEnabled").onChange(() => {
         if (this.state.controlsEnabled) {
@@ -165,7 +175,7 @@ export class Render3D {
           controls.detach();
         }
       });
-      this.gui.add(this.state, "boatScale", 0.0005, 0.01).onChange((val) => {
+      this.gui.add(this.state, "boatScale", 0.001, 0.5).onChange((val) => {
         obj.scale.set(val, val, val);
       });
     });

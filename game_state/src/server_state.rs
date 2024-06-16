@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::{
+    sparse_matrix::WorldGrid,
+    world_gen::{self, TileKind},
+};
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerState {
     name: String,
@@ -25,12 +30,18 @@ pub enum ClientMessage {
 
 pub struct ServerState {
     pub players: HashMap<u64, PlayerState>,
+    pub game_map: WorldGrid<(f64, TileKind)>,
     pub my_id: Option<u64>,
+    pub world_gen: world_gen::WorldGen,
 }
 
 impl ServerState {
     pub fn new() -> Self {
+        let world_gen = world_gen::WorldGen::new(1);
+        let game_map = world_gen.generate_grid(100.0);
         Self {
+            world_gen,
+            game_map,
             players: HashMap::new(),
             my_id: None,
         }

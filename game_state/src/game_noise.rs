@@ -4,6 +4,7 @@ use wasm_bindgen::prelude::*;
 type NoiseKind = Simplex;
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct GameNoise {
     fbm1: Fbm<NoiseKind>,
 }

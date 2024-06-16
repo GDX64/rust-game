@@ -1,120 +1,97 @@
-pub struct SparseMatrix<T> {
-    data: NegativeVector<NegativeVector<T>>,
+pub struct WorldGrid<T> {
+    pub dim: f64,
+    pub tiles_dim: usize,
+    pub tile_size: f64,
+    pub data: Vec<T>,
 }
 
-impl<T> SparseMatrix<T> {
-    pub fn new() -> Self {
+impl<T> Default for WorldGrid<T> {
+    fn default() -> Self {
         Self {
-            data: NegativeVector::new(),
+            dim: 0.0,
+            tiles_dim: 0,
+            tile_size: 1.0,
+            data: Vec::new(),
         }
-    }
-
-    pub fn get(&self, x: i32, y: i32) -> Option<&T> {
-        self.data.get(x).and_then(|x| x.get(y))
-    }
-
-    pub fn set(&mut self, x: i32, y: i32, value: T) {
-        if let Some(row) = self.data.get_mut(x) {
-            row.set(y, value);
-        } else {
-            let mut row = NegativeVector::new();
-            row.set(y, value);
-            self.data.set(x, row);
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.data.clear();
     }
 }
 
-struct NegativeVector<T> {
-    positive: Vec<Option<T>>,
-    negative: Vec<Option<T>>,
+pub struct TileUnit(usize);
+
+impl TileUnit {
+    pub fn div(val: f64, tile_size: f64) -> Self {
+        Self((val / tile_size).floor() as usize)
+    }
 }
 
-impl<T> NegativeVector<T> {
-    pub fn new() -> Self {
+impl<T: Copy + Clone> WorldGrid<T> {
+    pub fn new(dim: f64, default: T, tile_size: f64) -> Self {
+        let tiles_dim = TileUnit::div(dim, tile_size).0;
+
         Self {
-            positive: Vec::new(),
-            negative: Vec::new(),
+            dim,
+            tiles_dim,
+            tile_size,
+            data: vec![default; tiles_dim * tiles_dim],
         }
     }
 
-    pub fn get_mut(&mut self, index: i32) -> Option<&mut T> {
-        if index >= 0 {
-            let index = index as usize;
-            self.positive.get_mut(index).and_then(|x| x.as_mut())
-        } else {
-            let index = -index as usize;
-            self.negative.get_mut(index).and_then(|x| x.as_mut())
-        }
+    pub fn iter(&mut self) -> impl Iterator<Item = (f64, f64, &T)> {
+        self.data.iter().enumerate().map(|(index, value)| {
+            let x = index % self.tiles_dim;
+            let y = index / self.tiles_dim;
+            let x = self.from_tile_unit(x);
+            let y = self.from_tile_unit(y);
+            (x, y, value)
+        })
     }
 
-    pub fn get(&self, index: i32) -> Option<&T> {
-        if index >= 0 {
-            let index = index as usize;
-            self.positive.get(index).and_then(|x| x.as_ref())
-        } else {
-            let index = -index as usize;
-            self.negative.get(index).and_then(|x| x.as_ref())
-        }
+    fn tile_unit(&self, val: f64) -> usize {
+        TileUnit::div(val + self.dim / 2.0, self.tile_size).0
     }
 
-    pub fn set(&mut self, index: i32, value: T) {
-        if index >= 0 {
-            let index = index as usize;
-            while let None = self.positive.get(index) {
-                self.positive.push(None);
-            }
-            self.positive[index] = Some(value);
-        } else {
-            let index = -index as usize;
-            while let None = self.negative.get(index) {
-                self.negative.push(None);
-            }
-            self.negative[index] = Some(value);
-        }
+    fn from_tile_unit(&self, unit: usize) -> f64 {
+        (unit as f64 * self.tile_size) - self.dim / 2.0
     }
 
-    pub fn clear(&mut self) {
-        self.positive.clear();
-        self.negative.clear();
+    pub fn get(&self, x: f64, y: f64) -> Option<&T> {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        let index = (y * self.tiles_dim + x) as usize;
+        self.data.get(index)
+    }
+
+    pub fn get_mut(&mut self, x: f64, y: f64) -> Option<&mut T> {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        let index = (y * self.tiles_dim + x) as usize;
+        self.data.get_mut(index)
+    }
+
+    pub fn set(&mut self, x: f64, y: f64, value: T) {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        let index = (y * self.tiles_dim + x) as usize;
+        self.data[index] = value;
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::sparse_matrix::NegativeVector;
+    use super::*;
 
     #[test]
-    fn test_insert_array() {
-        let mut v = NegativeVector::new();
-        v.set(1, 1);
-        v.set(-1, 2);
-        assert_eq!(v.get(1), Some(&1));
-        assert_eq!(v.get(-1), Some(&2));
-    }
+    fn test_grid_isomorphism() {
+        let grid = WorldGrid::new(40.0, 0.0, 10.0);
+        assert_eq!(grid.data.len(), 16);
+        assert_eq!(grid.tile_unit(0.0), 2);
+        assert_eq!(grid.tile_unit(1.0), 2);
+        assert_eq!(grid.tile_unit(9.9), 2);
+        assert_eq!(grid.tile_unit(11.0), 3);
+        assert_eq!(grid.tile_unit(-1.0), 1);
 
-    #[test]
-    fn test_insert_array_sparse() {
-        let mut v = NegativeVector::new();
-        v.set(10, 1);
-        v.set(-10, 2);
-        assert_eq!(v.get(1), None);
-        assert_eq!(v.get(-1), None);
-
-        assert_eq!(v.get(10), Some(&1));
-        assert_eq!(v.get(-10), Some(&2));
-    }
-
-    #[test]
-    fn test_sparse_matrix() {
-        let mut matrix = super::SparseMatrix::<i32>::new();
-        assert_eq!(matrix.get(0, 0), None);
-        matrix.set(10, 15, 10);
-
-        assert_eq!(matrix.get(10, 15), Some(&10));
-        assert_eq!(matrix.get(1, 9), None);
+        //going back
+        assert_eq!(grid.from_tile_unit(2), 0.0);
+        assert_eq!(grid.from_tile_unit(3), 10.0);
     }
 }

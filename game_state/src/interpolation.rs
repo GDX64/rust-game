@@ -1,5 +1,6 @@
 use cgmath::Point2;
 
+#[derive(Clone)]
 pub struct LinearInterpolation {
     points: Vec<Point2<f64>>,
 }

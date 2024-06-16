@@ -19,6 +19,23 @@ impl GameWasmState {
         }
     }
 
+    pub fn map_size(&self) -> f64 {
+        self.server_state.game_map.dim
+    }
+
+    pub fn world_gen(&mut self) -> world_gen::WorldGen {
+        return self.server_state.world_gen.clone();
+    }
+
+    pub fn get_land_grid_value(&self, x: f64, y: f64) -> Option<f64> {
+        let result = self.server_state.game_map.get(x, y)?.0;
+        Some(result)
+    }
+
+    pub fn get_land_value(&self, x: f64, y: f64) -> f64 {
+        self.server_state.world_gen.get_land_value(x, y)
+    }
+
     pub fn my_id(&self) -> Option<f64> {
         self.server_state.my_id.map(|id| id as f64)
     }
