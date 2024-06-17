@@ -29,8 +29,8 @@ COPY ./package.json ./package.json
 RUN npm install
 
 COPY ./front ./front
-COPY ./game_state ./game_state
-COPY --from=WasmBuilder /app/game_state/pkg /app/game_state/pkg
+
+COPY --from=WasmBuilder /app/game_state /app/game_state
 
 RUN npm install
 
@@ -40,13 +40,16 @@ ARG FRONT_SERVER
 # Use the variable
 ENV FRONT_SERVER=$FRONT_SERVER
 
+RUN cd ./game_state && npm run buildjs
+
 RUN cd ./front && npm run build
 
 # Final run stage
 FROM scratch AS runner
 
 COPY --from=builder /app/backend/target/x86_64-unknown-linux-musl/release/game game
-COPY --from=FrontendBuilder /app/front/dist dist
+COPY --from=FrontendBuilder /app/front/dist dist/game
+COPY --from=FrontendBuilder /app/game_state/dist dist/editor
 
 CMD ["/game"]
 # CMD ["ls"]

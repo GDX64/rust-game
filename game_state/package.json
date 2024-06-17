@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "npm run build && vite",
     "build": "wasm-pack build --target bundler --release",
+    "buildjs": "vite build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -20,10 +21,6 @@
     "url": "https://github.com/GDX64/tailwind-vite-jest/issues"
   },
   "homepage": "https://github.com/GDX64/tailwind-vite-jest#readme",
-  "dependencies": {
-    "@types/dat.gui": "^0.7.13",
-    "@types/three": "^0.165.0",
-    "dat.gui": "^0.7.9",
-    "three": "^0.165.0"
-  }
+  "dependencies": {}
 }
+
