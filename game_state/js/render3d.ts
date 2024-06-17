@@ -8,6 +8,7 @@ import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 
 export class Render3D {
   gui = new GUI();
@@ -21,6 +22,7 @@ export class Render3D {
     bloomStrength: 1.5,
     bloomRadius: 0.4,
     bloomThreshold: 0.85,
+    redShift: false,
   };
   gameState = GameWasmState.new();
   planeMesh = new THREE.Mesh();
@@ -192,6 +194,17 @@ export class Render3D {
       this.state.bloomThreshold
     );
     composer.addPass(bloomPass);
+    const redShift = redShiftEffect();
+    if (this.state.redShift) {
+      composer.addPass(redShift);
+    }
+    this.gui.add(this.state, "redShift").onChange((val) => {
+      if (val) {
+        composer.addPass(redShift);
+      } else {
+        composer.removePass(redShift);
+      }
+    });
     renderer.setAnimationLoop(() => {
       composer.render();
     });
@@ -219,4 +232,33 @@ export class Render3D {
     scene.add(light);
     scene.add(ambientLight);
   }
+}
+
+function redShiftEffect() {
+  // Custom shader for red shift
+  const redShiftShader = {
+    uniforms: {
+      tDiffuse: { value: null },
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        varying vec2 vUv;
+        void main() {
+            vec4 color = texture2D(tDiffuse, vUv);
+            color = vec4(min(1.0, color.r + 0.2), color.g, color.b, color.a); // Increase red channel
+            gl_FragColor = color;
+        }
+    `,
+  };
+
+  const shaderPass = new ShaderPass(redShiftShader);
+  shaderPass.renderToScreen = true;
+  return shaderPass;
 }
