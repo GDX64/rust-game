@@ -26,9 +26,23 @@ export class Render3D {
   };
   gameState = GameWasmState.new();
   planeMesh = new THREE.Mesh();
+  readonly pathLine = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: 0xffff00 })
+  );
+  readonly scene = new THREE.Scene();
+  readonly camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  readonly rayCaster = new THREE.Raycaster();
+  readonly mouse = new THREE.Vector2(0, 0);
   readonly PLANE_WIDTH = this.gameState.map_size();
   readonly SEGMENTS_DENSITY = 5;
   readonly PLANE_SEGMENTS = this.PLANE_WIDTH * this.SEGMENTS_DENSITY;
+  waterMesh = new THREE.Mesh();
 
   private updateMesh() {
     const { geometry } = this.planeMesh;
@@ -36,10 +50,11 @@ export class Render3D {
     for (let x = 0; x < this.PLANE_SEGMENTS; x += 1) {
       for (let y = 0; y < this.PLANE_SEGMENTS; y += 1) {
         const i = (y * this.PLANE_SEGMENTS + x) * 3;
+        const yProportion = y / this.PLANE_SEGMENTS;
         let height =
           this.gameState.get_land_value(
             (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
-            (y / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2
+            (0.5 - yProportion) * this.PLANE_WIDTH
           ) ?? 0;
         height = height * 5;
 
@@ -85,16 +100,30 @@ export class Render3D {
     });
   }
 
+  private onMouseClick(event: PointerEvent) {
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    this.rayCaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.rayCaster.intersectObject(this.waterMesh);
+    if (intersects.length > 0) {
+      const [x, y] = intersects[0].point.toArray();
+      const pathStr = this.gameState.find_path(0, 0, x, y);
+      if (pathStr) {
+        const path: [number, number][] = JSON.parse(pathStr);
+        const geometry = new THREE.BufferGeometry().setFromPoints(
+          path.map(([x, y]) => new THREE.Vector3(x, y, 0))
+        );
+        this.pathLine.geometry = geometry;
+      }
+    }
+  }
+
   async init() {
     this.loadState();
     setInterval(() => this.saveState(), 1_000);
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
+    const camera = this.camera;
+    const scene = this.scene;
+    scene.add(this.pathLine);
 
     const waterPlaneGeometry = new THREE.PlaneGeometry(
       this.PLANE_WIDTH,
@@ -102,6 +131,7 @@ export class Render3D {
       1,
       1
     );
+
     const waterMaterial = new THREE.MeshPhongMaterial({
       color: this.state.waterColor,
       transparent: true,
@@ -113,6 +143,7 @@ export class Render3D {
 
     this.addWaterColorControl(waterMaterial);
     const waterMesh = new THREE.Mesh(waterPlaneGeometry, waterMaterial);
+    this.waterMesh = waterMesh;
     scene.add(waterMesh);
 
     const planeGeometry = new THREE.PlaneGeometry(
@@ -210,6 +241,8 @@ export class Render3D {
       composer.render();
     });
     this.addBloomControls(bloomPass);
+
+    window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
   }
 
   private makeSun(scene: THREE.Scene) {

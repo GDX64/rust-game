@@ -1,4 +1,5 @@
 mod server_state;
+use cgmath::Vector2;
 pub use server_state::*;
 mod game_noise;
 mod interpolation;
@@ -17,6 +18,15 @@ impl GameWasmState {
         Self {
             server_state: ServerState::new(),
         }
+    }
+
+    pub fn find_path(&self, xi: f64, yi: f64, xf: f64, yf: f64) -> Option<String> {
+        let result = self
+            .server_state
+            .game_map
+            .find_path(Vector2::new(xi, yi), Vector2::new(xf, yf))?;
+        let result: Vec<(f64, f64)> = result.into_iter().map(|v| (v.x, v.y)).collect();
+        serde_json::to_string(&result).ok()
     }
 
     pub fn map_size(&self) -> f64 {

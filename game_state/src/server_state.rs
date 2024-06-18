@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::{
-    sparse_matrix::WorldGrid,
+    sparse_matrix::{CanGo, WorldGrid},
     world_gen::{self, TileKind},
 };
 
@@ -26,6 +26,12 @@ pub enum ClientMessage {
     CreatePlayer { id: u64 },
     RemovePlayer { id: u64 },
     MarkMyID { id: u64 },
+}
+
+impl CanGo for (f64, TileKind) {
+    fn can_go(&self) -> bool {
+        self.1 == TileKind::Water
+    }
 }
 
 pub struct ServerState {

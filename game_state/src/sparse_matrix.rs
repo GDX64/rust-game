@@ -89,12 +89,15 @@ impl<T: Copy + Clone> WorldGrid<T> {
     }
 }
 
+const MAX_SEARCH: usize = 10_000;
+
 impl<T: CanGo> WorldGrid<T> {
-    fn find_path(&self, initial: Vector2<f64>, fin: Vector2<f64>) -> Option<Vec<Vector2<i64>>> {
+    pub fn find_path(&self, initial: Vector2<f64>, fin: Vector2<f64>) -> Option<Vec<Vector2<f64>>> {
         let initial = Vector2::new(
             self.tile_unit(initial.x) as i64,
             self.tile_unit(initial.y) as i64,
         );
+        let mut i = 0;
         let fin = Vector2::new(self.tile_unit(fin.x) as i64, self.tile_unit(fin.y) as i64);
         let goal_fn = |p: &Vector2<i64>| (fin - p).magnitude2();
         let result = astar(
@@ -125,10 +128,24 @@ impl<T: CanGo> WorldGrid<T> {
             },
             goal_fn,
             |p| {
-                return *p == fin;
+                i += 1;
+                return *p == fin || i > MAX_SEARCH;
             },
         )?;
-        Some(result.0)
+        if i > MAX_SEARCH {
+            return None;
+        }
+        let v: Vec<Vector2<f64>> = result
+            .0
+            .into_iter()
+            .map(|v| {
+                Vector2::new(
+                    self.from_tile_unit(v.x as usize),
+                    self.from_tile_unit(v.y as usize),
+                )
+            })
+            .collect();
+        return Some(v);
     }
 }
 
