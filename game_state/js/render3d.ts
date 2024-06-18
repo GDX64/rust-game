@@ -140,7 +140,7 @@ export class Render3D {
     camera.lookAt(0, 5, 0);
     camera.up.set(0, 0, 1);
 
-    const renderer = new THREE.WebGLRenderer({});
+    const renderer = new THREE.WebGLRenderer();
     renderer.setClearColor(this.state.skyColor, 1);
     this.gui.addColor(this.state, "skyColor").onChange(() => {
       renderer.setClearColor(this.state.skyColor, 1);
@@ -185,6 +185,7 @@ export class Render3D {
     this.makeSun(scene);
     const composer = new EffectComposer(renderer);
     const renderPass = new RenderPass(scene, camera);
+    renderer.setPixelRatio(window.devicePixelRatio);
     composer.addPass(renderPass);
 
     const bloomPass = new UnrealBloomPass(
