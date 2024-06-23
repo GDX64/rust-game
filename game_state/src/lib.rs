@@ -20,6 +20,11 @@ impl GameWasmState {
         }
     }
 
+    pub fn get_all_ships(&self) -> String {
+        let ships: Vec<ShipState> = self.server_state.get_ships();
+        serde_json::to_string(&ships).unwrap_or("[]".to_string())
+    }
+
     pub fn find_path(&self, xi: f64, yi: f64, xf: f64, yf: f64) -> Option<String> {
         let result = self
             .server_state
@@ -58,5 +63,19 @@ impl GameWasmState {
     pub fn get_players(&self) -> String {
         let player: Vec<PlayerState> = self.server_state.players.values().cloned().collect();
         serde_json::to_string(&player).unwrap_or("[]".to_string())
+    }
+}
+
+#[wasm_bindgen]
+struct MessageCreator {}
+
+#[wasm_bindgen]
+impl MessageCreator {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    pub fn create_player(&self) -> String {
+        todo!()
     }
 }

@@ -13,6 +13,13 @@ pub struct PlayerState {
     id: u64,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct ShipState {
+    position: (f64, f64),
+    id: u64,
+    player_id: u64,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadCastState {
     players: Vec<PlayerState>,
@@ -20,13 +27,43 @@ pub struct BroadCastState {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ClientMessage {
-    SetPlayerName { name: String, id: u64 },
-    MovePlayer { position: (f64, f64), id: u64 },
-    BroadCastState { state: BroadCastState },
-    CreatePlayer { id: u64 },
-    RemovePlayer { id: u64 },
-    MarkMyID { id: u64 },
+    SetPlayerName {
+        name: String,
+        id: u64,
+    },
+    MovePlayer {
+        position: (f64, f64),
+        id: u64,
+    },
+    CreateShip {
+        ship: ShipState,
+    },
+    MoveShip {
+        position: (f64, f64),
+        id: u64,
+        player_id: u64,
+    },
+    BroadCastState {
+        state: BroadCastState,
+    },
+    CreatePlayer {
+        id: u64,
+    },
+    RemovePlayer {
+        id: u64,
+    },
+    MarkMyID {
+        id: u64,
+    },
 }
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+struct ShipKey {
+    id: u64,
+    player_id: u64,
+}
+
+type ShipCollection = HashMap<ShipKey, ShipState>;
 
 impl CanGo for (f64, TileKind) {
     fn can_go(&self) -> bool {
@@ -39,6 +76,7 @@ pub struct ServerState {
     pub game_map: WorldGrid<(f64, TileKind)>,
     pub my_id: Option<u64>,
     pub world_gen: world_gen::WorldGen,
+    ship_collection: ShipCollection,
 }
 
 impl ServerState {
@@ -50,6 +88,7 @@ impl ServerState {
             game_map,
             players: HashMap::new(),
             my_id: None,
+            ship_collection: ShipCollection::new(),
         }
     }
 
@@ -71,6 +110,10 @@ impl ServerState {
                 players: self.players.values().cloned().collect(),
             },
         }
+    }
+
+    pub fn get_ships(&self) -> Vec<ShipState> {
+        self.ship_collection.values().cloned().collect()
     }
 
     pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
@@ -108,7 +151,24 @@ impl ServerState {
             ClientMessage::MarkMyID { id } => {
                 self.my_id = Some(id);
             }
-            _ => {}
+            ClientMessage::CreateShip { ship } => {
+                self.ship_collection.insert(
+                    ShipKey {
+                        id: ship.id,
+                        player_id: ship.player_id,
+                    },
+                    ship,
+                );
+            }
+            ClientMessage::MoveShip {
+                position,
+                id,
+                player_id,
+            } => {
+                if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
+                    ship.position = position;
+                }
+            }
         }
     }
 }
