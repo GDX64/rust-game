@@ -1,7 +1,9 @@
 mod server_state;
 use cgmath::Vector2;
+pub use game_server::*;
 pub use server_state::*;
 mod game_noise;
+mod game_server;
 mod interpolation;
 mod sparse_matrix;
 mod world_gen;
