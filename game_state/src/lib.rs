@@ -112,6 +112,15 @@ impl GameWasmState {
         self.send_message(msg);
     }
 
+    pub fn action_move_ship(&mut self, id: u64, x: f64, y: f64) {
+        let msg = ClientMessage::MoveShip {
+            player_id: self.server_state.my_id.unwrap_or(0),
+            id,
+            position: (x, y),
+        };
+        self.send_message(msg);
+    }
+
     fn next_id(&mut self) -> u64 {
         self.incremental_id += 1;
         self.incremental_id

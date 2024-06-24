@@ -112,14 +112,13 @@ export class Render3D {
     const intersects = this.rayCaster.intersectObject(this.waterMesh);
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
-      const pathStr = this.gameState.find_path(0, 0, x, y);
-      this.shipsManager.createShip(x, y);
-      if (pathStr) {
-        const path: [number, number][] = JSON.parse(pathStr);
+      const path = this.shipsManager.getPathTo(x, y);
+      if (path) {
         const geometry = new THREE.BufferGeometry().setFromPoints(
           path.map(([x, y]) => new THREE.Vector3(x, y, 0))
         );
         this.pathLine.geometry = geometry;
+        this.shipsManager.moveShip(x, y);
       }
     }
   }
