@@ -1,17 +1,34 @@
 mod server_state;
+use core::panic;
+use std::borrow::BorrowMut;
+
 use cgmath::Vector2;
 pub use game_server::*;
+use log::{error, info};
 pub use server_state::*;
 mod game_noise;
 mod game_server;
 mod interpolation;
 mod sparse_matrix;
 mod world_gen;
-
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen(start)]
+pub fn start() {
+    //setup logger
+    console_log::init_with_level(log::Level::Debug).expect("error initializing logger");
+}
+
 #[wasm_bindgen]
 pub struct GameWasmState {
     server_state: ServerState,
+    running_mode: RunningMode,
+    incremental_id: u64,
+}
+
+enum RunningMode {
+    Local(game_server::GameServer),
+    None,
 }
 
 #[wasm_bindgen]
@@ -19,7 +36,85 @@ impl GameWasmState {
     pub fn new() -> Self {
         Self {
             server_state: ServerState::new(),
+            running_mode: RunningMode::None,
+            incremental_id: 0,
         }
+    }
+
+    pub async fn start_local_server(&mut self) {
+        let player_message = GameMessage::NewConnection;
+        let mut game = game_server::GameServer::new();
+
+        let id = game
+            .on_message(player_message)
+            .expect("should be possible to start local server");
+        if let GameServerMessageResult::PlayerID(id) = id {
+            self.server_state.on_message(ClientMessage::MarkMyID { id })
+        } else {
+            panic!("should be possible to start local server");
+        }
+
+        self.running_mode = RunningMode::Local(game);
+
+        info!("Local server started")
+    }
+
+    pub fn tick(&mut self) {
+        self.poll_player_messages();
+        match &mut self.running_mode {
+            RunningMode::Local(game) => {
+                game.on_message(GameMessage::Tick)
+                    .expect("should be possible to tick");
+            }
+            RunningMode::None => {}
+        };
+    }
+
+    fn poll_player_messages(&mut self) {
+        let server = self.server_state.borrow_mut();
+        match &mut self.running_mode {
+            RunningMode::Local(game) => {
+                let my_id = server.my_id.unwrap_or(0);
+                game.messages_to_send.drain(..).for_each(|(id, msg)| {
+                    if id == my_id {
+                        if let Err(err) = server.on_string_message(msg.clone()) {
+                            error!("Error processing message: {:?}", err)
+                        }
+                    }
+                });
+            }
+            RunningMode::None => {}
+        }
+    }
+
+    fn send_message(&mut self, msg: ClientMessage) {
+        match self.running_mode {
+            RunningMode::Local(ref mut game) => {
+                let msg = serde_json::to_string(&msg).expect("should be possible to serialize");
+                let msg = GameMessage::ClientMessage(msg);
+                match game.on_message(msg) {
+                    Err(err) => error!("Error sending message: {:?}", err),
+                    Ok(_) => {}
+                }
+            }
+            RunningMode::None => {}
+        }
+    }
+
+    pub fn action_create_ship(&mut self, x: f64, y: f64) {
+        let msg = ClientMessage::CreateShip {
+            ship: ShipState {
+                id: self.next_id(),
+                player_id: self.server_state.my_id.unwrap_or(0),
+                position: (x, y),
+            },
+        };
+        self.send_message(msg);
+    }
+
+    fn next_id(&mut self) -> u64 {
+        self.incremental_id += 1;
+        self.incremental_id
     }
 
     pub fn get_all_ships(&self) -> String {
@@ -57,27 +152,8 @@ impl GameWasmState {
         self.server_state.my_id.map(|id| id as f64)
     }
 
-    pub fn on_string_message(&mut self, msg: String) -> Option<bool> {
-        self.server_state.on_string_message(msg).ok()?;
-        Some(true)
-    }
-
     pub fn get_players(&self) -> String {
         let player: Vec<PlayerState> = self.server_state.players.values().cloned().collect();
         serde_json::to_string(&player).unwrap_or("[]".to_string())
-    }
-}
-
-#[wasm_bindgen]
-struct MessageCreator {}
-
-#[wasm_bindgen]
-impl MessageCreator {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn create_player(&self) -> String {
-        todo!()
     }
 }

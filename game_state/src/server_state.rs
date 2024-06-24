@@ -1,3 +1,4 @@
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -15,9 +16,9 @@ pub struct PlayerState {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ShipState {
-    position: (f64, f64),
-    id: u64,
-    player_id: u64,
+    pub position: (f64, f64),
+    pub id: u64,
+    pub player_id: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -117,6 +118,7 @@ impl ServerState {
     }
 
     pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
+        info!("Received message on state: {}", msg);
         let msg: ClientMessage = serde_json::from_str(&msg)?;
         self.on_message(msg.clone());
         Ok(msg)

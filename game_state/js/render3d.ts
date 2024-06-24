@@ -2,13 +2,12 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { GameWasmState } from "../pkg/game_state";
-import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import boat from "./assets/ship.glb?url";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { ShipsManager } from "./ShipsManager";
 
 export class Render3D {
   gui = new GUI();
@@ -42,6 +41,12 @@ export class Render3D {
   readonly PLANE_WIDTH = this.gameState.map_size();
   readonly SEGMENTS_DENSITY = 5;
   readonly PLANE_SEGMENTS = this.PLANE_WIDTH * this.SEGMENTS_DENSITY;
+  readonly shipsManager = new ShipsManager(
+    this.gameState,
+    this.state.boatScale,
+    this.scene
+  );
+
   waterMesh = new THREE.Mesh();
 
   private updateMesh() {
@@ -108,6 +113,7 @@ export class Render3D {
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
       const pathStr = this.gameState.find_path(0, 0, x, y);
+      this.shipsManager.createShip(x, y);
       if (pathStr) {
         const path: [number, number][] = JSON.parse(pathStr);
         const geometry = new THREE.BufferGeometry().setFromPoints(
@@ -119,6 +125,7 @@ export class Render3D {
   }
 
   async init() {
+    this.gameState.start_local_server();
     this.loadState();
     setInterval(() => this.saveState(), 1_000);
     const camera = this.camera;
@@ -181,7 +188,6 @@ export class Render3D {
     const orbit = new OrbitControls(camera, renderer.domElement);
     renderer.domElement.style.backgroundColor = "skyblue";
 
-    const loader = new GLTFLoader();
     const controls = new TransformControls(camera, renderer.domElement);
     scene.add(controls);
     controls.addEventListener("mouseDown", () => {
@@ -189,28 +195,6 @@ export class Render3D {
     });
     controls.addEventListener("mouseUp", () => {
       orbit.enabled = true;
-    });
-
-    loader.load(boat, (_obj) => {
-      const obj = _obj.scene;
-      obj.scale.set(
-        this.state.boatScale,
-        this.state.boatScale,
-        this.state.boatScale
-      );
-      console.log(_obj.animations);
-      obj.rotation.set(Math.PI / 2, 0, 0);
-      scene.add(obj);
-      this.gui.add(this.state, "controlsEnabled").onChange(() => {
-        if (this.state.controlsEnabled) {
-          controls.attach(obj);
-        } else {
-          controls.detach();
-        }
-      });
-      this.gui.add(this.state, "boatScale", 0.001, 0.5).onChange((val) => {
-        obj.scale.set(val, val, val);
-      });
     });
 
     this.makeSun(scene);
@@ -239,6 +223,8 @@ export class Render3D {
     });
     renderer.setAnimationLoop(() => {
       composer.render();
+      this.gameState.tick();
+      this.shipsManager.update();
     });
     this.addBloomControls(bloomPass);
 

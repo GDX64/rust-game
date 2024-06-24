@@ -1,7 +1,7 @@
-use game_state::{CanvasGame, GameMessage};
+use game_state::{GameMessage, GameServer};
 
 pub async fn run(mut channel: tokio::sync::mpsc::Receiver<GameMessage>) {
-    let mut game = CanvasGame::new();
+    let mut game = GameServer::new();
     let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
     loop {
         tokio::select! {
