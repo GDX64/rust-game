@@ -100,7 +100,7 @@ impl Player {
                 if direction.magnitude() < 0.1 {
                     ship.path.remove(0);
                 }
-                ship.speed = direction.normalize() * 10.0;
+                ship.speed = direction.normalize() * 2.0;
                 if ship.path.is_empty() {
                     ship.speed = (0.0, 0.0).into();
                 }

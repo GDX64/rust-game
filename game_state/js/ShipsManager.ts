@@ -8,6 +8,7 @@ type ShipData = {
   player_id: number;
   id: number;
   position: [number, number];
+  speed: [number, number];
 };
 
 type Ship = {
@@ -62,6 +63,11 @@ export class ShipsManager {
       const existing = this.ships.get(ship.id);
       if (existing) {
         existing.model.position.set(ship.position[0], ship.position[1], 0);
+        if (ship.speed[0] !== 0 || ship.speed[1] !== 0) {
+          const xyAngle =
+            Math.atan2(ship.speed[1], ship.speed[0]) + Math.PI / 2;
+          existing.model.rotation.set(Math.PI / 2, 0, xyAngle, "ZXY");
+        }
       } else if (this.boatModel) {
         const newShip = this.boatModel.clone();
         newShip.position.set(ship.position[0], ship.position[1], 0);
