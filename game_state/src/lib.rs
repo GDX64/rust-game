@@ -3,11 +3,13 @@ use core::panic;
 mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
+use player::Player;
 use running_mode::RunningMode;
 pub use server_state::*;
 mod game_noise;
 mod game_server;
 mod interpolation;
+mod player;
 mod sparse_matrix;
 mod world_gen;
 use wasm_bindgen::prelude::*;
@@ -21,7 +23,7 @@ pub fn start() {
 #[wasm_bindgen]
 pub struct GameWasmState {
     running_mode: RunningMode,
-    incremental_id: u64,
+    player: Player,
 }
 
 #[wasm_bindgen]
@@ -29,15 +31,23 @@ impl GameWasmState {
     pub fn new() -> Self {
         Self {
             running_mode: RunningMode::none(),
-            incremental_id: 0,
+            player: Player::new(0),
         }
     }
 
     pub async fn start_local_server(&mut self) {
         self.running_mode = RunningMode::start_local();
+        self.player = Player::new(self.running_mode.id());
     }
 
     pub fn tick(&mut self) {
+        self.player
+            .sync_with_server(&self.running_mode.server_state());
+        self.player.tick();
+        let actions = self.player.take_actions();
+        actions.into_iter().for_each(|action| {
+            self.send_message(action);
+        });
         self.running_mode.tick();
     }
 
@@ -46,28 +56,12 @@ impl GameWasmState {
     }
 
     pub fn action_create_ship(&mut self, x: f64, y: f64) {
-        let msg = ClientMessage::CreateShip {
-            ship: ShipState {
-                id: self.next_id(),
-                player_id: self.running_mode.id(),
-                position: (x, y),
-            },
-        };
-        self.send_message(msg);
+        self.player.create_ship(x, y);
     }
 
-    pub fn action_move_ship(&mut self, id: u64, x: f64, y: f64) {
-        let msg = ClientMessage::MoveShip {
-            player_id: self.running_mode.id(),
-            id,
-            position: (x, y),
-        };
-        self.send_message(msg);
-    }
-
-    fn next_id(&mut self) -> u64 {
-        self.incremental_id += 1;
-        self.incremental_id
+    pub fn action_move_ship(&mut self, id: f64, x: f64, y: f64) {
+        self.player
+            .move_ship(&self.running_mode.server_state(), id as u64, x, y);
     }
 
     pub fn get_all_ships(&self) -> String {

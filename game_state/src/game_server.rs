@@ -1,6 +1,8 @@
 use crate::{ClientMessage, ServerState};
 use std::collections::HashMap;
 
+const DT: f64 = 0.016;
+
 type MessageToSend = (u64, String);
 
 #[derive(Debug)]
@@ -67,10 +69,12 @@ impl GameServer {
                 self.game_state.on_message(msg.clone());
                 self.broadcast_message(msg);
             }
-            GameMessage::Tick => {
-                //self.game_state.on_message(ClientMessage::Tick);
-            }
+            GameMessage::Tick => self.tick(),
         }
         Ok(GameServerMessageResult::None)
+    }
+
+    fn tick(&mut self) {
+        self.game_state.evolve_ships(DT)
     }
 }

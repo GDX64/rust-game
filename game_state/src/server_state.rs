@@ -17,6 +17,7 @@ pub struct PlayerState {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct ShipState {
     pub position: (f64, f64),
+    pub speed: (f64, f64),
     pub id: u64,
     pub player_id: u64,
 }
@@ -37,6 +38,7 @@ pub enum ClientMessage {
     },
     MoveShip {
         position: (f64, f64),
+        speed: (f64, f64),
         id: u64,
         player_id: u64,
     },
@@ -65,9 +67,11 @@ impl CanGo for (f64, TileKind) {
     }
 }
 
+pub type GameMap = WorldGrid<(f64, TileKind)>;
+
 pub struct ServerState {
     pub players: HashMap<u64, PlayerState>,
-    pub game_map: WorldGrid<(f64, TileKind)>,
+    pub game_map: GameMap,
     pub world_gen: world_gen::WorldGen,
     ship_collection: ShipCollection,
 }
@@ -84,10 +88,8 @@ impl ServerState {
         }
     }
 
-    fn handle_move_player(&mut self, id: u64, position: (f64, f64)) {
-        if let Some(player) = self.players.get_mut(&id) {
-            player.position = position;
-        }
+    pub fn get_ship(&self, id: u64, player_id: u64) -> Option<&ShipState> {
+        self.ship_collection.get(&ShipKey { id, player_id })
     }
 
     fn handle_set_player_name(&mut self, name: String, id: u64) {
@@ -101,6 +103,15 @@ impl ServerState {
             state: BroadCastState {
                 players: self.players.values().cloned().collect(),
             },
+        }
+    }
+
+    pub fn evolve_ships(&mut self, dt: f64) {
+        for ship in self.ship_collection.values_mut() {
+            let (x, y) = ship.position;
+            let (vx, vy) = ship.speed;
+            let (x, y) = (x + vx * dt, y + vy * dt);
+            ship.position = (x, y);
         }
     }
 
@@ -149,11 +160,13 @@ impl ServerState {
             }
             ClientMessage::MoveShip {
                 position,
+                speed,
                 id,
                 player_id,
             } => {
                 if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
                     ship.position = position;
+                    ship.speed = speed;
                 }
             }
         }

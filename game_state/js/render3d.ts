@@ -106,20 +106,16 @@ export class Render3D {
   }
 
   private onMouseClick(event: PointerEvent) {
+    if (event.button !== 2) {
+      return;
+    }
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.rayCaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.rayCaster.intersectObject(this.waterMesh);
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
-      const path = this.shipsManager.getPathTo(x, y);
-      if (path) {
-        const geometry = new THREE.BufferGeometry().setFromPoints(
-          path.map(([x, y]) => new THREE.Vector3(x, y, 0))
-        );
-        this.pathLine.geometry = geometry;
-        this.shipsManager.moveShip(x, y);
-      }
+      this.shipsManager.moveShip(x, y);
     }
   }
 

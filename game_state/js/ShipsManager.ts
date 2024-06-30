@@ -51,13 +51,7 @@ export class ShipsManager {
     if (!first) {
       this.createShip(0, 0);
     }
-    const path = this.getPathTo(x, y);
-    if (first && path) {
-      for (const [x, y] of path) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        this.game.action_move_ship(first.data.id, x, y);
-      }
-    }
+    this.game.action_move_ship(first.data.id, x, y);
   }
 
   tick() {}
