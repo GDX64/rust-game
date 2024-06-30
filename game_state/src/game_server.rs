@@ -17,8 +17,7 @@ pub enum GameServerMessageResult {
 }
 
 pub struct GameServer {
-    current_id: u64,
-    game_state: ServerState,
+    pub game_state: ServerState,
     players: HashMap<u64, ()>,
     pub messages_to_send: Vec<MessageToSend>,
 }
@@ -27,7 +26,6 @@ impl GameServer {
     pub fn new() -> GameServer {
         GameServer {
             game_state: ServerState::new(),
-            current_id: 0,
             players: HashMap::new(),
             messages_to_send: vec![],
         }
@@ -40,7 +38,6 @@ impl GameServer {
 
     fn handle_create_player(&mut self, id: u64) {
         self.players.insert(id, ());
-        self.send_message_to_player(id, ClientMessage::MarkMyID { id })
     }
 
     fn broadcast_message(&mut self, message: ClientMessage) {
@@ -59,8 +56,6 @@ impl GameServer {
             GameMessage::NewConnection(id) => {
                 self.handle_create_player(id);
                 let msg = ClientMessage::CreatePlayer { id };
-                let my_id = ClientMessage::MarkMyID { id };
-                self.send_message_to_player(id, my_id);
                 let state = self.game_state.state_message();
                 self.send_message_to_player(id, state);
                 self.game_state.on_message(msg.clone());

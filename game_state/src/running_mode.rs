@@ -1,18 +1,20 @@
-use crate::{game_server, ClientMessage, GameMessage};
+use crate::{game_server, ClientMessage, GameMessage, ServerState};
 use log::{error, info};
 
 pub enum RunningMode {
     Local(game_server::GameServer),
-    None,
+    None(game_server::GameServer),
 }
 
 impl RunningMode {
-    pub fn poll_messages(&mut self) -> Vec<(u64, String)> {
+    pub fn none() -> RunningMode {
+        RunningMode::None(game_server::GameServer::new())
+    }
+
+    pub fn server_state(&self) -> &ServerState {
         match self {
-            RunningMode::Local(game) => std::mem::replace(&mut game.messages_to_send, Vec::new()),
-            RunningMode::None => {
-                vec![]
-            }
+            RunningMode::Local(game) => &game.game_state,
+            RunningMode::None(game) => &game.game_state,
         }
     }
 
@@ -31,9 +33,17 @@ impl RunningMode {
             RunningMode::Local(game) => {
                 game.on_message(GameMessage::Tick)
                     .expect("should be possible to tick");
+                game.messages_to_send.drain(..);
             }
-            RunningMode::None => {}
+            RunningMode::None(_) => {}
         };
+    }
+
+    pub fn id(&self) -> u64 {
+        match self {
+            RunningMode::Local(_) => 0,
+            RunningMode::None(_) => 0,
+        }
     }
 
     pub fn send_message(&mut self, msg: ClientMessage) {
@@ -46,7 +56,7 @@ impl RunningMode {
                     Ok(_) => {}
                 }
             }
-            RunningMode::None => {}
+            RunningMode::None(_) => {}
         }
     }
 }

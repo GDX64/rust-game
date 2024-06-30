@@ -1,10 +1,8 @@
 mod server_state;
 use core::panic;
-use std::borrow::BorrowMut;
 mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
-use log::{error, info};
 use running_mode::RunningMode;
 pub use server_state::*;
 mod game_noise;
@@ -22,7 +20,6 @@ pub fn start() {
 
 #[wasm_bindgen]
 pub struct GameWasmState {
-    server_state: ServerState,
     running_mode: RunningMode,
     incremental_id: u64,
 }
@@ -31,8 +28,7 @@ pub struct GameWasmState {
 impl GameWasmState {
     pub fn new() -> Self {
         Self {
-            server_state: ServerState::new(),
-            running_mode: RunningMode::None,
+            running_mode: RunningMode::none(),
             incremental_id: 0,
         }
     }
@@ -43,22 +39,6 @@ impl GameWasmState {
 
     pub fn tick(&mut self) {
         self.running_mode.tick();
-        self.poll_player_messages();
-    }
-
-    fn poll_player_messages(&mut self) {
-        let server = self.server_state.borrow_mut();
-        let my_id = server.my_id.unwrap_or(0);
-        self.running_mode
-            .poll_messages()
-            .into_iter()
-            .for_each(|(id, msg)| {
-                if id == my_id {
-                    if let Err(err) = server.on_string_message(msg.clone()) {
-                        error!("Error processing message: {:?}", err)
-                    }
-                }
-            });
     }
 
     fn send_message(&mut self, msg: ClientMessage) {
@@ -69,7 +49,7 @@ impl GameWasmState {
         let msg = ClientMessage::CreateShip {
             ship: ShipState {
                 id: self.next_id(),
-                player_id: self.server_state.my_id.unwrap_or(0),
+                player_id: self.running_mode.id(),
                 position: (x, y),
             },
         };
@@ -78,7 +58,7 @@ impl GameWasmState {
 
     pub fn action_move_ship(&mut self, id: u64, x: f64, y: f64) {
         let msg = ClientMessage::MoveShip {
-            player_id: self.server_state.my_id.unwrap_or(0),
+            player_id: self.running_mode.id(),
             id,
             position: (x, y),
         };
@@ -91,13 +71,14 @@ impl GameWasmState {
     }
 
     pub fn get_all_ships(&self) -> String {
-        let ships: Vec<ShipState> = self.server_state.get_ships();
+        let ships: Vec<ShipState> = self.running_mode.server_state().get_ships();
         serde_json::to_string(&ships).unwrap_or("[]".to_string())
     }
 
     pub fn find_path(&self, xi: f64, yi: f64, xf: f64, yf: f64) -> Option<String> {
         let result = self
-            .server_state
+            .running_mode
+            .server_state()
             .game_map
             .find_path(Vector2::new(xi, yi), Vector2::new(xf, yf))?;
         let result: Vec<(f64, f64)> = result.into_iter().map(|v| (v.x, v.y)).collect();
@@ -105,28 +86,37 @@ impl GameWasmState {
     }
 
     pub fn map_size(&self) -> f64 {
-        self.server_state.game_map.dim
+        self.running_mode.server_state().game_map.dim
     }
 
     pub fn world_gen(&mut self) -> world_gen::WorldGen {
-        return self.server_state.world_gen.clone();
+        return self.running_mode.server_state().world_gen.clone();
     }
 
     pub fn get_land_grid_value(&self, x: f64, y: f64) -> Option<f64> {
-        let result = self.server_state.game_map.get(x, y)?.0;
+        let result = self.running_mode.server_state().game_map.get(x, y)?.0;
         Some(result)
     }
 
     pub fn get_land_value(&self, x: f64, y: f64) -> f64 {
-        self.server_state.world_gen.get_land_value(x, y)
+        self.running_mode
+            .server_state()
+            .world_gen
+            .get_land_value(x, y)
     }
 
-    pub fn my_id(&self) -> Option<f64> {
-        self.server_state.my_id.map(|id| id as f64)
+    pub fn my_id(&self) -> f64 {
+        self.running_mode.id() as f64
     }
 
     pub fn get_players(&self) -> String {
-        let player: Vec<PlayerState> = self.server_state.players.values().cloned().collect();
+        let player: Vec<PlayerState> = self
+            .running_mode
+            .server_state()
+            .players
+            .values()
+            .cloned()
+            .collect();
         serde_json::to_string(&player).unwrap_or("[]".to_string())
     }
 }

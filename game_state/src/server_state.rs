@@ -32,10 +32,6 @@ pub enum ClientMessage {
         name: String,
         id: u64,
     },
-    MovePlayer {
-        position: (f64, f64),
-        id: u64,
-    },
     CreateShip {
         ship: ShipState,
     },
@@ -51,9 +47,6 @@ pub enum ClientMessage {
         id: u64,
     },
     RemovePlayer {
-        id: u64,
-    },
-    MarkMyID {
         id: u64,
     },
 }
@@ -75,7 +68,6 @@ impl CanGo for (f64, TileKind) {
 pub struct ServerState {
     pub players: HashMap<u64, PlayerState>,
     pub game_map: WorldGrid<(f64, TileKind)>,
-    pub my_id: Option<u64>,
     pub world_gen: world_gen::WorldGen,
     ship_collection: ShipCollection,
 }
@@ -88,7 +80,6 @@ impl ServerState {
             world_gen,
             game_map,
             players: HashMap::new(),
-            my_id: None,
             ship_collection: ShipCollection::new(),
         }
     }
@@ -129,9 +120,6 @@ impl ServerState {
             ClientMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
             }
-            ClientMessage::MovePlayer { position, id } => {
-                self.handle_move_player(id, position);
-            }
             ClientMessage::CreatePlayer { id } => {
                 self.players.insert(
                     id,
@@ -149,9 +137,6 @@ impl ServerState {
                 for player in state.players {
                     self.players.insert(player.id, player);
                 }
-            }
-            ClientMessage::MarkMyID { id } => {
-                self.my_id = Some(id);
             }
             ClientMessage::CreateShip { ship } => {
                 self.ship_collection.insert(
