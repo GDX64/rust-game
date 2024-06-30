@@ -21,34 +21,30 @@ impl BackendServer {
 
     pub fn add_player(&mut self, sender: PlayerSender) -> u64 {
         let id = self.game_server.next_player_id();
-        let msg = GameMessage::NewConnection(id);
-        self.game_server.on_message(msg).unwrap();
+        self.game_server.new_connection(id);
         self.player_channels.insert(id, sender);
         return id;
     }
 
     pub fn tick(&mut self) {
-        self.game_server.on_message(GameMessage::Tick).unwrap();
+        self.game_server.tick();
         self.game_server
             .messages_to_send
             .drain(..)
             .for_each(|(id, msg)| {
                 if let Some(sender) = self.player_channels.get_mut(&id) {
-                    let _ = sender.send(Message::Text(msg));
+                    let client_message = GameMessage::ClientMessage(msg).to_string();
+                    let _ = sender.send(Message::Text(client_message));
                 }
             });
     }
 
     pub fn on_string_message(&mut self, msg: String) {
-        self.game_server
-            .on_message(GameMessage::ClientMessage(msg))
-            .unwrap();
+        self.game_server.on_message(msg.into());
     }
 
     pub fn disconnect_player(&mut self, id: u64) {
-        self.game_server
-            .on_message(GameMessage::ClientDisconnect(id))
-            .unwrap();
+        self.game_server.disconnect_player(id);
         self.player_channels.remove(&id);
     }
 }

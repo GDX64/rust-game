@@ -1,16 +1,35 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{ClientMessage, ServerState};
 use std::collections::HashMap;
 
 const DT: f64 = 0.016;
 
-type MessageToSend = (u64, String);
+type MessageToSend = (u64, ClientMessage);
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
-    NewConnection(u64),
-    ClientDisconnect(u64),
-    ClientMessage(String),
-    Tick,
+    ClientMessage(ClientMessage),
+    MyID(u64),
+    None,
+}
+
+impl GameMessage {
+    pub fn from_string(msg: String) -> GameMessage {
+        let msg: GameMessage = serde_json::from_str(&msg).unwrap_or(GameMessage::None);
+        return msg;
+    }
+
+    pub fn to_string(&self) -> String {
+        let msg = serde_json::to_string(&self).unwrap_or_default();
+        return msg;
+    }
+}
+
+impl From<String> for GameMessage {
+    fn from(msg: String) -> GameMessage {
+        GameMessage::from_string(msg)
+    }
 }
 
 pub enum GameServerMessageResult {
@@ -41,8 +60,7 @@ impl GameServer {
     }
 
     fn send_message_to_player(&mut self, id: u64, message: ClientMessage) {
-        let msg = serde_json::to_string(&message).unwrap();
-        self.messages_to_send.push((id, msg));
+        self.messages_to_send.push((id, message));
     }
 
     fn handle_create_player(&mut self, id: u64) {
@@ -56,37 +74,28 @@ impl GameServer {
         }
     }
 
-    pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
-        let msg: ClientMessage = serde_json::from_str(&msg)?;
-        Ok(msg)
+    pub fn on_message(&mut self, msg: ClientMessage) {
+        self.game_state.on_message(msg.clone());
+        self.broadcast_message(msg);
     }
 
-    pub fn on_message(&mut self, msg: GameMessage) -> anyhow::Result<GameServerMessageResult> {
-        match msg {
-            GameMessage::ClientMessage(msg) => {
-                let msg = self.game_state.on_string_message(msg)?;
-                self.broadcast_message(msg);
-            }
-            GameMessage::NewConnection(id) => {
-                self.handle_create_player(id);
-                let msg = ClientMessage::CreatePlayer { id };
-                let state = self.game_state.state_message();
-                self.send_message_to_player(id, state);
-                self.game_state.on_message(msg.clone());
-                self.broadcast_message(msg);
-            }
-            GameMessage::ClientDisconnect(id) => {
-                self.players.remove(&id);
-                let msg = ClientMessage::RemovePlayer { id };
-                self.game_state.on_message(msg.clone());
-                self.broadcast_message(msg);
-            }
-            GameMessage::Tick => self.tick(),
-        }
-        Ok(GameServerMessageResult::None)
+    pub fn new_connection(&mut self, id: u64) {
+        self.handle_create_player(id);
+        let msg = ClientMessage::CreatePlayer { id };
+        let state = self.game_state.state_message();
+        self.send_message_to_player(id, state);
+        self.game_state.on_message(msg.clone());
+        self.broadcast_message(msg);
     }
 
-    fn tick(&mut self) {
+    pub fn disconnect_player(&mut self, id: u64) {
+        self.players.remove(&id);
+        let msg = ClientMessage::RemovePlayer { id };
+        self.game_state.on_message(msg.clone());
+        self.broadcast_message(msg);
+    }
+
+    pub fn tick(&mut self) {
         self.game_state.evolve_ships(DT)
     }
 }

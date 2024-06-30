@@ -51,11 +51,22 @@ pub enum ClientMessage {
     RemovePlayer {
         id: u64,
     },
+    None,
 }
 
 impl ClientMessage {
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
         serde_json::from_str(json).map_err(|e| e.into())
+    }
+
+    pub fn to_string(&self) -> String {
+        serde_json::to_string(self).unwrap()
+    }
+}
+
+impl From<String> for ClientMessage {
+    fn from(value: String) -> Self {
+        ClientMessage::from_json(&value).unwrap_or(ClientMessage::None)
     }
 }
 
@@ -175,6 +186,7 @@ impl ServerState {
                     ship.speed = speed;
                 }
             }
+            ClientMessage::None => {}
         }
     }
 }

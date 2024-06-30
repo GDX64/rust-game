@@ -561,6 +561,7 @@ dependencies = [
  "cgmath",
  "console_log",
  "fnv",
+ "js-sys",
  "log",
  "noise",
  "pathfinding",
