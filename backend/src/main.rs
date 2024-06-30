@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    any::Any,
+    sync::{Arc, Mutex, MutexGuard},
+};
 
 use axum::{
     extract::{ws::Message, State, WebSocketUpgrade},
@@ -6,100 +9,80 @@ use axum::{
     routing::get,
     Router,
 };
+use canvas_game::BackendServer;
 use futures_util::{SinkExt, StreamExt};
-use game_state::GameMessage;
-use tokio::sync::oneshot;
+use game_state::{GameMessage, GameServer};
 use tower_http::services::ServeDir;
 mod canvas_game;
 
+#[derive(Clone)]
 struct Apps {
-    canvas_tx: tokio::sync::mpsc::Sender<GameMessage>,
+    game_server: Arc<Mutex<BackendServer>>,
 }
 
 impl Apps {
-    fn new(tx: tokio::sync::mpsc::Sender<GameMessage>) -> Apps {
-        Apps { canvas_tx: tx }
+    fn new() -> Apps {
+        Apps {
+            game_server: Arc::new(Mutex::new(BackendServer::new())),
+        }
+    }
+
+    fn get_game_server(&self) -> MutexGuard<BackendServer> {
+        self.game_server.lock().unwrap()
     }
 }
 
-type AppState = Arc<Mutex<Apps>>;
+type AppState = Apps;
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = tokio::sync::mpsc::channel(100);
-    tokio::spawn(canvas_game::run(rx));
-    let state: AppState = Arc::new(Mutex::new(Apps::new(tx)));
+    let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
         .route("/", get(|| async { "Hello, World!" }))
         .route("/ws", get(ws_handler))
-        .with_state(state);
+        .with_state(state.clone());
 
     let static_app = Router::new().nest_service("/", ServeDir::new("./dist"));
+
+    let tick_task = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(0.016));
+        loop {
+            interval.tick().await;
+            state.get_game_server().tick();
+        }
+    });
 
     let listener_game = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
     let listener_static = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
     let static_axum = axum::serve(listener_static, static_app);
     let game_axum = axum::serve(listener_game, backend_app);
-    let (_r1, _r2) = tokio::join!(async { game_axum.await }, async { static_axum.await });
+    let (_r1, _r2, _r3) = tokio::join!(
+        async { game_axum.await },
+        async { static_axum.await },
+        async { tick_task.await }
+    );
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoResponse {
-    let tx = state.lock().unwrap().canvas_tx.clone();
     let res = ws.on_upgrade(move |ws| {
-        async move {
-            let (mut send, mut receive) = ws.split();
-            let (send_id, receive_id) = oneshot::channel();
-            let (client_tx, mut client_rx) = tokio::sync::mpsc::channel(10);
-            let handler = tokio::spawn(async move {
-                loop {
-                    let msg = client_rx.recv().await;
-                    match msg {
-                        Some(msg) => {
-                            if let Err(err) = send.send(Message::Text(msg)).await {
-                                eprintln!("Error sending message: {:?}", err)
-                            }
-                        }
-                        None => {
-                            return;
-                        }
-                    }
-                }
-            });
-
-            let send_result = tx
-                .send(GameMessage::NewConnection {
-                    id_sender: send_id,
-                    sender: client_tx,
-                })
-                .await;
-
-            if let Err(err) = send_result {
-                println!("Error: {:?}", err)
-            }
-
-            let id = receive_id.await.unwrap();
+        return async move {
+            let (send, mut receive) = ws.split();
+            let id = { state.get_game_server().add_player(send) };
             loop {
                 let msg = receive.next().await;
                 match msg {
-                    Some(Ok(msg)) => {
-                        let txt = msg.to_text().unwrap_or("msg is not a text");
-                        let send_result =
-                            tx.send(GameMessage::ClientMessage(txt.to_string())).await;
-                        if let Err(err) = send_result {
-                            println!("Error: {:?}", err)
-                        }
+                    Some(Ok(Message::Text(msg))) => {
+                        state.get_game_server().on_string_message(msg);
                     }
                     _ => {
-                        println!("Connection closed");
-                        tx.send(GameMessage::ClientDisconnect(id)).await.unwrap();
-                        handler.abort();
+                        state.get_game_server().disconnect_player(id);
                         return;
                     }
                 }
             }
-        }
+        };
     });
     res
 }

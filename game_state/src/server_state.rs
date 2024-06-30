@@ -53,6 +53,12 @@ pub enum ClientMessage {
     },
 }
 
+impl ClientMessage {
+    pub fn from_json(json: &str) -> anyhow::Result<Self> {
+        serde_json::from_str(json).map_err(|e| e.into())
+    }
+}
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 struct ShipKey {
     id: u64,

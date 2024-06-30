@@ -21,6 +21,7 @@ pub enum GameServerMessageResult {
 pub struct GameServer {
     pub game_state: ServerState,
     players: HashMap<u64, ()>,
+    player_id_counter: u64,
     pub messages_to_send: Vec<MessageToSend>,
 }
 
@@ -30,7 +31,13 @@ impl GameServer {
             game_state: ServerState::new(),
             players: HashMap::new(),
             messages_to_send: vec![],
+            player_id_counter: 0,
         }
+    }
+
+    pub fn next_player_id(&mut self) -> u64 {
+        self.player_id_counter += 1;
+        self.player_id_counter
     }
 
     fn send_message_to_player(&mut self, id: u64, message: ClientMessage) {
@@ -47,6 +54,11 @@ impl GameServer {
         for id in player_ids {
             self.send_message_to_player(id, message.clone());
         }
+    }
+
+    pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
+        let msg: ClientMessage = serde_json::from_str(&msg)?;
+        Ok(msg)
     }
 
     pub fn on_message(&mut self, msg: GameMessage) -> anyhow::Result<GameServerMessageResult> {
