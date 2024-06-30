@@ -1,10 +1,11 @@
 mod server_state;
 use core::panic;
 use std::borrow::BorrowMut;
-
+mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
 use log::{error, info};
+use running_mode::RunningMode;
 pub use server_state::*;
 mod game_noise;
 mod game_server;
@@ -26,11 +27,6 @@ pub struct GameWasmState {
     incremental_id: u64,
 }
 
-enum RunningMode {
-    Local(game_server::GameServer),
-    None,
-}
-
 #[wasm_bindgen]
 impl GameWasmState {
     pub fn new() -> Self {
@@ -42,63 +38,31 @@ impl GameWasmState {
     }
 
     pub async fn start_local_server(&mut self) {
-        let player_message = GameMessage::NewConnection;
-        let mut game = game_server::GameServer::new();
-
-        let id = game
-            .on_message(player_message)
-            .expect("should be possible to start local server");
-        if let GameServerMessageResult::PlayerID(id) = id {
-            self.server_state.on_message(ClientMessage::MarkMyID { id })
-        } else {
-            panic!("should be possible to start local server");
-        }
-
-        self.running_mode = RunningMode::Local(game);
-
-        info!("Local server started")
+        self.running_mode = RunningMode::start_local();
     }
 
     pub fn tick(&mut self) {
+        self.running_mode.tick();
         self.poll_player_messages();
-        match &mut self.running_mode {
-            RunningMode::Local(game) => {
-                game.on_message(GameMessage::Tick)
-                    .expect("should be possible to tick");
-            }
-            RunningMode::None => {}
-        };
     }
 
     fn poll_player_messages(&mut self) {
         let server = self.server_state.borrow_mut();
-        match &mut self.running_mode {
-            RunningMode::Local(game) => {
-                let my_id = server.my_id.unwrap_or(0);
-                game.messages_to_send.drain(..).for_each(|(id, msg)| {
-                    if id == my_id {
-                        if let Err(err) = server.on_string_message(msg.clone()) {
-                            error!("Error processing message: {:?}", err)
-                        }
+        let my_id = server.my_id.unwrap_or(0);
+        self.running_mode
+            .poll_messages()
+            .into_iter()
+            .for_each(|(id, msg)| {
+                if id == my_id {
+                    if let Err(err) = server.on_string_message(msg.clone()) {
+                        error!("Error processing message: {:?}", err)
                     }
-                });
-            }
-            RunningMode::None => {}
-        }
+                }
+            });
     }
 
     fn send_message(&mut self, msg: ClientMessage) {
-        match self.running_mode {
-            RunningMode::Local(ref mut game) => {
-                let msg = serde_json::to_string(&msg).expect("should be possible to serialize");
-                let msg = GameMessage::ClientMessage(msg);
-                match game.on_message(msg) {
-                    Err(err) => error!("Error sending message: {:?}", err),
-                    Ok(_) => {}
-                }
-            }
-            RunningMode::None => {}
-        }
+        self.running_mode.send_message(msg);
     }
 
     pub fn action_create_ship(&mut self, x: f64, y: f64) {

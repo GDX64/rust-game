@@ -5,7 +5,7 @@ type MessageToSend = (u64, String);
 
 #[derive(Debug)]
 pub enum GameMessage {
-    NewConnection,
+    NewConnection(u64),
     ClientDisconnect(u64),
     ClientMessage(String),
     Tick,
@@ -38,11 +38,9 @@ impl GameServer {
         self.messages_to_send.push((id, msg));
     }
 
-    fn handle_create_player(&mut self) -> u64 {
-        let id = self.current_id;
+    fn handle_create_player(&mut self, id: u64) {
         self.players.insert(id, ());
-        self.current_id += 1;
-        id
+        self.send_message_to_player(id, ClientMessage::MarkMyID { id })
     }
 
     fn broadcast_message(&mut self, message: ClientMessage) {
@@ -58,8 +56,8 @@ impl GameServer {
                 let msg = self.game_state.on_string_message(msg)?;
                 self.broadcast_message(msg);
             }
-            GameMessage::NewConnection {} => {
-                let id = self.handle_create_player();
+            GameMessage::NewConnection(id) => {
+                self.handle_create_player(id);
                 let msg = ClientMessage::CreatePlayer { id };
                 let my_id = ClientMessage::MarkMyID { id };
                 self.send_message_to_player(id, my_id);
@@ -67,7 +65,6 @@ impl GameServer {
                 self.send_message_to_player(id, state);
                 self.game_state.on_message(msg.clone());
                 self.broadcast_message(msg);
-                return Ok(GameServerMessageResult::PlayerID(id));
             }
             GameMessage::ClientDisconnect(id) => {
                 self.players.remove(&id);
