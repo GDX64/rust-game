@@ -131,7 +131,7 @@ impl ServerState {
         }
     }
 
-    pub fn evolve_ships(&mut self, dt: f64) {
+    pub fn tick(&mut self, dt: f64) {
         for ship in self.ship_collection.values_mut() {
             let (x, y) = ship.position;
             let (vx, vy) = ship.speed;
@@ -168,6 +168,7 @@ impl ServerState {
             }
             ClientMessage::RemovePlayer { id } => {
                 self.players.remove(&id);
+                self.ship_collection.retain(|_, ship| ship.player_id != id);
             }
             ClientMessage::BroadCastState { state } => {
                 self.ship_collection = state

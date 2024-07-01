@@ -18,7 +18,7 @@ type Ship = {
 
 export class ShipsManager {
   boatModel: Ship3D | null = null;
-  ships: Map<number, Ship> = new Map();
+  ships: Map<string, Ship> = new Map();
   constructor(
     private game: GameWasmState,
     private scale: number,
@@ -47,8 +47,17 @@ export class ShipsManager {
     return null;
   }
 
+  *myShips() {
+    const myID = this.game.my_id();
+    for (const ship of this.ships.values()) {
+      if (ship.data.player_id === myID) {
+        yield ship;
+      }
+    }
+  }
+
   async moveShip(x: number, y: number) {
-    const first: Ship = this.ships.values().next().value;
+    const first = this.myShips().next().value;
     if (first) {
       this.game.action_move_ship(first.data.id, x, y);
     } else {
@@ -61,7 +70,8 @@ export class ShipsManager {
   update() {
     const ships: ShipData[] = JSON.parse(this.game.get_all_ships());
     ships.forEach((ship) => {
-      const existing = this.ships.get(ship.id);
+      const key = `${ship.player_id}_${ship.id}`;
+      const existing = this.ships.get(key);
       if (existing) {
         existing.model.position.set(ship.position[0], ship.position[1], 0);
         if (ship.speed[0] !== 0 || ship.speed[1] !== 0) {
@@ -72,7 +82,7 @@ export class ShipsManager {
       } else if (this.boatModel) {
         const newShip = this.boatModel.clone();
         newShip.position.set(ship.position[0], ship.position[1], 0);
-        this.ships.set(ship.id, { model: newShip, data: ship });
+        this.ships.set(key, { model: newShip, data: ship });
         this.scene.add(newShip);
       }
     });

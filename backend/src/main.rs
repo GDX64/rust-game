@@ -30,6 +30,7 @@ impl Apps {
 }
 
 type AppState = Apps;
+const TICK: f64 = 0.1;
 
 #[tokio::main]
 async fn main() {
@@ -43,10 +44,10 @@ async fn main() {
     let static_app = Router::new().nest_service("/", ServeDir::new("./dist"));
 
     let tick_task = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(0.1));
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK));
         loop {
             interval.tick().await;
-            state.get_game_server().await.tick().await;
+            state.get_game_server().await.tick(TICK).await;
         }
     });
 

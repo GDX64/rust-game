@@ -21,16 +21,15 @@ impl BackendServer {
 
     pub fn add_player(&mut self, sender: PlayerSender) -> u64 {
         let id = self.game_server.next_player_id();
-        self.game_server.new_connection(id);
         self.player_channels.insert(id, sender);
+        self.game_server.new_connection(id);
         return id;
     }
 
-    pub async fn tick(&mut self) {
-        self.game_server.tick();
+    pub async fn tick(&mut self, dt: f64) {
+        self.game_server.tick(dt);
         for (id, msg) in self.game_server.messages_to_send.drain(..) {
             if let Some(sender) = self.player_channels.get_mut(&id) {
-                println!("sending message: {:?}", msg);
                 if let Err(err) = sender.feed(Message::Text(msg.to_string())).await {
                     eprintln!("error sending message: {:?}", err);
                 }

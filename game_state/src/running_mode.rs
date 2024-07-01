@@ -54,11 +54,13 @@ impl RunningMode {
     pub fn tick(&mut self) {
         match self {
             RunningMode::Local(game) => {
-                game.tick();
+                game.tick(0.016);
                 game.messages_to_send.drain(..);
             }
             RunningMode::None(_) => {}
-            RunningMode::Online(_) => {}
+            RunningMode::Online(data) => {
+                data.game_state.tick(0.016);
+            }
         };
     }
 
@@ -79,6 +81,7 @@ impl RunningMode {
             RunningMode::Online(data) => {
                 match msg {
                     GameMessage::MyID(id) => {
+                        info!("My ID is: {}", id);
                         data.id = id;
                     }
                     GameMessage::ClientMessage(msg) => {
@@ -98,6 +101,7 @@ impl RunningMode {
             RunningMode::None(_) => {}
             RunningMode::Online(data) => {
                 let msg = GameMessage::ClientMessage(msg);
+                info!("Sending message: {:?}", msg);
                 data.send(msg);
             }
         }

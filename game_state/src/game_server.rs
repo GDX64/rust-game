@@ -3,8 +3,6 @@ use serde::{Deserialize, Serialize};
 use crate::{ClientMessage, ServerState};
 use std::collections::HashMap;
 
-const DT: f64 = 0.016;
-
 type MessageToSend = (u64, GameMessage);
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -94,8 +92,8 @@ impl GameServer {
         self.game_state.on_message(msg.clone());
     }
 
-    pub fn tick(&mut self) {
-        self.game_state.evolve_ships(DT);
+    pub fn tick(&mut self, dt: f64) {
+        self.game_state.tick(dt);
         self.broadcast_message(self.game_state.state_message());
     }
 }
