@@ -37,11 +37,10 @@ async fn main() {
     let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
-        .route("/", get(|| async { "Hello, World!" }))
+        .route("/", get(|| async { "Sanity Check" }))
         .route("/ws", get(ws_handler))
+        .nest_service("/static", ServeDir::new("./dist"))
         .with_state(state.clone());
-
-    let static_app = Router::new().nest_service("/", ServeDir::new("./dist"));
 
     let tick_task = tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK));
@@ -52,15 +51,9 @@ async fn main() {
     });
 
     let listener_game = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
-    let listener_static = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
 
-    let static_axum = axum::serve(listener_static, static_app);
     let game_axum = axum::serve(listener_game, backend_app);
-    let (_r1, _r2, _r3) = tokio::join!(
-        async { game_axum.await },
-        async { static_axum.await },
-        async { tick_task.await }
-    );
+    let (_r1, _r2) = tokio::join!(async { game_axum.await }, async { tick_task.await });
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoResponse {

@@ -121,7 +121,9 @@ export class Render3D {
 
   startServer() {
     // this.gameState.start_local_server();
-    const ws = new WebSocket("http://localhost:5000/ws");
+    // const url = "http://localhost:5000/ws";
+    const url = "https://game.glmachado.com/ws";
+    const ws = new WebSocket(url);
     ws.onmessage = (message: MessageEvent<string>) => {
       this.gameState.on_message(message.data);
     };
