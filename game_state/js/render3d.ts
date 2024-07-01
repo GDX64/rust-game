@@ -119,8 +119,19 @@ export class Render3D {
     }
   }
 
+  startServer() {
+    // this.gameState.start_local_server();
+    const ws = new WebSocket("http://localhost:5000/ws");
+    ws.onmessage = (message: MessageEvent<string>) => {
+      this.gameState.on_message(message.data);
+    };
+    this.gameState.start_online((msg: string) => {
+      ws.send(msg);
+    });
+  }
+
   async init() {
-    this.gameState.start_local_server();
+    this.startServer();
     this.loadState();
     setInterval(() => this.saveState(), 1_000);
     const camera = this.camera;

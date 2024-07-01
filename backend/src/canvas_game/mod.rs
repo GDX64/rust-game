@@ -26,21 +26,31 @@ impl BackendServer {
         return id;
     }
 
-    pub fn tick(&mut self) {
+    pub async fn tick(&mut self) {
         self.game_server.tick();
-        self.game_server
-            .messages_to_send
-            .drain(..)
-            .for_each(|(id, msg)| {
-                if let Some(sender) = self.player_channels.get_mut(&id) {
-                    let client_message = GameMessage::ClientMessage(msg).to_string();
-                    let _ = sender.send(Message::Text(client_message));
+        for (id, msg) in self.game_server.messages_to_send.drain(..) {
+            if let Some(sender) = self.player_channels.get_mut(&id) {
+                println!("sending message: {:?}", msg);
+                if let Err(err) = sender.feed(Message::Text(msg.to_string())).await {
+                    eprintln!("error sending message: {:?}", err);
                 }
-            });
+            }
+        }
+        for sender in self.player_channels.values_mut() {
+            if let Err(err) = sender.flush().await {
+                eprintln!("error flushing message: {:?}", err);
+            }
+        }
     }
 
     pub fn on_string_message(&mut self, msg: String) {
-        self.game_server.on_message(msg.into());
+        let game_message: GameMessage = msg.into();
+        match game_message {
+            GameMessage::ClientMessage(client_message) => {
+                self.game_server.on_message(client_message);
+            }
+            _ => {}
+        }
     }
 
     pub fn disconnect_player(&mut self, id: u64) {

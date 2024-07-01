@@ -13,7 +13,7 @@ pub struct PlayerShip {
 }
 
 pub struct Player {
-    id: u64,
+    pub id: u64,
     ship_id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
     actions: Vec<ClientMessage>,
@@ -99,8 +99,9 @@ impl Player {
                 let direction = next - ship.position;
                 if direction.magnitude() < 0.1 {
                     ship.path.remove(0);
+                } else {
+                    ship.speed = direction.normalize() * 2.0;
                 }
-                ship.speed = direction.normalize() * 2.0;
                 if ship.path.is_empty() {
                     ship.speed = (0.0, 0.0).into();
                 }

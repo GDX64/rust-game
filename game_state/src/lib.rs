@@ -4,7 +4,7 @@ mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
 use player::Player;
-use running_mode::RunningMode;
+use running_mode::{OnlineData, RunningMode};
 pub use server_state::*;
 mod game_noise;
 mod game_server;
@@ -35,12 +35,18 @@ impl GameWasmState {
         }
     }
 
-    pub async fn start_local_server(&mut self) {
+    pub fn start_local_server(&mut self) {
         self.running_mode = RunningMode::start_local();
         self.player = Player::new(self.running_mode.id());
     }
 
+    pub fn start_online(&mut self, sender: js_sys::Function) {
+        self.running_mode = RunningMode::Online(OnlineData::new(sender));
+        self.player = Player::new(self.running_mode.id());
+    }
+
     pub fn tick(&mut self) {
+        self.player.id = self.running_mode.id();
         self.player
             .sync_with_server(&self.running_mode.server_state());
         self.player.tick();
@@ -97,6 +103,10 @@ impl GameWasmState {
             .server_state()
             .world_gen
             .get_land_value(x, y)
+    }
+
+    pub fn on_message(&mut self, msg: String) {
+        self.running_mode.on_message(msg)
     }
 
     pub fn my_id(&self) -> f64 {

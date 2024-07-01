@@ -49,10 +49,11 @@ export class ShipsManager {
 
   async moveShip(x: number, y: number) {
     const first: Ship = this.ships.values().next().value;
-    if (!first) {
+    if (first) {
+      this.game.action_move_ship(first.data.id, x, y);
+    } else {
       this.createShip(0, 0);
     }
-    this.game.action_move_ship(first.data.id, x, y);
   }
 
   tick() {}

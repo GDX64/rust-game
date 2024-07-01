@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 const DT: f64 = 0.016;
 
-type MessageToSend = (u64, ClientMessage);
+type MessageToSend = (u64, GameMessage);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
@@ -59,7 +59,7 @@ impl GameServer {
         self.player_id_counter
     }
 
-    fn send_message_to_player(&mut self, id: u64, message: ClientMessage) {
+    fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
         self.messages_to_send.push((id, message));
     }
 
@@ -70,32 +70,32 @@ impl GameServer {
     fn broadcast_message(&mut self, message: ClientMessage) {
         let player_ids: Vec<u64> = self.players.keys().cloned().collect();
         for id in player_ids {
-            self.send_message_to_player(id, message.clone());
+            self.send_message_to_player(id, GameMessage::ClientMessage(message.clone()));
         }
     }
 
     pub fn on_message(&mut self, msg: ClientMessage) {
         self.game_state.on_message(msg.clone());
-        self.broadcast_message(msg);
     }
 
     pub fn new_connection(&mut self, id: u64) {
         self.handle_create_player(id);
         let msg = ClientMessage::CreatePlayer { id };
         let state = self.game_state.state_message();
-        self.send_message_to_player(id, state);
+        self.send_message_to_player(id, GameMessage::ClientMessage(state));
         self.game_state.on_message(msg.clone());
-        self.broadcast_message(msg);
+        let my_id = GameMessage::MyID(id);
+        self.send_message_to_player(id, my_id);
     }
 
     pub fn disconnect_player(&mut self, id: u64) {
         self.players.remove(&id);
         let msg = ClientMessage::RemovePlayer { id };
         self.game_state.on_message(msg.clone());
-        self.broadcast_message(msg);
     }
 
     pub fn tick(&mut self) {
-        self.game_state.evolve_ships(DT)
+        self.game_state.evolve_ships(DT);
+        self.broadcast_message(self.game_state.state_message());
     }
 }

@@ -25,6 +25,7 @@ pub struct ShipState {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadCastState {
     players: Vec<PlayerState>,
+    ships: Vec<ShipState>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -76,6 +77,12 @@ struct ShipKey {
     player_id: u64,
 }
 
+impl ShipKey {
+    fn new(id: u64, player_id: u64) -> Self {
+        Self { id, player_id }
+    }
+}
+
 type ShipCollection = HashMap<ShipKey, ShipState>;
 
 impl CanGo for (f64, TileKind) {
@@ -119,6 +126,7 @@ impl ServerState {
         ClientMessage::BroadCastState {
             state: BroadCastState {
                 players: self.players.values().cloned().collect(),
+                ships: self.ship_collection.values().cloned().collect(),
             },
         }
     }
@@ -137,13 +145,13 @@ impl ServerState {
     }
 
     pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
-        info!("Received message on state: {}", msg);
         let msg: ClientMessage = serde_json::from_str(&msg)?;
         self.on_message(msg.clone());
         Ok(msg)
     }
 
     pub fn on_message(&mut self, msg: ClientMessage) {
+        info!("Received message on state: {:?}", msg);
         match msg {
             ClientMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
@@ -162,9 +170,19 @@ impl ServerState {
                 self.players.remove(&id);
             }
             ClientMessage::BroadCastState { state } => {
-                for player in state.players {
-                    self.players.insert(player.id, player);
-                }
+                self.ship_collection = state
+                    .ships
+                    .into_iter()
+                    .map(|ship| {
+                        return (ShipKey::new(ship.id, ship.player_id), ship);
+                    })
+                    .collect();
+
+                self.players = state
+                    .players
+                    .into_iter()
+                    .map(|player| (player.id, player))
+                    .collect();
             }
             ClientMessage::CreateShip { ship } => {
                 self.ship_collection.insert(
