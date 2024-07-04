@@ -1,5 +1,6 @@
 mod server_state;
 use core::panic;
+use std::sync::mpsc::{Receiver, Sender};
 mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
@@ -24,25 +25,30 @@ pub fn start() {
 pub struct GameWasmState {
     running_mode: RunningMode,
     player: Player,
+    sender: Sender<ClientMessage>,
+    receiver: Receiver<ClientMessage>,
 }
 
 #[wasm_bindgen]
 impl GameWasmState {
     pub fn new() -> Self {
+        let (sender, receiver) = std::sync::mpsc::channel();
         Self {
             running_mode: RunningMode::none(),
-            player: Player::new(0),
+            player: Player::new(0, sender.clone()),
+            receiver,
+            sender,
         }
     }
 
     pub fn start_local_server(&mut self) {
         self.running_mode = RunningMode::start_local();
-        self.player = Player::new(self.running_mode.id());
+        self.player = Player::new(self.running_mode.id(), self.sender.clone());
     }
 
-    pub fn start_online(&mut self, sender: js_sys::Function) {
-        self.running_mode = RunningMode::Online(OnlineData::new(sender));
-        self.player = Player::new(self.running_mode.id());
+    pub fn start_online(&mut self, on_data: OnlineData) {
+        self.running_mode = RunningMode::Online(on_data);
+        self.player = Player::new(self.running_mode.id(), self.sender.clone());
     }
 
     pub fn tick(&mut self) {
@@ -50,10 +56,9 @@ impl GameWasmState {
         self.player
             .sync_with_server(&self.running_mode.server_state());
         self.player.tick();
-        let actions = self.player.take_actions();
-        actions.into_iter().for_each(|action| {
+        while let Ok(action) = self.receiver.try_recv() {
             self.send_message(action);
-        });
+        }
         self.running_mode.tick();
     }
 
@@ -103,10 +108,6 @@ impl GameWasmState {
             .server_state()
             .world_gen
             .get_land_value(x, y)
-    }
-
-    pub fn on_message(&mut self, msg: String) {
-        self.running_mode.on_message(msg)
     }
 
     pub fn my_id(&self) -> f64 {

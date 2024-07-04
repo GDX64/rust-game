@@ -1,27 +1,78 @@
 use crate::{game_server, ClientMessage, GameMessage, ServerState};
 use log::info;
+use std::sync::mpsc::Receiver;
+use std::sync::mpsc::Sender;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
+#[wasm_bindgen]
 pub struct OnlineData {
     sender: js_sys::Function,
     game_state: ServerState,
     id: u64,
+    ws_sender: WSChannelSender,
+    receiver: Receiver<String>,
 }
 
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct WSChannelSender {
+    sender: Sender<String>,
+}
+
+#[wasm_bindgen]
+impl WSChannelSender {
+    pub fn send(&self, msg: String) {
+        self.sender
+            .send(msg)
+            .expect("could not send WSChannelSender");
+    }
+}
+
+#[wasm_bindgen]
 impl OnlineData {
     pub fn new(sender: js_sys::Function) -> OnlineData {
+        let (channel_sender, channel_receiver) = std::sync::mpsc::channel();
+        let ws_sender = WSChannelSender {
+            sender: channel_sender.clone(),
+        };
         OnlineData {
             sender,
+            ws_sender,
             game_state: ServerState::new(),
             id: 0,
+            receiver: channel_receiver,
         }
     }
 
+    pub fn ws_sender(&self) -> WSChannelSender {
+        self.ws_sender.clone()
+    }
+}
+
+impl OnlineData {
     pub fn send(&self, msg: GameMessage) {
         let msg = JsValue::from_str(&msg.to_string());
         self.sender
             .call1(&JsValue::null(), &msg)
             .expect("should be possible to call");
+    }
+
+    pub fn tick(&mut self) {
+        self.receiver.try_iter().for_each(|msg| {
+            let msg = GameMessage::from_string(msg);
+            match msg {
+                GameMessage::MyID(id) => {
+                    info!("My ID is: {}", id);
+                    self.id = id;
+                }
+                GameMessage::ClientMessage(msg) => {
+                    self.game_state.on_message(msg);
+                }
+                _ => {}
+            }
+        });
+        self.game_state.tick(0.016);
     }
 }
 
@@ -59,7 +110,7 @@ impl RunningMode {
             }
             RunningMode::None(_) => {}
             RunningMode::Online(data) => {
-                data.game_state.tick(0.016);
+                data.tick();
             }
         };
     }
@@ -69,27 +120,6 @@ impl RunningMode {
             RunningMode::Local(_) => 0,
             RunningMode::None(_) => 0,
             RunningMode::Online(data) => data.id,
-        }
-    }
-
-    pub fn on_message(&mut self, msg: String) {
-        let msg: GameMessage =
-            serde_json::from_str(&msg).expect("should be possible to deserialize");
-        match self {
-            RunningMode::Local(_) => {}
-            RunningMode::None(_) => {}
-            RunningMode::Online(data) => {
-                match msg {
-                    GameMessage::MyID(id) => {
-                        info!("My ID is: {}", id);
-                        data.id = id;
-                    }
-                    GameMessage::ClientMessage(msg) => {
-                        data.game_state.on_message(msg);
-                    }
-                    _ => {}
-                }
-            }
         }
     }
 

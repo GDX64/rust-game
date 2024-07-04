@@ -2,7 +2,10 @@ use cgmath::InnerSpace;
 use log::info;
 
 use crate::{sparse_matrix::FV2D, ClientMessage, ServerState, ShipState};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::mpsc::{Sender, SyncSender},
+};
 
 #[derive(Debug)]
 pub struct PlayerShip {
@@ -16,15 +19,15 @@ pub struct Player {
     pub id: u64,
     ship_id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
-    actions: Vec<ClientMessage>,
+    actions: Sender<ClientMessage>,
 }
 
 impl Player {
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: u64, sender: Sender<ClientMessage>) -> Self {
         Player {
             id,
             moving_ships: HashMap::new(),
-            actions: vec![],
+            actions: sender,
             ship_id: 0,
         }
     }
@@ -81,16 +84,12 @@ impl Player {
                 position: (x, y),
             },
         };
-        self.actions.push(msg);
+        self.actions.send(msg);
     }
 
     fn next_id(&mut self) -> u64 {
         self.ship_id += 1;
         self.ship_id
-    }
-
-    pub fn take_actions(&mut self) -> Vec<ClientMessage> {
-        self.actions.drain(..).collect()
     }
 
     pub fn tick(&mut self) {
@@ -105,7 +104,7 @@ impl Player {
                 if ship.path.is_empty() {
                     ship.speed = (0.0, 0.0).into();
                 }
-                self.actions.push(ClientMessage::MoveShip {
+                self.actions.send(ClientMessage::MoveShip {
                     player_id: self.id,
                     id: ship.id,
                     speed: ship.speed.into(),

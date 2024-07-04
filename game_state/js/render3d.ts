@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { TransformControls } from "three/addons/controls/TransformControls.js";
-import { GameWasmState } from "../pkg/game_state";
+import { GameWasmState, OnlineData } from "../pkg/game_state";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -121,15 +121,17 @@ export class Render3D {
 
   startServer() {
     // this.gameState.start_local_server();
-    // const url = "http://localhost:5000/ws";
-    const url = "https://game.glmachado.com/ws";
+    const url = "http://localhost:5000/ws";
+    // const url = "https://game.glmachado.com/ws";
     const ws = new WebSocket(url);
-    ws.onmessage = (message: MessageEvent<string>) => {
-      this.gameState.on_message(message.data);
-    };
-    this.gameState.start_online((msg: string) => {
+    const onlineData = OnlineData.new((msg: string) => {
       ws.send(msg);
     });
+    const channel = onlineData.ws_sender();
+    ws.onmessage = (message: MessageEvent<string>) => {
+      channel.send(message.data);
+    };
+    this.gameState.start_online(onlineData);
   }
 
   async init() {
