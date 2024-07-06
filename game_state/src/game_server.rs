@@ -58,7 +58,9 @@ impl GameServer {
     }
 
     fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
-        self.sender.send((id, message));
+        if let Err(error) = self.sender.send((id, message)) {
+            eprintln!("error sending message: {:?}", error);
+        }
     }
 
     fn handle_create_player(&mut self, id: u64) {

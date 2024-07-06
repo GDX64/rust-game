@@ -2,7 +2,7 @@ use crate::{game_server, ClientMessage, GameMessage, MessageToSend, ServerState}
 use futures::channel::mpsc::channel;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
-use log::info;
+use log::{error, info};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
@@ -33,7 +33,7 @@ impl WSChannelSender {
 #[wasm_bindgen]
 impl OnlineData {
     pub fn new(sender: js_sys::Function) -> OnlineData {
-        let (channel_sender, channel_receiver) = channel(10);
+        let (channel_sender, channel_receiver) = channel(1000);
         let ws_sender = WSChannelSender {
             sender: channel_sender.clone(),
         };
@@ -74,7 +74,15 @@ impl OnlineData {
     }
 
     pub fn tick(&mut self) {
-        while let Ok(Some(msg)) = self.receiver.try_next() {
+        loop {
+            let msg = self.receiver.try_next();
+            let msg = match msg {
+                Ok(Some(msg)) => msg,
+                Err(_) => {
+                    break;
+                }
+                _ => break,
+            };
             let msg = GameMessage::from_string(msg);
             match msg {
                 GameMessage::MyID(id) => {
