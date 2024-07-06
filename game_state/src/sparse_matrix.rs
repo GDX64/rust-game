@@ -1,6 +1,5 @@
 use cgmath::{InnerSpace, Vector2};
 use pathfinding::prelude::astar;
-use serde::{ser::SerializeTuple, Serialize};
 
 pub struct WorldGrid<T> {
     pub dim: f64,
@@ -90,12 +89,12 @@ impl<T: Copy + Clone> WorldGrid<T> {
     }
 }
 
-pub type FV2D = Vector2<f64>;
+pub type V2D = Vector2<f64>;
 
 const MAX_SEARCH: usize = 10_000;
 
 impl<T: CanGo> WorldGrid<T> {
-    pub fn find_path(&self, initial: impl Into<FV2D>, fin: impl Into<FV2D>) -> Option<Vec<FV2D>> {
+    pub fn find_path(&self, initial: impl Into<V2D>, fin: impl Into<V2D>) -> Option<Vec<V2D>> {
         let initial = initial.into();
         let fin = fin.into();
         let initial = Vector2::new(

@@ -41,6 +41,15 @@ impl GameWasmState {
         }
     }
 
+    pub fn get_all_bullets(&self) -> String {
+        let bullets: Vec<Bullet> = self.running_mode.server_state().bullets.clone();
+        serde_json::to_string(&bullets).unwrap_or("[]".to_string())
+    }
+
+    pub fn shoot_with_all(&self) {
+        self.player.shoot_with_all_ships();
+    }
+
     pub fn start_local_server(&mut self) {
         self.running_mode = RunningMode::start_local();
         self.player = Player::new(self.running_mode.id(), self.sender.clone());

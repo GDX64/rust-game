@@ -120,19 +120,19 @@ export class Render3D {
   }
 
   async startServer() {
-    // this.gameState.start_local_server();
-    const url = "http://localhost:5000/ws";
+    this.gameState.start_local_server();
+    // const url = "http://localhost:5000/ws";
     // const url = "https://game.glmachado.com/ws";
-    const ws = new WebSocket(url);
-    const onlineData = OnlineData.new((msg: string) => {
-      ws.send(msg);
-    });
-    const channel = onlineData.ws_sender();
-    ws.onmessage = (message: MessageEvent<string>) => {
-      channel.send(message.data);
-    };
-    await onlineData.init();
-    this.gameState.start_online(onlineData);
+    // const ws = new WebSocket(url);
+    // const onlineData = OnlineData.new((msg: string) => {
+    //   ws.send(msg);
+    // });
+    // const channel = onlineData.ws_sender();
+    // ws.onmessage = (message: MessageEvent<string>) => {
+    //   channel.send(message.data);
+    // };
+    // await onlineData.init();
+    // this.gameState.start_online(onlineData);
   }
 
   async init() {

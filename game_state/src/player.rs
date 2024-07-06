@@ -1,18 +1,16 @@
+use anyhow::Context;
 use cgmath::InnerSpace;
-use log::info;
+use log::{error, info};
 
-use crate::{sparse_matrix::FV2D, ClientMessage, ServerState, ShipState};
-use std::{
-    collections::HashMap,
-    sync::mpsc::{Sender, SyncSender},
-};
+use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipState};
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 #[derive(Debug)]
 pub struct PlayerShip {
     id: u64,
-    position: FV2D,
-    speed: FV2D,
-    path: Vec<FV2D>,
+    position: V2D,
+    speed: V2D,
+    path: Vec<V2D>,
 }
 
 pub struct Player {
@@ -75,6 +73,26 @@ impl Player {
         });
     }
 
+    fn shoot_at(&self, ship_id: u64, x: f64, y: f64) {
+        let msg = ClientMessage::Shoot {
+            ship_id,
+            player_id: self.id,
+            target: (x, y),
+        };
+        if let Err(err) = self.actions.send(msg).context(file!()) {
+            error!("Error sending message: {}", err)
+        };
+    }
+
+    pub fn shoot_with_all_ships(&self) {
+        self.moving_ships.iter().for_each(|(id, ship)| {
+            let speed_direction = ship.speed.normalize();
+            let speed_90_deg = V2D::new(-speed_direction.y, speed_direction.x);
+            let target = ship.position + speed_90_deg * 100.0;
+            self.shoot_at(*id, target.x, target.y);
+        });
+    }
+
     pub fn create_ship(&mut self, x: f64, y: f64) {
         let msg = ClientMessage::CreateShip {
             ship: ShipState {
@@ -84,7 +102,9 @@ impl Player {
                 position: (x, y),
             },
         };
-        self.actions.send(msg);
+        if let Err(err) = self.actions.send(msg).context(file!()) {
+            error!("Error sending message: {}", err)
+        };
     }
 
     fn next_id(&mut self) -> u64 {
@@ -104,12 +124,18 @@ impl Player {
                 if ship.path.is_empty() {
                     ship.speed = (0.0, 0.0).into();
                 }
-                self.actions.send(ClientMessage::MoveShip {
-                    player_id: self.id,
-                    id: ship.id,
-                    speed: ship.speed.into(),
-                    position: ship.position.into(),
-                });
+                if let Err(err) = self
+                    .actions
+                    .send(ClientMessage::MoveShip {
+                        player_id: self.id,
+                        id: ship.id,
+                        speed: ship.speed.into(),
+                        position: ship.position.into(),
+                    })
+                    .context(file!())
+                {
+                    error!("Error sending message: {}", err)
+                }
             }
         }
     }

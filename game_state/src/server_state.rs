@@ -1,9 +1,10 @@
+use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::{
-    sparse_matrix::{CanGo, WorldGrid},
+    sparse_matrix::{CanGo, WorldGrid, V2D},
     world_gen::{self, TileKind},
 };
 
@@ -26,10 +27,24 @@ pub struct ShipState {
 pub struct BroadCastState {
     players: Vec<PlayerState>,
     ships: Vec<ShipState>,
+    bullets: Vec<Bullet>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Bullet {
+    pub position: (f64, f64),
+    pub speed: (f64, f64),
+    pub player_id: u64,
+    pub target: (f64, f64),
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ClientMessage {
+    Shoot {
+        ship_id: u64,
+        player_id: u64,
+        target: (f64, f64),
+    },
     SetPlayerName {
         name: String,
         id: u64,
@@ -97,6 +112,7 @@ pub struct ServerState {
     pub players: HashMap<u64, PlayerState>,
     pub game_map: GameMap,
     pub world_gen: world_gen::WorldGen,
+    pub bullets: Vec<Bullet>,
     ship_collection: ShipCollection,
 }
 
@@ -108,6 +124,7 @@ impl ServerState {
             world_gen,
             game_map,
             players: HashMap::new(),
+            bullets: vec![],
             ship_collection: ShipCollection::new(),
         }
     }
@@ -127,6 +144,7 @@ impl ServerState {
             state: BroadCastState {
                 players: self.players.values().cloned().collect(),
                 ships: self.ship_collection.values().cloned().collect(),
+                bullets: self.bullets.clone(),
             },
         }
     }
@@ -138,6 +156,19 @@ impl ServerState {
             let (x, y) = (x + vx * dt, y + vy * dt);
             ship.position = (x, y);
         }
+        self.bullets.retain_mut(|bullet| {
+            let (x, y) = bullet.position;
+            let (vx, vy) = bullet.speed;
+            let (x, y) = (x + vx * dt, y + vy * dt);
+            bullet.position = (x, y);
+            let target: V2D = bullet.target.into();
+            let pos: V2D = bullet.position.into();
+            let distance = (target - pos).magnitude();
+            if distance < 1.0 {
+                return false;
+            }
+            return true;
+        });
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {
@@ -184,6 +215,8 @@ impl ServerState {
                     .into_iter()
                     .map(|player| (player.id, player))
                     .collect();
+
+                self.bullets = state.bullets;
             }
             ClientMessage::CreateShip { ship } => {
                 self.ship_collection.insert(
@@ -203,6 +236,31 @@ impl ServerState {
                 if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
                     ship.position = position;
                     ship.speed = speed;
+                }
+            }
+            ClientMessage::Shoot {
+                ship_id,
+                player_id,
+                target,
+            } => {
+                let ship = self.ship_collection.get(&ShipKey {
+                    id: ship_id,
+                    player_id,
+                });
+                if let Some(ship) = ship {
+                    let (x, y) = ship.position;
+                    let dx = target.0 - x;
+                    let dy = target.1 - y;
+                    let len = (dx * dx + dy * dy).sqrt();
+                    let speed = 10.0;
+                    let speed = (dx / len * speed, dy / len * speed);
+                    let bullet = Bullet {
+                        position: ship.position,
+                        speed,
+                        player_id,
+                        target,
+                    };
+                    self.bullets.push(bullet);
                 }
             }
             ClientMessage::None => {}

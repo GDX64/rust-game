@@ -11,6 +11,12 @@ type ShipData = {
   speed: [number, number];
 };
 
+type bullet = {
+  position: [number, number];
+  speed: [number, number];
+  id: number;
+};
+
 type Ship = {
   data: ShipData;
   model: Ship3D;
@@ -18,6 +24,8 @@ type Ship = {
 
 export class ShipsManager {
   boatModel: Ship3D | null = null;
+  bulletModel: THREE.Mesh;
+  bulletMeshes: THREE.Mesh[] = [];
   ships: Map<string, Ship> = new Map();
   constructor(
     private game: GameWasmState,
@@ -31,6 +39,15 @@ export class ShipsManager {
       console.log(_obj.animations);
       obj.rotation.set(Math.PI / 2, 0, 0);
       this.boatModel = obj;
+    });
+    const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    this.bulletModel = new THREE.Mesh(geometry, material);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "s") {
+        this.shoot();
+      }
     });
   }
 
@@ -56,7 +73,11 @@ export class ShipsManager {
     }
   }
 
-  async moveShip(x: number, y: number) {
+  shoot() {
+    this.game.shoot_with_all();
+  }
+
+  moveShip(x: number, y: number) {
     const first = this.myShips().next().value;
     if (first) {
       this.game.action_move_ship(first.data.id, x, y);
@@ -65,10 +86,23 @@ export class ShipsManager {
     }
   }
 
-  tick() {}
-
   update() {
     const ships: ShipData[] = JSON.parse(this.game.get_all_ships());
+    const bullets: bullet[] = JSON.parse(this.game.get_all_bullets());
+    if (bullets.length) {
+      console.log(bullets[0].position);
+    }
+
+    for (let i = 0; i < bullets.length; i++) {
+      const bullet = bullets[i];
+      if (!this.bulletMeshes[i]) {
+        this.bulletMeshes[i] = this.bulletModel.clone();
+        this.scene.add(this.bulletMeshes[i]);
+      }
+      const mesh = this.bulletMeshes[i];
+      mesh.position.set(bullet.position[0], bullet.position[1], 0);
+    }
+
     ships.forEach((ship) => {
       const key = `${ship.player_id}_${ship.id}`;
       const existing = this.ships.get(key);
