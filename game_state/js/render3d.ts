@@ -119,7 +119,7 @@ export class Render3D {
     }
   }
 
-  startServer() {
+  async startServer() {
     // this.gameState.start_local_server();
     const url = "http://localhost:5000/ws";
     // const url = "https://game.glmachado.com/ws";
@@ -131,11 +131,12 @@ export class Render3D {
     ws.onmessage = (message: MessageEvent<string>) => {
       channel.send(message.data);
     };
+    await onlineData.init();
     this.gameState.start_online(onlineData);
   }
 
   async init() {
-    this.startServer();
+    await this.startServer();
     this.loadState();
     setInterval(() => this.saveState(), 1_000);
     const camera = this.camera;

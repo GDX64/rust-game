@@ -1,7 +1,8 @@
-use crate::{game_server, ClientMessage, GameMessage, ServerState};
+use crate::{game_server, ClientMessage, GameMessage, MessageToSend, ServerState};
+use futures::channel::mpsc::channel;
+use futures::channel::mpsc::{Receiver, Sender};
+use futures::StreamExt;
 use log::info;
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
@@ -22,9 +23,9 @@ pub struct WSChannelSender {
 
 #[wasm_bindgen]
 impl WSChannelSender {
-    pub fn send(&self, msg: String) {
+    pub fn send(&mut self, msg: String) {
         self.sender
-            .send(msg)
+            .try_send(msg)
             .expect("could not send WSChannelSender");
     }
 }
@@ -32,7 +33,7 @@ impl WSChannelSender {
 #[wasm_bindgen]
 impl OnlineData {
     pub fn new(sender: js_sys::Function) -> OnlineData {
-        let (channel_sender, channel_receiver) = std::sync::mpsc::channel();
+        let (channel_sender, channel_receiver) = channel(10);
         let ws_sender = WSChannelSender {
             sender: channel_sender.clone(),
         };
@@ -42,6 +43,20 @@ impl OnlineData {
             game_state: ServerState::new(),
             id: 0,
             receiver: channel_receiver,
+        }
+    }
+
+    pub async fn init(&mut self) {
+        while let Some(msg) = self.receiver.next().await {
+            let msg = GameMessage::from_string(msg);
+            match msg {
+                GameMessage::MyID(id) => {
+                    info!("My ID is: {}", id);
+                    self.id = id;
+                    return ();
+                }
+                _ => {}
+            }
         }
     }
 
@@ -59,7 +74,7 @@ impl OnlineData {
     }
 
     pub fn tick(&mut self) {
-        self.receiver.try_iter().for_each(|msg| {
+        while let Ok(Some(msg)) = self.receiver.try_next() {
             let msg = GameMessage::from_string(msg);
             match msg {
                 GameMessage::MyID(id) => {
@@ -71,44 +86,43 @@ impl OnlineData {
                 }
                 _ => {}
             }
-        });
+        }
         self.game_state.tick(0.016);
     }
 }
 
 pub enum RunningMode {
-    Local(game_server::GameServer),
+    Local(
+        game_server::GameServer,
+        std::sync::mpsc::Receiver<MessageToSend>,
+    ),
     Online(OnlineData),
-    None(game_server::GameServer),
 }
 
 impl RunningMode {
-    pub fn none() -> RunningMode {
-        RunningMode::None(game_server::GameServer::new())
-    }
-
     pub fn server_state(&self) -> &ServerState {
         match self {
-            RunningMode::Local(game) => &game.game_state,
-            RunningMode::None(game) => &game.game_state,
+            RunningMode::Local(game, _) => &game.game_state,
             RunningMode::Online(data) => &data.game_state,
         }
     }
 
     pub fn start_local() -> RunningMode {
-        let mut game = game_server::GameServer::new();
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let mut game = game_server::GameServer::new(sender);
         game.new_connection(0);
         info!("Local server started");
-        return RunningMode::Local(game);
+        return RunningMode::Local(game, receiver);
     }
 
     pub fn tick(&mut self) {
         match self {
-            RunningMode::Local(game) => {
+            RunningMode::Local(game, receiver) => {
                 game.tick(0.016);
-                game.messages_to_send.drain(..);
+                while let Ok(_) = receiver.try_recv() {
+                    // draining
+                }
             }
-            RunningMode::None(_) => {}
             RunningMode::Online(data) => {
                 data.tick();
             }
@@ -117,18 +131,16 @@ impl RunningMode {
 
     pub fn id(&self) -> u64 {
         match self {
-            RunningMode::Local(_) => 0,
-            RunningMode::None(_) => 0,
+            RunningMode::Local(_, _) => 0,
             RunningMode::Online(data) => data.id,
         }
     }
 
     pub fn send_message(&mut self, msg: ClientMessage) {
         match self {
-            RunningMode::Local(ref mut game) => {
+            RunningMode::Local(ref mut game, _) => {
                 game.on_message(msg);
             }
-            RunningMode::None(_) => {}
             RunningMode::Online(data) => {
                 let msg = GameMessage::ClientMessage(msg);
                 info!("Sending message: {:?}", msg);

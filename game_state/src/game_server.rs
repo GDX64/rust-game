@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{ClientMessage, ServerState};
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
-type MessageToSend = (u64, GameMessage);
+pub type MessageToSend = (u64, GameMessage);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
@@ -39,15 +39,15 @@ pub struct GameServer {
     pub game_state: ServerState,
     players: HashMap<u64, ()>,
     player_id_counter: u64,
-    pub messages_to_send: Vec<MessageToSend>,
+    sender: Sender<MessageToSend>,
 }
 
 impl GameServer {
-    pub fn new() -> GameServer {
+    pub fn new(sender: Sender<MessageToSend>) -> GameServer {
         GameServer {
             game_state: ServerState::new(),
             players: HashMap::new(),
-            messages_to_send: vec![],
+            sender,
             player_id_counter: 0,
         }
     }
@@ -58,7 +58,7 @@ impl GameServer {
     }
 
     fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
-        self.messages_to_send.push((id, message));
+        self.sender.send((id, message));
     }
 
     fn handle_create_player(&mut self, id: u64) {

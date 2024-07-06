@@ -41,13 +41,17 @@ async fn main() {
         .route("/ws", get(ws_handler))
         .nest_service("/static", ServeDir::new("./dist"))
         .with_state(state.clone());
-
-    let tick_task = tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK));
-        loop {
-            interval.tick().await;
-            state.get_game_server().await.tick(TICK).await;
-        }
+    let local_set = tokio::task::LocalSet::new();
+    let tick_task = local_set.run_until(async {
+        tokio::task::spawn_local(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK));
+            loop {
+                interval.tick().await;
+                state.get_game_server().await.tick(TICK).await;
+            }
+        })
+        .await
+        .unwrap();
     });
 
     let listener_game = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();

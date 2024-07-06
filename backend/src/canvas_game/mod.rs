@@ -1,21 +1,27 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::mpsc::{channel, Receiver},
+};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::{stream::SplitSink, SinkExt};
-use game_state::{GameMessage, GameServer};
+use game_state::{GameMessage, GameServer, MessageToSend};
 
 type PlayerSender = SplitSink<WebSocket, Message>;
 
 pub struct BackendServer {
     game_server: GameServer,
     player_channels: HashMap<u64, PlayerSender>,
+    receiver: Receiver<MessageToSend>,
 }
 
 impl BackendServer {
     pub fn new() -> BackendServer {
+        let (sender, receiver) = channel();
         BackendServer {
-            game_server: GameServer::new(),
+            game_server: GameServer::new(sender),
             player_channels: HashMap::new(),
+            receiver,
         }
     }
 
@@ -28,7 +34,7 @@ impl BackendServer {
 
     pub async fn tick(&mut self, dt: f64) {
         self.game_server.tick(dt);
-        for (id, msg) in self.game_server.messages_to_send.drain(..) {
+        for (id, msg) in self.receiver.try_iter() {
             if let Some(sender) = self.player_channels.get_mut(&id) {
                 if let Err(err) = sender.feed(Message::Text(msg.to_string())).await {
                     eprintln!("error sending message: {:?}", err);

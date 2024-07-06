@@ -34,7 +34,7 @@ impl GameWasmState {
     pub fn new() -> Self {
         let (sender, receiver) = std::sync::mpsc::channel();
         Self {
-            running_mode: RunningMode::none(),
+            running_mode: RunningMode::start_local(),
             player: Player::new(0, sender.clone()),
             receiver,
             sender,
@@ -52,7 +52,6 @@ impl GameWasmState {
     }
 
     pub fn tick(&mut self) {
-        self.player.id = self.running_mode.id();
         self.player
             .sync_with_server(&self.running_mode.server_state());
         self.player.tick();
