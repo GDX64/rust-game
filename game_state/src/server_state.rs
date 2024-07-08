@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::{
+    diffing::{hashmap_diff, Diff},
     sparse_matrix::{CanGo, WorldGrid, V2D},
     world_gen::{self, TileKind},
 };
@@ -25,16 +26,39 @@ pub struct ShipState {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadCastState {
-    players: Vec<PlayerState>,
-    ships: Vec<ShipState>,
-    bullets: Vec<Bullet>,
+    players: HashMap<u64, PlayerState>,
+    ships: HashMap<ShipKey, ShipState>,
+    bullets: HashMap<(u64, u64), Bullet>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BroadcastStateDiff {
+    bullets: Vec<Diff<(u64, u64), Bullet>>,
+}
+
+impl BroadCastState {
+    pub fn new() -> Self {
+        Self {
+            players: HashMap::new(),
+            ships: HashMap::new(),
+            bullets: HashMap::new(),
+        }
+    }
+
+    pub fn diff(&self, other: &Self) -> BroadcastStateDiff {
+        let bullets_diff = hashmap_diff(&self.bullets, &other.bullets);
+        BroadcastStateDiff {
+            bullets: bullets_diff,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
     pub position: (f64, f64),
     pub speed: (f64, f64),
     pub player_id: u64,
+    pub bullet_id: u64,
     pub target: (f64, f64),
 }
 
@@ -86,7 +110,7 @@ impl From<String> for ClientMessage {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
 struct ShipKey {
     id: u64,
     player_id: u64,
@@ -112,8 +136,9 @@ pub struct ServerState {
     pub players: HashMap<u64, PlayerState>,
     pub game_map: GameMap,
     pub world_gen: world_gen::WorldGen,
-    pub bullets: Vec<Bullet>,
+    pub bullets: HashMap<(u64, u64), Bullet>,
     ship_collection: ShipCollection,
+    artifact_id: u64,
 }
 
 impl ServerState {
@@ -121,12 +146,18 @@ impl ServerState {
         let world_gen = world_gen::WorldGen::new(1);
         let game_map = world_gen.generate_grid(100.0);
         Self {
+            artifact_id: 0,
             world_gen,
             game_map,
             players: HashMap::new(),
-            bullets: vec![],
+            bullets: HashMap::new(),
             ship_collection: ShipCollection::new(),
         }
+    }
+
+    pub fn next_artifact_id(&mut self) -> u64 {
+        self.artifact_id += 1;
+        self.artifact_id
     }
 
     pub fn get_ship(&self, id: u64, player_id: u64) -> Option<&ShipState> {
@@ -141,11 +172,15 @@ impl ServerState {
 
     pub fn state_message(&self) -> ClientMessage {
         ClientMessage::BroadCastState {
-            state: BroadCastState {
-                players: self.players.values().cloned().collect(),
-                ships: self.ship_collection.values().cloned().collect(),
-                bullets: self.bullets.clone(),
-            },
+            state: self.get_broadcast_state(),
+        }
+    }
+
+    pub fn get_broadcast_state(&self) -> BroadCastState {
+        BroadCastState {
+            players: self.players.clone(),
+            ships: self.ship_collection.clone(),
+            bullets: self.bullets.clone(),
         }
     }
 
@@ -156,7 +191,7 @@ impl ServerState {
             let (x, y) = (x + vx * dt, y + vy * dt);
             ship.position = (x, y);
         }
-        self.bullets.retain_mut(|bullet| {
+        self.bullets.retain(|_key, bullet| {
             let (x, y) = bullet.position;
             let (vx, vy) = bullet.speed;
             let (x, y) = (x + vx * dt, y + vy * dt);
@@ -164,7 +199,7 @@ impl ServerState {
             let target: V2D = bullet.target.into();
             let pos: V2D = bullet.position.into();
             let distance = (target - pos).magnitude();
-            if distance < 1.0 {
+            if distance < 10.0 {
                 return false;
             }
             return true;
@@ -202,20 +237,8 @@ impl ServerState {
                 self.ship_collection.retain(|_, ship| ship.player_id != id);
             }
             ClientMessage::BroadCastState { state } => {
-                self.ship_collection = state
-                    .ships
-                    .into_iter()
-                    .map(|ship| {
-                        return (ShipKey::new(ship.id, ship.player_id), ship);
-                    })
-                    .collect();
-
-                self.players = state
-                    .players
-                    .into_iter()
-                    .map(|player| (player.id, player))
-                    .collect();
-
+                self.ship_collection = state.ships;
+                self.players = state.players;
                 self.bullets = state.bullets;
             }
             ClientMessage::CreateShip { ship } => {
@@ -247,21 +270,26 @@ impl ServerState {
                     id: ship_id,
                     player_id,
                 });
-                if let Some(ship) = ship {
+                let (speed, position) = if let Some(ship) = ship {
                     let (x, y) = ship.position;
                     let dx = target.0 - x;
                     let dy = target.1 - y;
                     let len = (dx * dx + dy * dy).sqrt();
                     let speed = 10.0;
                     let speed = (dx / len * speed, dy / len * speed);
-                    let bullet = Bullet {
-                        position: ship.position,
-                        speed,
-                        player_id,
-                        target,
-                    };
-                    self.bullets.push(bullet);
-                }
+                    (speed, ship.position)
+                } else {
+                    return;
+                };
+                let bullet = Bullet {
+                    bullet_id: self.next_artifact_id(),
+                    position,
+                    speed,
+                    player_id,
+                    target,
+                };
+                self.bullets
+                    .insert((bullet.player_id, bullet.bullet_id), bullet);
             }
             ClientMessage::None => {}
         }

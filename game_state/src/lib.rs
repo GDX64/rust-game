@@ -14,6 +14,7 @@ mod player;
 mod sparse_matrix;
 mod world_gen;
 use wasm_bindgen::prelude::*;
+mod diffing;
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -27,6 +28,7 @@ pub struct GameWasmState {
     player: Player,
     sender: Sender<ClientMessage>,
     receiver: Receiver<ClientMessage>,
+    last_state: BroadCastState,
 }
 
 #[wasm_bindgen]
@@ -38,12 +40,16 @@ impl GameWasmState {
             player: Player::new(0, sender.clone()),
             receiver,
             sender,
+            last_state: BroadCastState::new(),
         }
     }
 
-    pub fn get_all_bullets(&self) -> String {
-        let bullets: Vec<Bullet> = self.running_mode.server_state().bullets.clone();
-        serde_json::to_string(&bullets).unwrap_or("[]".to_string())
+    pub fn get_state_diff(&mut self) -> String {
+        let current_state = self.running_mode.server_state().get_broadcast_state();
+        let diff = self.last_state.diff(&current_state);
+        self.last_state = current_state;
+        let result = serde_json::to_string(&diff).unwrap_or("{}".to_string());
+        result
     }
 
     pub fn shoot_with_all(&self) {

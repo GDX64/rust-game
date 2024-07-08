@@ -88,7 +88,7 @@ impl Player {
         self.moving_ships.iter().for_each(|(id, ship)| {
             let speed_direction = ship.speed.normalize();
             let speed_90_deg = V2D::new(-speed_direction.y, speed_direction.x);
-            let target = ship.position + speed_90_deg * 100.0;
+            let target = ship.position + speed_90_deg * 30.0;
             self.shoot_at(*id, target.x, target.y);
         });
     }

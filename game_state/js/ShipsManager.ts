@@ -11,6 +11,21 @@ type ShipData = {
   speed: [number, number];
 };
 
+type Diff<K, T> =
+  | {
+      Update: [K, T];
+    }
+  | {
+      Remove: K;
+    }
+  | {
+      Add: [K, T];
+    };
+
+type StateDiff = {
+  bullets: Diff<[number, number], bullet>[];
+};
+
 type bullet = {
   position: [number, number];
   speed: [number, number];
@@ -25,7 +40,7 @@ type Ship = {
 export class ShipsManager {
   boatModel: Ship3D | null = null;
   bulletModel: THREE.Mesh;
-  bulletMeshes: THREE.Mesh[] = [];
+  bulletMeshes: Map<string, THREE.Mesh> = new Map();
   ships: Map<string, Ship> = new Map();
   constructor(
     private game: GameWasmState,
@@ -88,19 +103,29 @@ export class ShipsManager {
 
   update() {
     const ships: ShipData[] = JSON.parse(this.game.get_all_ships());
-    const bullets: bullet[] = JSON.parse(this.game.get_all_bullets());
-    if (bullets.length) {
-      console.log(bullets[0].position);
-    }
-
-    for (let i = 0; i < bullets.length; i++) {
-      const bullet = bullets[i];
-      if (!this.bulletMeshes[i]) {
-        this.bulletMeshes[i] = this.bulletModel.clone();
-        this.scene.add(this.bulletMeshes[i]);
+    const { bullets }: StateDiff = JSON.parse(this.game.get_state_diff());
+    console.log(bullets);
+    for (const update of bullets) {
+      if ("Add" in update) {
+        const [key, bullet] = update.Add;
+        const mesh = this.bulletModel.clone();
+        mesh.position.set(bullet.position[0], bullet.position[1], 0);
+        this.bulletMeshes.set(stringKey(key), mesh);
+        this.scene.add(mesh);
+      } else if ("Remove" in update) {
+        const key = stringKey(update.Remove);
+        const mesh = this.bulletMeshes.get(key);
+        if (mesh) {
+          this.scene.remove(mesh);
+          this.bulletMeshes.delete(key);
+        }
+      } else if ("Update" in update) {
+        const [key, bullet] = update.Update;
+        const mesh = this.bulletMeshes.get(stringKey(key));
+        if (mesh) {
+          mesh.position.set(bullet.position[0], bullet.position[1], 0);
+        }
       }
-      const mesh = this.bulletMeshes[i];
-      mesh.position.set(bullet.position[0], bullet.position[1], 0);
     }
 
     ships.forEach((ship) => {
@@ -121,4 +146,8 @@ export class ShipsManager {
       }
     });
   }
+}
+
+function stringKey(key: [number, number]) {
+  return key.join("_");
 }
