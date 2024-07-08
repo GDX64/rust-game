@@ -36,7 +36,7 @@ impl BackendServer {
         self.game_server.tick(dt);
         for (id, msg) in self.receiver.try_iter() {
             if let Some(sender) = self.player_channels.get_mut(&id) {
-                if let Err(err) = sender.feed(Message::Text(msg.to_string())).await {
+                if let Err(err) = sender.feed(Message::Binary(msg.to_bytes())).await {
                     eprintln!("error sending message: {:?}", err);
                 }
             }
@@ -48,8 +48,8 @@ impl BackendServer {
         }
     }
 
-    pub fn on_string_message(&mut self, msg: String) {
-        let game_message: GameMessage = msg.into();
+    pub fn on_string_message(&mut self, msg: Vec<u8>) {
+        let game_message: GameMessage = GameMessage::from_bytes(&msg);
         match game_message {
             GameMessage::ClientMessage(client_message) => {
                 self.game_server.on_message(client_message);

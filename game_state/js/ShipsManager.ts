@@ -104,7 +104,6 @@ export class ShipsManager {
   update() {
     const ships: ShipData[] = JSON.parse(this.game.get_all_ships());
     const { bullets }: StateDiff = JSON.parse(this.game.get_state_diff());
-    console.log(bullets);
     for (const update of bullets) {
       if ("Add" in update) {
         const [key, bullet] = update.Add;

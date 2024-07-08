@@ -2,7 +2,7 @@ use crate::{game_server, ClientMessage, GameMessage, MessageToSend, ServerState}
 use futures::channel::mpsc::channel;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
-use log::{error, info};
+use log::info;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 
@@ -12,18 +12,18 @@ pub struct OnlineData {
     game_state: ServerState,
     id: u64,
     ws_sender: WSChannelSender,
-    receiver: Receiver<String>,
+    receiver: Receiver<Vec<u8>>,
 }
 
 #[wasm_bindgen]
 #[derive(Clone)]
 pub struct WSChannelSender {
-    sender: Sender<String>,
+    sender: Sender<Vec<u8>>,
 }
 
 #[wasm_bindgen]
 impl WSChannelSender {
-    pub fn send(&mut self, msg: String) {
+    pub fn send(&mut self, msg: Vec<u8>) {
         self.sender
             .try_send(msg)
             .expect("could not send WSChannelSender");
@@ -48,7 +48,7 @@ impl OnlineData {
 
     pub async fn init(&mut self) {
         while let Some(msg) = self.receiver.next().await {
-            let msg = GameMessage::from_string(msg);
+            let msg = GameMessage::from_bytes(&msg);
             match msg {
                 GameMessage::MyID(id) => {
                     info!("My ID is: {}", id);
@@ -67,7 +67,7 @@ impl OnlineData {
 
 impl OnlineData {
     pub fn send(&self, msg: GameMessage) {
-        let msg = JsValue::from_str(&msg.to_string());
+        let msg = js_sys::Uint8Array::from(msg.to_bytes().as_slice());
         self.sender
             .call1(&JsValue::null(), &msg)
             .expect("should be possible to call");
@@ -83,12 +83,8 @@ impl OnlineData {
                 }
                 _ => break,
             };
-            let msg = GameMessage::from_string(msg);
+            let msg = GameMessage::from_bytes(&msg);
             match msg {
-                GameMessage::MyID(id) => {
-                    info!("My ID is: {}", id);
-                    self.id = id;
-                }
                 GameMessage::ClientMessage(msg) => {
                     self.game_state.on_message(msg);
                 }

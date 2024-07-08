@@ -100,7 +100,15 @@ impl ClientMessage {
     }
 
     pub fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
+        serde_json::to_string(self).unwrap_or("".to_string())
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        bincode::serialize(self).expect("Failed to serialize")
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        bincode::deserialize(bytes).expect("Failed to deserialize")
     }
 }
 

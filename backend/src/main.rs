@@ -32,8 +32,14 @@ impl Apps {
 type AppState = Apps;
 const TICK: f64 = 0.1;
 
+fn init_logger() {
+    use env_logger::Env;
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+}
+
 #[tokio::main]
 async fn main() {
+    init_logger();
     let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
@@ -69,7 +75,7 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
             loop {
                 let msg = receive.next().await;
                 match msg {
-                    Some(Ok(Message::Text(msg))) => {
+                    Some(Ok(Message::Binary(msg))) => {
                         println!("player sent message: {:?}", msg);
                         state.get_game_server().await.on_string_message(msg);
                     }

@@ -19,8 +19,27 @@ impl GameMessage {
     }
 
     pub fn to_string(&self) -> String {
-        let msg = serde_json::to_string(&self).unwrap_or_default();
-        return msg;
+        match serde_json::to_string(&self) {
+            Ok(msg) => msg,
+            Err(e) => {
+                log::error!("error serializing message: {:?}", e);
+                "error".to_string()
+            }
+        }
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> GameMessage {
+        bincode::deserialize(bytes).unwrap_or(GameMessage::None)
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        bincode::serialize(self).expect("Failed to serialize")
+    }
+}
+
+impl From<&[u8]> for GameMessage {
+    fn from(bytes: &[u8]) -> GameMessage {
+        GameMessage::from_bytes(bytes)
     }
 }
 
