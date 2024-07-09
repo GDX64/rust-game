@@ -8,6 +8,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { ShipsManager } from "./ShipsManager";
+import { Water } from "./Water";
 
 export class Render3D {
   gui = new GUI();
@@ -119,10 +120,9 @@ export class Render3D {
     }
   }
 
-  async startServer() {
-    // this.gameState.start_local_server();
-    const url = "http://localhost:5000/ws";
+  private async startRemoteServer() {
     // const url = "https://game.glmachado.com/ws";
+    const url = "http://localhost:5000/ws";
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
     const onlineData = OnlineData.new((msg: Uint8Array) => {
@@ -136,6 +136,11 @@ export class Render3D {
     this.gameState.start_online(onlineData);
   }
 
+  async startServer() {
+    this.gameState.start_local_server();
+    // await this.startRemoteServer();
+  }
+
   async init() {
     await this.startServer();
     this.loadState();
@@ -144,24 +149,9 @@ export class Render3D {
     const scene = this.scene;
     scene.add(this.pathLine);
 
-    const waterPlaneGeometry = new THREE.PlaneGeometry(
-      this.PLANE_WIDTH,
-      this.PLANE_WIDTH,
-      1,
-      1
-    );
-
-    const waterMaterial = new THREE.MeshPhongMaterial({
-      color: this.state.waterColor,
-      transparent: true,
-      opacity: 0.9,
-      shininess: 30,
-      side: THREE.DoubleSide,
-      fog: true,
-    });
+    const { waterMaterial, waterMesh } = Water.startWater(this.PLANE_WIDTH);
 
     this.addWaterColorControl(waterMaterial);
-    const waterMesh = new THREE.Mesh(waterPlaneGeometry, waterMaterial);
     this.waterMesh = waterMesh;
     scene.add(waterMesh);
 
