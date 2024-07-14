@@ -1,30 +1,29 @@
-use std::sync::Arc;
-
 use axum::{
     extract::{ws::Message, State, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
     Router,
 };
-use canvas_game::BackendServer;
+use futures::{channel::mpsc::channel, SinkExt};
 use futures_util::StreamExt;
+use game_state::GameServer;
+use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard};
 use tower_http::services::ServeDir;
-mod canvas_game;
 
 #[derive(Clone)]
 struct Apps {
-    game_server: Arc<Mutex<BackendServer>>,
+    game_server: Arc<Mutex<GameServer>>,
 }
 
 impl Apps {
     fn new() -> Apps {
         Apps {
-            game_server: Arc::new(Mutex::new(BackendServer::new())),
+            game_server: Arc::new(Mutex::new(GameServer::new())),
         }
     }
 
-    async fn get_game_server(&self) -> MutexGuard<BackendServer> {
+    async fn get_game_server(&self) -> MutexGuard<GameServer> {
         self.game_server.lock().await
     }
 }
@@ -53,7 +52,7 @@ async fn main() {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK));
             loop {
                 interval.tick().await;
-                state.get_game_server().await.tick(TICK).await;
+                state.get_game_server().await.tick(TICK);
             }
         })
         .await
@@ -70,14 +69,20 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
     let res = ws.on_upgrade(move |ws| {
         println!("new ws connection received");
         return async move {
-            let (send, mut receive) = ws.split();
-            let id = { state.get_game_server().await.add_player(send) };
+            let (mut send, mut receive) = ws.split();
+            let (player_send, mut player_receive) = channel(100);
+            tokio::spawn(async move {
+                while let Some(msg) = player_receive.next().await {
+                    send.send(Message::Binary(msg)).await.unwrap();
+                }
+            });
+            let id = { state.get_game_server().await.new_connection(player_send) };
             loop {
                 let msg = receive.next().await;
                 match msg {
                     Some(Ok(Message::Binary(msg))) => {
                         println!("player sent message: {:?}", msg);
-                        state.get_game_server().await.on_string_message(msg);
+                        state.get_game_server().await.on_message(msg);
                     }
                     _ => {
                         state.get_game_server().await.disconnect_player(id);

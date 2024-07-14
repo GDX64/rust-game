@@ -1,5 +1,6 @@
 use crate::ws_channel::WSChannel;
-use crate::{game_server, ClientMessage, GameMessage, MessageToSend, ServerState};
+use crate::{game_server, ClientMessage, GameMessage, ServerState};
+use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 use wasm_bindgen::prelude::*;
 
@@ -60,36 +61,55 @@ impl OnlineData {
 }
 
 pub enum RunningMode {
-    Local(
-        game_server::GameServer,
-        std::sync::mpsc::Receiver<MessageToSend>,
-    ),
+    Local {
+        game: game_server::GameServer,
+        receiver: Receiver<Vec<u8>>,
+        state: ServerState,
+        id: u64,
+    },
     Online(OnlineData),
 }
 
 impl RunningMode {
     pub fn server_state(&self) -> &ServerState {
         match self {
-            RunningMode::Local(game, _) => &game.game_state,
+            RunningMode::Local { ref state, .. } => state,
             RunningMode::Online(data) => &data.game_state,
         }
     }
 
     pub fn start_local() -> RunningMode {
-        let (sender, receiver) = std::sync::mpsc::channel();
-        let mut game = game_server::GameServer::new(sender);
-        game.new_connection(0);
+        let (sender, receiver) = channel(100);
+        let mut game = game_server::GameServer::new();
+        let player_id = game.new_connection(sender);
         info!("Local server started");
-        return RunningMode::Local(game, receiver);
+        return RunningMode::Local {
+            game,
+            receiver,
+            id: player_id,
+            state: ServerState::new(),
+        };
     }
 
     pub fn tick(&mut self) {
         match self {
-            RunningMode::Local(game, receiver) => {
+            RunningMode::Local {
+                receiver,
+                state,
+                game,
+                ..
+            } => {
                 game.tick(0.016);
-                while let Ok(_) = receiver.try_recv() {
-                    // draining
+                while let Ok(Some(msg)) = receiver.try_next() {
+                    let game_message = GameMessage::from_bytes(&msg);
+                    match game_message {
+                        GameMessage::ClientMessage(msg) => {
+                            state.on_message(msg);
+                        }
+                        _ => {}
+                    }
                 }
+                state.tick(0.016);
             }
             RunningMode::Online(data) => {
                 data.tick();
@@ -99,15 +119,16 @@ impl RunningMode {
 
     pub fn id(&self) -> u64 {
         match self {
-            RunningMode::Local(_, _) => 0,
+            RunningMode::Local { id, .. } => *id,
             RunningMode::Online(data) => data.id,
         }
     }
 
     pub fn send_message(&mut self, msg: ClientMessage) {
         match self {
-            RunningMode::Local(ref mut game, _) => {
-                game.on_message(msg);
+            RunningMode::Local { ref mut game, .. } => {
+                let msg = GameMessage::ClientMessage(msg);
+                game.on_message(msg.to_bytes());
             }
             RunningMode::Online(data) => {
                 let msg = GameMessage::ClientMessage(msg);

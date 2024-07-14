@@ -126,13 +126,7 @@ export class Render3D {
     const url = "http://localhost:5000/ws";
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
-    const onlineData = OnlineData.new((msg: Uint8Array) => {
-      ws.send(msg.buffer);
-    });
-    const channel = onlineData.ws_sender();
-    ws.onmessage = (message: MessageEvent<ArrayBuffer>) => {
-      channel.send(new Uint8Array(message.data));
-    };
+    const onlineData = OnlineData.new(url);
     await onlineData.init();
     this.gameState.start_online(onlineData);
   }

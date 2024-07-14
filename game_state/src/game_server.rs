@@ -1,9 +1,8 @@
-use serde::{Deserialize, Serialize};
-
 use crate::{ClientMessage, ServerState};
-use std::{collections::HashMap, sync::mpsc::Sender};
-
-pub type MessageToSend = (u64, GameMessage);
+use futures::channel::mpsc::Sender;
+use log::info;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
@@ -49,6 +48,8 @@ impl From<String> for GameMessage {
     }
 }
 
+type PlayerSender = Sender<Vec<u8>>;
+
 pub enum GameServerMessageResult {
     PlayerID(u64),
     None,
@@ -56,17 +57,15 @@ pub enum GameServerMessageResult {
 
 pub struct GameServer {
     pub game_state: ServerState,
-    players: HashMap<u64, ()>,
+    players: HashMap<u64, PlayerSender>,
     player_id_counter: u64,
-    sender: Sender<MessageToSend>,
 }
 
 impl GameServer {
-    pub fn new(sender: Sender<MessageToSend>) -> GameServer {
+    pub fn new() -> GameServer {
         GameServer {
             game_state: ServerState::new(),
             players: HashMap::new(),
-            sender,
             player_id_counter: 0,
         }
     }
@@ -77,13 +76,11 @@ impl GameServer {
     }
 
     fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
-        if let Err(error) = self.sender.send((id, message)) {
-            eprintln!("error sending message: {:?}", error);
+        if let Some(sender) = self.players.get_mut(&id) {
+            sender
+                .try_send(message.to_bytes())
+                .expect("Failed to send message to player");
         }
-    }
-
-    fn handle_create_player(&mut self, id: u64) {
-        self.players.insert(id, ());
     }
 
     fn broadcast_message(&mut self, message: ClientMessage) {
@@ -93,18 +90,25 @@ impl GameServer {
         }
     }
 
-    pub fn on_message(&mut self, msg: ClientMessage) {
-        self.game_state.on_message(msg.clone());
+    pub fn on_message(&mut self, msg: Vec<u8>) {
+        let msg = GameMessage::from_bytes(&msg);
+        info!("Received message: {:?}", msg);
+        match msg {
+            GameMessage::ClientMessage(msg) => self.game_state.on_message(msg),
+            _ => {}
+        }
     }
 
-    pub fn new_connection(&mut self, id: u64) {
-        self.handle_create_player(id);
+    pub fn new_connection(&mut self, sender: PlayerSender) -> u64 {
+        let id = self.next_player_id();
+        self.players.insert(id, sender);
         let msg = ClientMessage::CreatePlayer { id };
         let state = self.game_state.state_message();
         self.send_message_to_player(id, GameMessage::ClientMessage(state));
         self.game_state.on_message(msg.clone());
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
+        return id;
     }
 
     pub fn disconnect_player(&mut self, id: u64) {
