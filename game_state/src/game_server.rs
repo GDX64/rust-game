@@ -92,7 +92,6 @@ impl GameServer {
 
     pub fn on_message(&mut self, msg: Vec<u8>) {
         let msg = GameMessage::from_bytes(&msg);
-        info!("Received message: {:?}", msg);
         match msg {
             GameMessage::ClientMessage(msg) => self.game_state.on_message(msg),
             _ => {}

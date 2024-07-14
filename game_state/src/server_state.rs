@@ -218,6 +218,10 @@ impl ServerState {
         self.ship_collection.values().cloned().collect()
     }
 
+    pub fn get_bullets(&self) -> Vec<&Bullet> {
+        self.bullets.values().collect()
+    }
+
     pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
         let msg: ClientMessage = serde_json::from_str(&msg)?;
         self.on_message(msg.clone());
@@ -225,7 +229,6 @@ impl ServerState {
     }
 
     pub fn on_message(&mut self, msg: ClientMessage) {
-        info!("Received message on state: {:?}", msg);
         match msg {
             ClientMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);

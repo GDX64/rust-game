@@ -11,22 +11,22 @@ type ShipData = {
   speed: [number, number];
 };
 
-type Diff<K, T> =
-  | {
-      Update: [K, T];
-    }
-  | {
-      Remove: K;
-    }
-  | {
-      Add: [K, T];
-    };
+// type Diff<K, T> =
+//   | {
+//       Update: [K, T];
+//     }
+//   | {
+//       Remove: K;
+//     }
+//   | {
+//       Add: [K, T];
+//     };
 
-type StateDiff = {
-  bullets: Diff<[number, number], bullet>[];
-};
+// type StateDiff = {
+//   bullets: Diff<[number, number], Bullet>[];
+// };
 
-type bullet = {
+type Bullet = {
   position: [number, number];
   speed: [number, number];
   id: number;
@@ -39,8 +39,7 @@ type Ship = {
 
 export class ShipsManager {
   boatModel: Ship3D | null = null;
-  bulletModel: THREE.Mesh;
-  bulletMeshes: Map<string, THREE.Mesh> = new Map();
+  bulletModel: THREE.InstancedMesh;
   ships: Map<string, Ship> = new Map();
   constructor(
     private game: GameWasmState,
@@ -50,6 +49,7 @@ export class ShipsManager {
     const loader = new GLTFLoader();
     loader.load(boat, (_obj) => {
       const obj = _obj.scene;
+      console.log(obj.children[0]);
       obj.scale.set(this.scale, this.scale, this.scale);
       console.log(_obj.animations);
       obj.rotation.set(Math.PI / 2, 0, 0);
@@ -57,7 +57,8 @@ export class ShipsManager {
     });
     const geometry = new THREE.SphereGeometry(0.1, 32, 32);
     const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-    this.bulletModel = new THREE.Mesh(geometry, material);
+    this.bulletModel = new THREE.InstancedMesh(geometry, material, 100);
+    this.scene.add(this.bulletModel);
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "s") {
@@ -102,30 +103,15 @@ export class ShipsManager {
   }
 
   update() {
-    const ships: ShipData[] = JSON.parse(this.game.get_all_ships());
-    const { bullets }: StateDiff = JSON.parse(this.game.get_state_diff());
-    for (const update of bullets) {
-      if ("Add" in update) {
-        const [key, bullet] = update.Add;
-        const mesh = this.bulletModel.clone();
-        mesh.position.set(bullet.position[0], bullet.position[1], 0);
-        this.bulletMeshes.set(stringKey(key), mesh);
-        this.scene.add(mesh);
-      } else if ("Remove" in update) {
-        const key = stringKey(update.Remove);
-        const mesh = this.bulletMeshes.get(key);
-        if (mesh) {
-          this.scene.remove(mesh);
-          this.bulletMeshes.delete(key);
-        }
-      } else if ("Update" in update) {
-        const [key, bullet] = update.Update;
-        const mesh = this.bulletMeshes.get(stringKey(key));
-        if (mesh) {
-          mesh.position.set(bullet.position[0], bullet.position[1], 0);
-        }
-      }
+    const ships: ShipData[] = this.game.get_all_ships();
+    const bullets: Bullet[] = this.game.get_all_bullets();
+    this.bulletModel.count = bullets.length;
+    const matrix = new THREE.Matrix4();
+    for (let i = 0; i < bullets.length; i++) {
+      matrix.setPosition(bullets[i].position[0], bullets[i].position[1], 0);
+      this.bulletModel.setMatrixAt(i, matrix);
     }
+    this.bulletModel.instanceMatrix.needsUpdate = true;
 
     ships.forEach((ship) => {
       const key = `${ship.player_id}_${ship.id}`;
@@ -145,8 +131,4 @@ export class ShipsManager {
       }
     });
   }
-}
-
-function stringKey(key: [number, number]) {
-  return key.join("_");
 }

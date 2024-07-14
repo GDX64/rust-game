@@ -77,6 +77,11 @@ impl GameWasmState {
         self.running_mode.tick();
     }
 
+    pub fn get_all_bullets(&self) -> JsValue {
+        let bullets = self.running_mode.server_state().get_bullets();
+        serde_wasm_bindgen::to_value(&bullets).unwrap_or_default()
+    }
+
     fn send_message(&mut self, msg: ClientMessage) {
         self.running_mode.send_message(msg);
     }
@@ -90,9 +95,9 @@ impl GameWasmState {
             .move_ship(&self.running_mode.server_state(), id as u64, x, y);
     }
 
-    pub fn get_all_ships(&self) -> String {
+    pub fn get_all_ships(&self) -> JsValue {
         let ships: Vec<ShipState> = self.running_mode.server_state().get_ships();
-        serde_json::to_string(&ships).unwrap_or("[]".to_string())
+        serde_wasm_bindgen::to_value(&ships).unwrap_or_default()
     }
 
     pub fn find_path(&self, xi: f64, yi: f64, xf: f64, yf: f64) -> Option<String> {
