@@ -83,6 +83,7 @@ export class Render3D {
   }
 
   private addWaterColorControl(waterMaterial: THREE.MeshPhongMaterial) {
+    waterMaterial.color.set(this.state.waterColor);
     this.gui.addColor(this.state, "waterColor").onChange((val) => {
       waterMaterial.color.set(val);
     });

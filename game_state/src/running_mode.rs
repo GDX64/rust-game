@@ -1,53 +1,27 @@
+use crate::ws_channel::WSChannel;
 use crate::{game_server, ClientMessage, GameMessage, MessageToSend, ServerState};
-use futures::channel::mpsc::channel;
-use futures::channel::mpsc::{Receiver, Sender};
-use futures::StreamExt;
 use log::info;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsValue;
 
 #[wasm_bindgen]
 pub struct OnlineData {
-    sender: js_sys::Function,
+    ws: WSChannel,
     game_state: ServerState,
     id: u64,
-    ws_sender: WSChannelSender,
-    receiver: Receiver<Vec<u8>>,
-}
-
-#[wasm_bindgen]
-#[derive(Clone)]
-pub struct WSChannelSender {
-    sender: Sender<Vec<u8>>,
-}
-
-#[wasm_bindgen]
-impl WSChannelSender {
-    pub fn send(&mut self, msg: Vec<u8>) {
-        self.sender
-            .try_send(msg)
-            .expect("could not send WSChannelSender");
-    }
 }
 
 #[wasm_bindgen]
 impl OnlineData {
-    pub fn new(sender: js_sys::Function) -> OnlineData {
-        let (channel_sender, channel_receiver) = channel(1000);
-        let ws_sender = WSChannelSender {
-            sender: channel_sender.clone(),
-        };
+    pub fn new(url: &str) -> OnlineData {
         OnlineData {
-            sender,
-            ws_sender,
+            ws: WSChannel::new(url),
             game_state: ServerState::new(),
             id: 0,
-            receiver: channel_receiver,
         }
     }
 
     pub async fn init(&mut self) {
-        while let Some(msg) = self.receiver.next().await {
+        while let Some(msg) = self.ws.next().await {
             let msg = GameMessage::from_bytes(&msg);
             match msg {
                 GameMessage::MyID(id) => {
@@ -59,28 +33,18 @@ impl OnlineData {
             }
         }
     }
-
-    pub fn ws_sender(&self) -> WSChannelSender {
-        self.ws_sender.clone()
-    }
 }
 
 impl OnlineData {
-    pub fn send(&self, msg: GameMessage) {
-        let msg = js_sys::Uint8Array::from(msg.to_bytes().as_slice());
-        self.sender
-            .call1(&JsValue::null(), &msg)
-            .expect("should be possible to call");
+    pub fn send(&mut self, msg: GameMessage) {
+        self.ws.send(msg.to_bytes());
     }
 
     pub fn tick(&mut self) {
         loop {
-            let msg = self.receiver.try_next();
+            let msg = self.ws.receive();
             let msg = match msg {
-                Ok(Some(msg)) => msg,
-                Err(_) => {
-                    break;
-                }
+                Some(msg) => msg,
                 _ => break,
             };
             let msg = GameMessage::from_bytes(&msg);

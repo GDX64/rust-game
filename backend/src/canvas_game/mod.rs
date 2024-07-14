@@ -1,11 +1,9 @@
+use futures_util::{stream::SplitSink, SinkExt};
+use game_state::{GameMessage, GameServer, MessageToSend};
 use std::{
     collections::HashMap,
     sync::mpsc::{channel, Receiver},
 };
-
-use axum::extract::ws::{Message, WebSocket};
-use futures_util::{stream::SplitSink, SinkExt};
-use game_state::{GameMessage, GameServer, MessageToSend};
 
 type PlayerSender = SplitSink<WebSocket, Message>;
 

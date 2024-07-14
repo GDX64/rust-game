@@ -15,6 +15,7 @@ mod sparse_matrix;
 mod world_gen;
 use wasm_bindgen::prelude::*;
 mod diffing;
+mod ws_channel;
 
 #[wasm_bindgen(start)]
 pub fn start() {
