@@ -2,15 +2,16 @@ use anyhow::Context;
 use cgmath::InnerSpace;
 use log::{error, info};
 
-use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipState};
-use std::{collections::HashMap, sync::mpsc::Sender};
+use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipKey, ShipState};
+use std::{
+    collections::HashMap,
+    sync::mpsc::{Receiver, Sender},
+};
 
 #[derive(Debug)]
 pub struct PlayerShip {
-    id: u64,
-    position: V2D,
-    speed: V2D,
     path: Vec<V2D>,
+    id: u64,
 }
 
 pub struct Player {
@@ -18,14 +19,17 @@ pub struct Player {
     ship_id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
     actions: Sender<ClientMessage>,
+    actions_buffer: Receiver<ClientMessage>,
 }
 
 impl Player {
-    pub fn new(id: u64, sender: Sender<ClientMessage>) -> Self {
+    pub fn new(id: u64) -> Self {
+        let (sender, receiver) = std::sync::mpsc::channel();
         Player {
             id,
             moving_ships: HashMap::new(),
             actions: sender,
+            actions_buffer: receiver,
             ship_id: 0,
         }
     }
@@ -37,40 +41,16 @@ impl Player {
         x: f64,
         y: f64,
     ) -> Option<()> {
-        let server_ship = self.moving_ships.get(&ship_id)?;
+        let server_ship = game_state
+            .ship_collection
+            .get(&ShipKey::new(self.id, ship_id))?;
         let path = game_state
             .game_map
             .find_path(server_ship.position, (x, y))?;
         info!("path: {:?}", path);
-        let ship = PlayerShip {
-            id: ship_id,
-            position: server_ship.position.into(),
-            speed: (0.0, 0.0).into(),
-            path,
-        };
+        let ship = PlayerShip { path, id: ship_id };
         self.moving_ships.insert(ship_id, ship);
         Some(())
-    }
-
-    pub fn sync_with_server(&mut self, game_state: &ServerState) {
-        game_state.get_ships().iter().for_each(|ship| {
-            if ship.player_id != self.id {
-                return;
-            }
-            if let Some(moving_ship) = self.moving_ships.get_mut(&ship.id) {
-                moving_ship.position = ship.position.into();
-            } else {
-                self.moving_ships.insert(
-                    ship.id,
-                    PlayerShip {
-                        id: ship.id,
-                        path: vec![],
-                        position: ship.position.into(),
-                        speed: (0.0, 0.0).into(),
-                    },
-                );
-            }
-        });
     }
 
     fn shoot_at(&self, ship_id: u64, x: f64, y: f64) {
@@ -84,12 +64,29 @@ impl Player {
         };
     }
 
-    pub fn shoot_with_all_ships(&self) {
-        self.moving_ships.iter().for_each(|(id, ship)| {
-            let speed_direction = ship.speed.normalize();
-            let speed_90_deg = V2D::new(-speed_direction.y, speed_direction.x);
-            let target = ship.position + speed_90_deg * 30.0;
-            self.shoot_at(*id, target.x, target.y);
+    pub fn shoot_with_all_ships(&self, camera: &V2D, game_state: &ServerState) {
+        fn cross_product_2d(a: &V2D, b: &V2D) -> f64 {
+            a.x * b.y - a.y * b.x
+        }
+        self.moving_ships.iter().for_each(|(_, ship)| {
+            let ship = game_state
+                .ship_collection
+                .get(&ShipKey::new(self.id, ship.id))
+                .unwrap();
+            let speed: V2D = ship.speed.into();
+            let position: V2D = ship.position.into();
+            if speed.magnitude() <= 0.01 {
+                return;
+            }
+            let speed_direction = speed.normalize();
+            let shoot_sign = if cross_product_2d(camera, &speed_direction) > 0.0 {
+                1.0
+            } else {
+                -1.0
+            };
+            let speed_90_deg = shoot_sign * V2D::new(-speed_direction.y, speed_direction.x);
+            let target = position + speed_90_deg * 30.0;
+            self.shoot_at(ship.id, target.x, target.y);
         });
     }
 
@@ -107,35 +104,47 @@ impl Player {
         };
     }
 
+    pub fn next_message(&self) -> Option<ClientMessage> {
+        self.actions_buffer.try_recv().ok()
+    }
+
+    pub fn has_ships(&self, state: &ServerState) -> bool {
+        return state
+            .ship_collection
+            .iter()
+            .any(|(key, _)| key.player_id == self.id);
+    }
+
     fn next_id(&mut self) -> u64 {
         self.ship_id += 1;
         self.ship_id
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, game_state: &ServerState) {
         for ship in self.moving_ships.values_mut() {
-            if let Some(next) = ship.path.first() {
-                let direction = next - ship.position;
-                if direction.magnitude() < 0.1 {
-                    ship.path.remove(0);
+            let path = &mut ship.path;
+            let ship = game_state
+                .ship_collection
+                .get(&ShipKey::new(self.id, ship.id))
+                .unwrap();
+            if let Some(next) = path.first() {
+                let position: V2D = ship.position.into();
+                let direction = next - position;
+                let speed = if direction.magnitude() < 0.1 {
+                    path.remove(0);
+                    V2D::new(0.0, 0.0)
                 } else {
-                    ship.speed = direction.normalize() / 2.0;
-                }
-                if ship.path.is_empty() {
-                    ship.speed = (0.0, 0.0).into();
-                }
-                if let Err(err) = self
-                    .actions
+                    direction.normalize() / 2.0
+                };
+                self.actions
                     .send(ClientMessage::MoveShip {
                         player_id: self.id,
                         id: ship.id,
-                        speed: ship.speed.into(),
+                        speed: speed.into(),
                         position: ship.position.into(),
                     })
                     .context(file!())
-                {
-                    error!("Error sending message: {}", err)
-                }
+                    .expect("Error sending message")
             }
         }
     }

@@ -35,6 +35,7 @@ type Bullet = {
 type Ship = {
   data: ShipData;
   model: Ship3D;
+  visitedThisFrame: boolean;
 };
 
 export class ShipsManager {
@@ -44,7 +45,8 @@ export class ShipsManager {
   constructor(
     private game: GameWasmState,
     private scale: number,
-    private scene: THREE.Scene
+    private scene: THREE.Scene,
+    private camera: THREE.Camera
   ) {
     const loader = new GLTFLoader();
     loader.load(boat, (_obj) => {
@@ -90,7 +92,7 @@ export class ShipsManager {
   }
 
   shoot() {
-    this.game.shoot_with_all();
+    this.game.shoot_with_all(this.camera.position.x, this.camera.position.y);
   }
 
   moveShip(x: number, y: number) {
@@ -104,6 +106,7 @@ export class ShipsManager {
 
   update() {
     const ships: ShipData[] = this.game.get_all_ships();
+    console.log(ships);
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.bulletModel.count = bullets.length;
     const matrix = new THREE.Matrix4();
@@ -118,6 +121,7 @@ export class ShipsManager {
       const existing = this.ships.get(key);
       if (existing) {
         existing.model.position.set(ship.position[0], ship.position[1], 0);
+        existing.visitedThisFrame = true;
         if (ship.speed[0] !== 0 || ship.speed[1] !== 0) {
           const xyAngle =
             Math.atan2(ship.speed[1], ship.speed[0]) + Math.PI / 2;
@@ -126,9 +130,22 @@ export class ShipsManager {
       } else if (this.boatModel) {
         const newShip = this.boatModel.clone();
         newShip.position.set(ship.position[0], ship.position[1], 0);
-        this.ships.set(key, { model: newShip, data: ship });
+        this.ships.set(key, {
+          model: newShip,
+          data: ship,
+          visitedThisFrame: true,
+        });
         this.scene.add(newShip);
       }
+    });
+    this.ships.forEach((ship, key) => {
+      if (!ship.visitedThisFrame) {
+        this.scene.remove(ship.model);
+        this.ships.delete(key);
+      }
+    });
+    this.ships.forEach((ship) => {
+      ship.visitedThisFrame = false;
     });
   }
 }

@@ -1,4 +1,4 @@
-use crate::{ClientMessage, ServerState};
+use crate::{player::Player, ClientMessage, ServerState};
 use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -59,6 +59,8 @@ pub struct GameServer {
     pub game_state: ServerState,
     players: HashMap<u64, PlayerSender>,
     player_id_counter: u64,
+    bots: Vec<Player>,
+    rand_gen: fastrand::Rng,
 }
 
 impl GameServer {
@@ -67,7 +69,14 @@ impl GameServer {
             game_state: ServerState::new(),
             players: HashMap::new(),
             player_id_counter: 0,
+            bots: vec![],
+            rand_gen: fastrand::Rng::new(),
         }
+    }
+
+    fn add_bot(&mut self) {
+        let bot = Player::new(self.next_player_id());
+        self.bots.push(bot);
     }
 
     pub fn next_player_id(&mut self) -> u64 {
@@ -107,6 +116,7 @@ impl GameServer {
         self.game_state.on_message(msg.clone());
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
+        self.add_bot();
         return id;
     }
 
@@ -116,7 +126,26 @@ impl GameServer {
         self.game_state.on_message(msg.clone());
     }
 
+    fn handle_bots(&mut self) {
+        self.bots.iter_mut().for_each(|bot| {
+            bot.tick(&self.game_state);
+            if !bot.has_ships(&self.game_state) {
+                for _ in 0..10 {
+                    let x = self.rand_gen.f64() * 10.0;
+                    let y = self.rand_gen.f64() * 10.0;
+                    if self.game_state.game_map.is_allowed_place(x, y) {
+                        bot.create_ship(x, y)
+                    }
+                }
+            }
+            while let Some(msg) = bot.next_message() {
+                self.game_state.on_message(msg);
+            }
+        });
+    }
+
     pub fn tick(&mut self, dt: f64) {
+        self.handle_bots();
         self.game_state.tick(dt);
         self.broadcast_message(self.game_state.state_message());
     }

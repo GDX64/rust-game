@@ -94,6 +94,15 @@ pub type V2D = Vector2<f64>;
 const MAX_SEARCH: usize = 10_000;
 
 impl<T: CanGo> WorldGrid<T> {
+    pub fn is_allowed_place(&self, x: f64, y: f64) -> bool {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        if let Some(value) = self.get_tiles(x, y) {
+            return value.can_go();
+        }
+        return false;
+    }
+
     pub fn find_path(&self, initial: impl Into<V2D>, fin: impl Into<V2D>) -> Option<Vec<V2D>> {
         let initial = initial.into();
         let fin = fin.into();

@@ -1,9 +1,9 @@
 mod server_state;
 use core::panic;
-use std::sync::mpsc::{Receiver, Sender};
 mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
+use log::info;
 use player::Player;
 use running_mode::{OnlineData, RunningMode};
 pub use server_state::*;
@@ -13,6 +13,7 @@ mod interpolation;
 mod player;
 mod sparse_matrix;
 mod world_gen;
+use sparse_matrix::V2D;
 use wasm_bindgen::prelude::*;
 mod diffing;
 mod ws_channel;
@@ -27,20 +28,15 @@ pub fn start() {
 pub struct GameWasmState {
     running_mode: RunningMode,
     player: Player,
-    sender: Sender<ClientMessage>,
-    receiver: Receiver<ClientMessage>,
     last_state: BroadCastState,
 }
 
 #[wasm_bindgen]
 impl GameWasmState {
     pub fn new() -> Self {
-        let (sender, receiver) = std::sync::mpsc::channel();
         Self {
             running_mode: RunningMode::start_local(),
-            player: Player::new(0, sender.clone()),
-            receiver,
-            sender,
+            player: Player::new(0),
             last_state: BroadCastState::new(),
         }
     }
@@ -53,25 +49,27 @@ impl GameWasmState {
         result
     }
 
-    pub fn shoot_with_all(&self) {
-        self.player.shoot_with_all_ships();
+    pub fn shoot_with_all(&self, camera_x: f64, camera_y: f64) {
+        self.player.shoot_with_all_ships(
+            &V2D::new(camera_x, camera_y),
+            self.running_mode.server_state(),
+        );
     }
 
     pub fn start_local_server(&mut self) {
         self.running_mode = RunningMode::start_local();
-        self.player = Player::new(self.running_mode.id(), self.sender.clone());
+        self.player = Player::new(self.running_mode.id());
     }
 
     pub fn start_online(&mut self, on_data: OnlineData) {
         self.running_mode = RunningMode::Online(on_data);
-        self.player = Player::new(self.running_mode.id(), self.sender.clone());
+        self.player = Player::new(self.running_mode.id());
     }
 
     pub fn tick(&mut self) {
-        self.player
-            .sync_with_server(&self.running_mode.server_state());
-        self.player.tick();
-        while let Ok(action) = self.receiver.try_recv() {
+        self.player.tick(&self.running_mode.server_state());
+        while let Some(action) = self.player.next_message() {
+            info!("player action: {:?}", action);
             self.send_message(action);
         }
         self.running_mode.tick();

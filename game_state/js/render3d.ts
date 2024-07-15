@@ -45,7 +45,8 @@ export class Render3D {
   readonly shipsManager = new ShipsManager(
     this.gameState,
     this.state.boatScale,
-    this.scene
+    this.scene,
+    this.camera
   );
 
   waterMesh = new THREE.Mesh();

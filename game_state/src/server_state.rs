@@ -94,6 +94,29 @@ pub enum ClientMessage {
     None,
 }
 
+struct Line2D {
+    start: V2D,
+    end: V2D,
+}
+
+impl Line2D {
+    fn new(start: V2D, end: V2D) -> Self {
+        Self { start, end }
+    }
+
+    fn distance_to_point(&self, point: &V2D) -> f64 {
+        let l2 = (self.end - self.start).magnitude();
+        if l2 == 0.0 {
+            return (point - self.start).magnitude();
+        }
+        let t = ((point - self.start).dot(self.end - self.start) / l2)
+            .max(0.0)
+            .min(1.0);
+        let projection = self.start + (self.end - self.start) * t;
+        (point - projection).magnitude()
+    }
+}
+
 impl ClientMessage {
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
         serde_json::from_str(json).map_err(|e| e.into())
@@ -119,13 +142,13 @@ impl From<String> for ClientMessage {
 }
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
-struct ShipKey {
-    id: u64,
-    player_id: u64,
+pub struct ShipKey {
+    pub id: u64,
+    pub player_id: u64,
 }
 
 impl ShipKey {
-    fn new(id: u64, player_id: u64) -> Self {
+    pub fn new(id: u64, player_id: u64) -> Self {
         Self { id, player_id }
     }
 }
@@ -145,7 +168,7 @@ pub struct ServerState {
     pub game_map: GameMap,
     pub world_gen: world_gen::WorldGen,
     pub bullets: HashMap<(u64, u64), Bullet>,
-    ship_collection: ShipCollection,
+    pub ship_collection: ShipCollection,
     artifact_id: u64,
 }
 
@@ -193,24 +216,43 @@ impl ServerState {
     }
 
     pub fn tick(&mut self, dt: f64) {
-        for ship in self.ship_collection.values_mut() {
-            let (x, y) = ship.position;
-            let (vx, vy) = ship.speed;
-            let (x, y) = (x + vx * dt, y + vy * dt);
-            ship.position = (x, y);
-        }
+        let mut ships_hit: Vec<ShipKey> = vec![];
+
         self.bullets.retain(|_key, bullet| {
             let (x, y) = bullet.position;
             let (vx, vy) = bullet.speed;
             let (x, y) = (x + vx * dt, y + vy * dt);
+            let bullet_initial: V2D = bullet.position.into();
+            let bullet_final: V2D = (x, y).into();
+            let line = Line2D::new(bullet_initial, bullet_final);
+
+            for (id, ship) in self.ship_collection.iter() {
+                if ship.player_id == bullet.player_id {
+                    continue;
+                }
+                let ship_position: V2D = ship.position.into();
+                let distance = line.distance_to_point(&ship_position);
+                if distance < 1.0 {
+                    info!("hit ship: {:?}", id);
+                    ships_hit.push(*id);
+                    return false;
+                }
+            }
+
             bullet.position = (x, y);
             let target: V2D = bullet.target.into();
             let pos: V2D = bullet.position.into();
             let distance = (target - pos).magnitude();
-            if distance < 10.0 {
-                return false;
-            }
-            return true;
+
+            return distance > 1.0;
+        });
+
+        self.ship_collection.retain(|id, ship| {
+            let (x, y) = ship.position;
+            let (vx, vy) = ship.speed;
+            let (x, y) = (x + vx * dt, y + vy * dt);
+            ship.position = (x, y);
+            return !ships_hit.contains(id);
         });
     }
 
@@ -253,13 +295,8 @@ impl ServerState {
                 self.bullets = state.bullets;
             }
             ClientMessage::CreateShip { ship } => {
-                self.ship_collection.insert(
-                    ShipKey {
-                        id: ship.id,
-                        player_id: ship.player_id,
-                    },
-                    ship,
-                );
+                self.ship_collection
+                    .insert(ShipKey::new(ship.id, ship.player_id), ship);
             }
             ClientMessage::MoveShip {
                 position,

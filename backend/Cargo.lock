@@ -697,6 +697,7 @@ dependencies = [
  "bincode",
  "cgmath",
  "console_log",
+ "fastrand",
  "fnv",
  "futures",
  "js-sys",
