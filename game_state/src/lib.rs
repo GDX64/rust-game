@@ -69,7 +69,6 @@ impl GameWasmState {
     pub fn tick(&mut self) {
         self.player.tick(&self.running_mode.server_state());
         while let Some(action) = self.player.next_message() {
-            info!("player action: {:?}", action);
             self.send_message(action);
         }
         self.running_mode.tick();

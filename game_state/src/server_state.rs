@@ -20,6 +20,7 @@ pub struct PlayerState {
 pub struct ShipState {
     pub position: (f64, f64),
     pub speed: (f64, f64),
+    pub acceleration: (f64, f64),
     pub id: u64,
     pub player_id: u64,
 }
@@ -79,6 +80,7 @@ pub enum ClientMessage {
     MoveShip {
         position: (f64, f64),
         speed: (f64, f64),
+        acceleration: (f64, f64),
         id: u64,
         player_id: u64,
     },
@@ -248,10 +250,18 @@ impl ServerState {
         });
 
         self.ship_collection.retain(|id, ship| {
-            let (x, y) = ship.position;
-            let (vx, vy) = ship.speed;
-            let (x, y) = (x + vx * dt, y + vy * dt);
-            ship.position = (x, y);
+            let position: V2D = ship.position.into();
+            let speed: V2D = ship.speed.into();
+            let acc: V2D = ship.acceleration.into();
+            let speed = speed + acc * dt;
+            let speed = if speed.magnitude() > 0.5 {
+                speed.normalize() / 2.0
+            } else {
+                speed
+            };
+            let position = position + speed * dt;
+            ship.position = position.into();
+            ship.speed = speed.into();
             return !ships_hit.contains(id);
         });
     }
@@ -302,10 +312,12 @@ impl ServerState {
                 position,
                 speed,
                 id,
+                acceleration,
                 player_id,
             } => {
                 if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
                     ship.position = position;
+                    ship.acceleration = acceleration;
                     ship.speed = speed;
                 }
             }

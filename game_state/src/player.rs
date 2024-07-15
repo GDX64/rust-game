@@ -1,6 +1,6 @@
 use anyhow::Context;
 use cgmath::InnerSpace;
-use log::{error, info};
+use log::error;
 
 use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
@@ -47,8 +47,12 @@ impl Player {
         let path = game_state
             .game_map
             .find_path(server_ship.position, (x, y))?;
-        info!("path: {:?}", path);
+
+        //the fist one is already the current position
+        let path = path[1..].to_vec();
+
         let ship = PlayerShip { path, id: ship_id };
+
         self.moving_ships.insert(ship_id, ship);
         Some(())
     }
@@ -94,6 +98,7 @@ impl Player {
         let msg = ClientMessage::CreateShip {
             ship: ShipState {
                 id: self.next_id(),
+                acceleration: (0.0, 0.0),
                 speed: (0.0, 0.0),
                 player_id: self.id,
                 position: (x, y),
@@ -125,21 +130,26 @@ impl Player {
             let path = &mut ship.path;
             let ship = game_state
                 .ship_collection
-                .get(&ShipKey::new(self.id, ship.id))
-                .unwrap();
+                .get(&ShipKey::new(self.id, ship.id));
+            let ship = if let Some(ship) = ship {
+                ship
+            } else {
+                continue;
+            };
             if let Some(next) = path.first() {
                 let position: V2D = ship.position.into();
                 let direction = next - position;
-                let speed = if direction.magnitude() < 0.1 {
+                let (acceleration, speed) = if direction.magnitude() < 0.1 {
                     path.remove(0);
-                    V2D::new(0.0, 0.0)
+                    (V2D::new(0.0, 0.0), V2D::new(0.0, 0.0))
                 } else {
-                    direction.normalize() / 2.0
+                    (direction.normalize() * 2.0, ship.speed.into())
                 };
                 self.actions
                     .send(ClientMessage::MoveShip {
                         player_id: self.id,
                         id: ship.id,
+                        acceleration: acceleration.into(),
                         speed: speed.into(),
                         position: ship.position.into(),
                     })
@@ -147,5 +157,48 @@ impl Player {
                     .expect("Error sending message")
             }
         }
+    }
+}
+
+fn is_straight_line(path: &Vec<V2D>) -> bool {
+    if path.len() < 2 {
+        return false;
+    }
+    for i in 1..path.len() - 1 {
+        let first = path[i - 1];
+        let sec = path[i];
+        let third = path[i + 1];
+        let delta1 = sec - first;
+        let delta2 = third - sec;
+        if (delta1 - delta2).magnitude() > 0.1 {
+            return false;
+        }
+    }
+    return true;
+}
+
+#[cfg(test)]
+mod test {
+    use crate::sparse_matrix::V2D;
+
+    #[test]
+    fn is_line() {
+        let path = vec![
+            V2D::new(0.0, 0.0),
+            V2D::new(1.0, 0.0),
+            V2D::new(2.0, 0.0),
+            V2D::new(3.0, 0.0),
+        ];
+        assert_eq!(super::is_straight_line(&path), true);
+    }
+    #[test]
+    fn is_not_line() {
+        let path = vec![
+            V2D::new(0.0, 0.0),
+            V2D::new(1.0, 0.0),
+            V2D::new(2.3, 0.0),
+            V2D::new(3.0, 0.0),
+        ];
+        assert_eq!(super::is_straight_line(&path), false);
     }
 }

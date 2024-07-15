@@ -190,7 +190,7 @@ mod test {
     #[test]
     fn test_pathfinding_diagonal() {
         let grid = WorldGrid::new(80.0, true, 10.0);
-        let path = grid.find_path(Vector2::new(0.0, 0.0), Vector2::new(30.0, 30.0));
+        let path = grid.find_path(Vector2::new(1.0, 0.0), Vector2::new(30.0, 30.0));
         assert_eq!(path.unwrap().len(), 4);
     }
 

@@ -133,7 +133,6 @@ impl RunningMode {
             }
             RunningMode::Online(data) => {
                 let msg = GameMessage::ClientMessage(msg);
-                info!("Sending message: {:?}", msg);
                 data.send(msg);
             }
         }
