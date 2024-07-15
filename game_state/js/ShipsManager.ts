@@ -57,7 +57,8 @@ export class ShipsManager {
       obj.rotation.set(Math.PI / 2, 0, 0);
       this.boatModel = obj;
     });
-    const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+
+    const geometry = new THREE.SphereGeometry(0.05, 16, 16);
     const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 100);
     this.scene.add(this.bulletModel);
@@ -106,7 +107,6 @@ export class ShipsManager {
 
   update() {
     const ships: ShipData[] = this.game.get_all_ships();
-    console.log(ships);
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.bulletModel.count = bullets.length;
     const matrix = new THREE.Matrix4();
