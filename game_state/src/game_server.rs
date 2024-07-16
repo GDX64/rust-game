@@ -123,7 +123,7 @@ impl GameServer {
     pub fn disconnect_player(&mut self, id: u64) {
         self.players.remove(&id);
         let msg = ClientMessage::RemovePlayer { id };
-        self.game_state.on_message(msg.clone());
+        self.game_state.on_message(msg);
     }
 
     fn handle_bots(&mut self) {

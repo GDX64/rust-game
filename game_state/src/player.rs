@@ -12,6 +12,7 @@ use std::{
 pub struct PlayerShip {
     path: Vec<V2D>,
     id: u64,
+    destroyed: bool,
 }
 
 pub struct Player {
@@ -51,7 +52,11 @@ impl Player {
         //the fist one is already the current position
         let path = path[1..].to_vec();
 
-        let ship = PlayerShip { path, id: ship_id };
+        let ship = PlayerShip {
+            path,
+            id: ship_id,
+            destroyed: false,
+        };
 
         self.moving_ships.insert(ship_id, ship);
         Some(())
@@ -126,35 +131,53 @@ impl Player {
     }
 
     pub fn tick(&mut self, game_state: &ServerState) {
-        for ship in self.moving_ships.values_mut() {
-            let path = &mut ship.path;
+        for player_ship in self.moving_ships.values_mut() {
+            let path = &mut player_ship.path;
             let ship = game_state
                 .ship_collection
-                .get(&ShipKey::new(self.id, ship.id));
+                .get(&ShipKey::new(self.id, player_ship.id));
             let ship = if let Some(ship) = ship {
                 ship
             } else {
+                player_ship.destroyed = true;
                 continue;
             };
-            if let Some(next) = path.first() {
-                let position: V2D = ship.position.into();
-                let direction = next - position;
-                let (acceleration, speed) = if direction.magnitude() < 0.1 {
-                    path.remove(0);
-                    (V2D::new(0.0, 0.0), V2D::new(0.0, 0.0))
+            loop {
+                if let Some(next) = path.first() {
+                    let position: V2D = ship.position.into();
+                    let direction = next - position;
+                    if direction.magnitude() < 0.1 {
+                        path.remove(0);
+                        if path.is_empty() {
+                            self.actions
+                                .send(ClientMessage::MoveShip {
+                                    player_id: self.id,
+                                    id: ship.id,
+                                    acceleration: (0.0, 0.0),
+                                    speed: (0.0, 0.0),
+                                    position: ship.position,
+                                })
+                                .expect("Error sending message");
+                            break;
+                        } else {
+                            continue;
+                        }
+                    };
+                    let acceleration = direction.normalize() * 2.0;
+                    let speed: V2D = ship.speed.into();
+                    self.actions
+                        .send(ClientMessage::MoveShip {
+                            player_id: self.id,
+                            id: ship.id,
+                            acceleration: acceleration.into(),
+                            speed: speed.into(),
+                            position: ship.position.into(),
+                        })
+                        .expect("Error sending message");
+                    break;
                 } else {
-                    (direction.normalize() * 2.0, ship.speed.into())
-                };
-                self.actions
-                    .send(ClientMessage::MoveShip {
-                        player_id: self.id,
-                        id: ship.id,
-                        acceleration: acceleration.into(),
-                        speed: speed.into(),
-                        position: ship.position.into(),
-                    })
-                    .context(file!())
-                    .expect("Error sending message")
+                    break;
+                }
             }
         }
     }

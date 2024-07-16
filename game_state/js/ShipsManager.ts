@@ -9,6 +9,7 @@ type ShipData = {
   id: number;
   position: [number, number];
   speed: [number, number];
+  acceleration: [number, number];
 };
 
 // type Diff<K, T> =
@@ -107,6 +108,11 @@ export class ShipsManager {
 
   update() {
     const ships: ShipData[] = this.game.get_all_ships();
+    console.log(
+      ships
+        .filter((ship) => ship.player_id === this.game.my_id())
+        .map((ship) => ship.acceleration)[0]
+    );
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.bulletModel.count = bullets.length;
     const matrix = new THREE.Matrix4();
