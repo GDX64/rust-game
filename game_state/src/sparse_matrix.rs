@@ -1,3 +1,5 @@
+use std::vec;
+
 use cgmath::{InnerSpace, Vector2};
 use pathfinding::prelude::astar;
 
@@ -91,6 +93,60 @@ impl<T: Copy + Clone> WorldGrid<T> {
 
 pub type V2D = Vector2<f64>;
 
+mod grid_line {
+    use cgmath::InnerSpace;
+
+    use super::V2D;
+
+    pub struct GridLinePath {
+        start: V2D,
+        end: V2D,
+        step: f64,
+        current_length: f64,
+    }
+
+    impl GridLinePath {
+        pub fn new(start: V2D, end: V2D, step: f64) -> Self {
+            Self {
+                start,
+                end,
+                step,
+                current_length: 0.0,
+            }
+        }
+
+        pub fn next(&mut self) -> Option<V2D> {
+            let distance = self.start - self.end;
+            if self.current_length > distance.magnitude() {
+                return None;
+            }
+            let direction = self.end - self.start;
+            let direction = direction.normalize();
+            let next = self.start + direction * self.current_length;
+            self.current_length += self.step;
+            return Some(next);
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use cgmath::InnerSpace;
+
+        use crate::sparse_matrix::{grid_line::GridLinePath, V2D};
+
+        #[test]
+        fn test_line() {
+            let mut line = GridLinePath::new(V2D::new(0.0, 0.0), V2D::new(2.0, 2.0), 1.0);
+            assert_eq!(line.next(), Some(V2D::new(0.0, 0.0)));
+            let point = line.next().unwrap();
+            assert_eq!(point.magnitude() - 1.0 < 0.001, true);
+            let point = line.next().unwrap();
+            assert_eq!(point.magnitude() - 2.0 < 0.001, true);
+            assert_eq!(line.next(), None);
+        }
+    }
+}
+
 const MAX_SEARCH: usize = 10_000;
 
 impl<T: CanGo> WorldGrid<T> {
@@ -103,9 +159,23 @@ impl<T: CanGo> WorldGrid<T> {
         return false;
     }
 
+    fn can_go_straight(&self, initial: &V2D, fin: &V2D) -> bool {
+        let mut line =
+            grid_line::GridLinePath::new(initial.clone(), fin.clone(), self.tile_size / 2.0);
+        while let Some(point) = line.next() {
+            if !self.is_allowed_place(point.x, point.y) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     pub fn find_path(&self, initial: impl Into<V2D>, fin: impl Into<V2D>) -> Option<Vec<V2D>> {
         let initial = initial.into();
         let fin = fin.into();
+        if self.can_go_straight(&initial, &fin) {
+            return Some(vec![initial.into(), fin.into()]);
+        }
         let initial = Vector2::new(
             self.tile_unit(initial.x) as i64,
             self.tile_unit(initial.y) as i64,
