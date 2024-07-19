@@ -1,6 +1,6 @@
 use std::vec;
 
-use cgmath::{InnerSpace, Vector2};
+use cgmath::{InnerSpace, Vector2, Vector3};
 use pathfinding::prelude::astar;
 
 pub struct WorldGrid<T> {
@@ -92,6 +92,7 @@ impl<T: Copy + Clone> WorldGrid<T> {
 }
 
 pub type V2D = Vector2<f64>;
+pub type V3D = Vector3<f64>;
 
 mod grid_line {
     use cgmath::InnerSpace;

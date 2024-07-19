@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use crate::{
     diffing::{hashmap_diff, Diff},
-    sparse_matrix::{CanGo, WorldGrid, V2D},
+    sparse_matrix::{CanGo, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
 };
 
@@ -56,11 +56,34 @@ impl BroadCastState {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
-    pub position: (f64, f64),
-    pub speed: (f64, f64),
+    pub position: (f64, f64, f64),
+    pub speed: (f64, f64, f64),
     pub player_id: u64,
     pub bullet_id: u64,
-    pub target: (f64, f64),
+    pub target: (f64, f64, f64),
+}
+
+impl Bullet {
+    pub fn from_target(initial: V2D, target: V2D) -> Bullet {
+        let v0 = 10.0;
+        let g = 9.81;
+        let initial: V3D = (initial.x, initial.y, 0.0).into();
+        let target: V3D = (target.x, target.y, 0.0).into();
+        let d_vector = target - initial;
+        let d = d_vector.magnitude();
+        let angle = f64::asin(d * g / (2.0 * v0 * v0));
+        let vxy = v0 * f64::cos(angle);
+        let vz = v0 * f64::sin(angle);
+        let vx = d_vector.normalize() * vxy;
+        let speed = (vx.x, vx.y, vz).into();
+        Bullet {
+            position: initial.into(),
+            speed,
+            player_id: 0,
+            bullet_id: 0,
+            target: target.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -96,28 +119,30 @@ pub enum ClientMessage {
     None,
 }
 
-struct Line2D {
-    start: V2D,
-    end: V2D,
-}
+// mod line2D {
+//     struct Line2D {
+//         start: V2D,
+//         end: V2D,
+//     }
 
-impl Line2D {
-    fn new(start: V2D, end: V2D) -> Self {
-        Self { start, end }
-    }
+//     impl Line2D {
+//         fn new(start: V2D, end: V2D) -> Self {
+//             Self { start, end }
+//         }
 
-    fn distance_to_point(&self, point: &V2D) -> f64 {
-        let l2 = (self.end - self.start).magnitude();
-        if l2 == 0.0 {
-            return (point - self.start).magnitude();
-        }
-        let t = ((point - self.start).dot(self.end - self.start) / l2)
-            .max(0.0)
-            .min(1.0);
-        let projection = self.start + (self.end - self.start) * t;
-        (point - projection).magnitude()
-    }
-}
+//         fn distance_to_point(&self, point: &V2D) -> f64 {
+//             let l2 = (self.end - self.start).magnitude();
+//             if l2 == 0.0 {
+//                 return (point - self.start).magnitude();
+//             }
+//             let t = ((point - self.start).dot(self.end - self.start) / l2)
+//                 .max(0.0)
+//                 .min(1.0);
+//             let projection = self.start + (self.end - self.start) * t;
+//             (point - projection).magnitude()
+//         }
+//     }
+// }
 
 impl ClientMessage {
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
@@ -221,32 +246,32 @@ impl ServerState {
         let mut ships_hit: Vec<ShipKey> = vec![];
 
         self.bullets.retain(|_key, bullet| {
-            let (x, y) = bullet.position;
-            let (vx, vy) = bullet.speed;
-            let (x, y) = (x + vx * dt, y + vy * dt);
-            let bullet_initial: V2D = bullet.position.into();
-            let bullet_final: V2D = (x, y).into();
-            let line = Line2D::new(bullet_initial, bullet_final);
+            let (x, y, z) = bullet.position;
+            let (vx, vy, vz) = bullet.speed;
+            let (x, y, z) = (x + vx * dt, y + vy * dt, z + vz * dt);
+            bullet.position = (x, y, z);
+            let target: V3D = bullet.target.into();
+            let pos: V3D = bullet.position.into();
+            let distance = (target - pos).magnitude();
+
+            if distance > 1.0 {
+                return true;
+            };
 
             for (id, ship) in self.ship_collection.iter() {
                 if ship.player_id == bullet.player_id {
                     continue;
                 }
-                let ship_position: V2D = ship.position.into();
-                let distance = line.distance_to_point(&ship_position);
+                let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
+                let distance = (ship_pos - pos).magnitude();
                 if distance < 1.0 {
-                    info!("hit ship: {:?}", id);
                     ships_hit.push(*id);
-                    return false;
+                    info!("Ship hit: {:?}", id);
                 }
+                return true;
             }
 
-            bullet.position = (x, y);
-            let target: V2D = bullet.target.into();
-            let pos: V2D = bullet.position.into();
-            let distance = (target - pos).magnitude();
-
-            return distance > 1.0;
+            return false;
         });
 
         self.ship_collection.retain(|id, ship| {
@@ -330,23 +355,15 @@ impl ServerState {
                     id: ship_id,
                     player_id,
                 });
-                let (speed, position) = if let Some(ship) = ship {
-                    let (x, y) = ship.position;
-                    let dx = target.0 - x;
-                    let dy = target.1 - y;
-                    let len = (dx * dx + dy * dy).sqrt();
-                    let speed = 10.0;
-                    let speed = (dx / len * speed, dy / len * speed);
-                    (speed, ship.position)
+                let position = if let Some(ship) = ship {
+                    ship.position.clone()
                 } else {
                     return;
                 };
                 let bullet = Bullet {
                     bullet_id: self.next_artifact_id(),
-                    position,
-                    speed,
                     player_id,
-                    target,
+                    ..Bullet::from_target(position.into(), target.into())
                 };
                 self.bullets
                     .insert((bullet.player_id, bullet.bullet_id), bullet);
