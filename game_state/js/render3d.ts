@@ -13,7 +13,7 @@ import { Water } from "./Water";
 export class Render3D {
   gui = new GUI();
   state = {
-    boatScale: 0.06,
+    boatScale: 2.5,
     boatPosition: [0, 0, 0.5],
     controlsEnabled: false,
     terrainColor: "#2b5232",
@@ -35,13 +35,13 @@ export class Render3D {
     75,
     window.innerWidth / window.innerHeight,
     0.1,
-    1000
+    this.gameState.map_size() / 2
   );
   readonly rayCaster = new THREE.Raycaster();
   readonly mouse = new THREE.Vector2(0, 0);
   readonly PLANE_WIDTH = this.gameState.map_size();
-  readonly SEGMENTS_DENSITY = 5;
-  readonly PLANE_SEGMENTS = this.PLANE_WIDTH * this.SEGMENTS_DENSITY;
+  readonly SEGMENTS_DENSITY = this.gameState.tile_size();
+  readonly PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
   readonly shipsManager = new ShipsManager(
     this.gameState,
     this.state.boatScale,
@@ -63,7 +63,7 @@ export class Render3D {
             (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
             (0.5 - yProportion) * this.PLANE_WIDTH
           ) ?? 0;
-        height = height * 5;
+        height = height * 500;
 
         arr[i + 2] = height;
       }
@@ -158,7 +158,7 @@ export class Render3D {
       this.PLANE_SEGMENTS - 1
     );
 
-    scene.fog = new THREE.Fog(0x999999, 0, 100);
+    // scene.fog = new THREE.Fog(0x999999, 0, 100);
 
     const planeMaterial = new THREE.MeshLambertMaterial({
       color: this.state.terrainColor,
@@ -240,7 +240,11 @@ export class Render3D {
       fog: false,
     });
     const sunMesh = new THREE.Mesh(sun, sunMaterial);
-    const sunPosition = new THREE.Vector3(500, 0, 100);
+    const sunPosition = new THREE.Vector3(
+      this.gameState.map_size(),
+      0,
+      this.gameState.map_size() / 2
+    );
     sunMesh.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
     scene.add(sunMesh);
     const light = new THREE.DirectionalLight(0xffffff, 10);

@@ -94,7 +94,7 @@ impl Player {
                 -1.0
             };
             let speed_90_deg = shoot_sign * V2D::new(-speed_direction.y, speed_direction.x);
-            let target = position + speed_90_deg * 30.0;
+            let target = position + speed_90_deg * 1000.0;
             self.shoot_at(ship.id, target.x, target.y);
         });
     }

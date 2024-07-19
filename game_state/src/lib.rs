@@ -3,7 +3,6 @@ use core::panic;
 mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
-use log::info;
 use player::Player;
 use running_mode::{OnlineData, RunningMode};
 pub use server_state::*;
@@ -81,6 +80,10 @@ impl GameWasmState {
 
     fn send_message(&mut self, msg: ClientMessage) {
         self.running_mode.send_message(msg);
+    }
+
+    pub fn tile_size(&self) -> f64 {
+        return self.running_mode.server_state().game_map.tile_size;
     }
 
     pub fn action_create_ship(&mut self, x: f64, y: f64) {

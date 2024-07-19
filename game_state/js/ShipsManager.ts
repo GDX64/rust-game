@@ -59,8 +59,13 @@ export class ShipsManager {
       this.boatModel = obj;
     });
 
-    const geometry = new THREE.SphereGeometry(0.05, 16, 16);
+    const geometry = new THREE.SphereGeometry(0.3, 16, 16);
     const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    // const referenceSphere = new THREE.Mesh(
+    //   new THREE.SphereGeometry(10, 16, 16),
+    //   material
+    // );
+    // this.scene.add(referenceSphere);
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 100);
     this.scene.add(this.bulletModel);
 

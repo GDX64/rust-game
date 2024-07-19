@@ -1,13 +1,17 @@
-use cgmath::InnerSpace;
-use log::info;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
 use crate::{
     diffing::{hashmap_diff, Diff},
     sparse_matrix::{CanGo, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
 };
+use cgmath::InnerSpace;
+use log::info;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+const BULLET_SPEED: f64 = 60.0;
+const GRAVITY: f64 = 9.81;
+const BLAST_RADIUS: f64 = 10.0;
+const BOAT_SPEED: f64 = 8.0;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerState {
@@ -62,10 +66,6 @@ pub struct Bullet {
     pub bullet_id: u64,
     pub target: (f64, f64, f64),
 }
-
-const BULLET_SPEED: f64 = 10.0;
-const GRAVITY: f64 = 9.81;
-const BLAST_RADIUS: f64 = 0.5;
 
 impl Bullet {
     pub fn from_target(initial: V2D, target: V2D) -> Bullet {
@@ -216,7 +216,7 @@ pub struct ServerState {
 impl ServerState {
     pub fn new() -> Self {
         let world_gen = world_gen::WorldGen::new(1);
-        let game_map = world_gen.generate_grid(100.0);
+        let game_map = world_gen.generate_grid(10_000.0);
         Self {
             artifact_id: 0,
             world_gen,
@@ -288,8 +288,8 @@ impl ServerState {
             let speed: V2D = ship.speed.into();
             let acc: V2D = ship.acceleration.into();
             let speed = speed + acc * dt;
-            let speed = if speed.magnitude() > 0.5 {
-                speed.normalize() / 2.0
+            let speed = if speed.magnitude() > BOAT_SPEED {
+                speed.normalize() * BOAT_SPEED
             } else {
                 speed
             };
