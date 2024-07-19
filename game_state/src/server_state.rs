@@ -63,15 +63,20 @@ pub struct Bullet {
     pub target: (f64, f64, f64),
 }
 
+const BULLET_SPEED: f64 = 10.0;
+const GRAVITY: f64 = 9.81;
+const BLAST_RADIUS: f64 = 0.5;
+
 impl Bullet {
     pub fn from_target(initial: V2D, target: V2D) -> Bullet {
-        let v0 = 10.0;
-        let g = 9.81;
+        let v0 = BULLET_SPEED;
+        let g = GRAVITY;
         let initial: V3D = (initial.x, initial.y, 0.0).into();
         let target: V3D = (target.x, target.y, 0.0).into();
         let d_vector = target - initial;
         let d = d_vector.magnitude();
         let angle = f64::asin(d * g / (2.0 * v0 * v0));
+        let angle = if angle.is_nan() { 3.14 / 4.0 } else { angle };
         let vxy = v0 * f64::cos(angle);
         let vz = v0 * f64::sin(angle);
         let vx = d_vector.normalize() * vxy;
@@ -83,6 +88,15 @@ impl Bullet {
             bullet_id: 0,
             target: target.into(),
         }
+    }
+
+    pub fn evolve(&mut self, dt: f64) {
+        let speed: V3D = self.speed.into();
+        let pos: V3D = self.position.into();
+        let speed = speed + dt * V3D::new(0.0, 0.0, -GRAVITY);
+        let pos = pos + speed * dt;
+        self.position = pos.into();
+        self.speed = speed.into();
     }
 }
 
@@ -246,15 +260,10 @@ impl ServerState {
         let mut ships_hit: Vec<ShipKey> = vec![];
 
         self.bullets.retain(|_key, bullet| {
-            let (x, y, z) = bullet.position;
-            let (vx, vy, vz) = bullet.speed;
-            let (x, y, z) = (x + vx * dt, y + vy * dt, z + vz * dt);
-            bullet.position = (x, y, z);
-            let target: V3D = bullet.target.into();
+            bullet.evolve(dt);
             let pos: V3D = bullet.position.into();
-            let distance = (target - pos).magnitude();
 
-            if distance > 1.0 {
+            if pos.z > 0.0 {
                 return true;
             };
 
@@ -264,11 +273,11 @@ impl ServerState {
                 }
                 let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
                 let distance = (ship_pos - pos).magnitude();
-                if distance < 1.0 {
+                if distance < BLAST_RADIUS {
                     ships_hit.push(*id);
                     info!("Ship hit: {:?}", id);
                 }
-                return true;
+                return false;
             }
 
             return false;
@@ -370,5 +379,32 @@ impl ServerState {
             }
             ClientMessage::None => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use cgmath::InnerSpace;
+
+    use crate::{server_state::BLAST_RADIUS, sparse_matrix::V3D, Bullet};
+
+    fn verify_hits_target(initial: (f64, f64), target: (f64, f64)) -> bool {
+        let mut bullet = Bullet::from_target(initial.into(), target.into());
+        for _ in 0..100 {
+            bullet.evolve(0.016);
+            let pos: V3D = bullet.position.into();
+            let target = V3D::from(bullet.target);
+            if (pos - target).magnitude() < BLAST_RADIUS {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    #[test]
+    fn test_shoot() {
+        assert!(verify_hits_target((0.0, 0.0), (5.0, 5.0)));
+        assert!(verify_hits_target((0.0, 0.0), (-5.0, 0.0)));
+        assert!(verify_hits_target((0.0, 0.0), (0.0, 3.0)));
     }
 }

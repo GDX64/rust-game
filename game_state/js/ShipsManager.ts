@@ -28,8 +28,8 @@ type ShipData = {
 // };
 
 type Bullet = {
-  position: [number, number];
-  speed: [number, number];
+  position: [number, number, number];
+  speed: [number, number, number];
   id: number;
 };
 
@@ -114,10 +114,15 @@ export class ShipsManager {
         .map((ship) => ship.acceleration)[0]
     );
     const bullets: Bullet[] = this.game.get_all_bullets();
+    console.log(bullets);
     this.bulletModel.count = bullets.length;
     const matrix = new THREE.Matrix4();
     for (let i = 0; i < bullets.length; i++) {
-      matrix.setPosition(bullets[i].position[0], bullets[i].position[1], 0);
+      matrix.setPosition(
+        bullets[i].position[0],
+        bullets[i].position[1],
+        bullets[i].position[2]
+      );
       this.bulletModel.setMatrixAt(i, matrix);
     }
     this.bulletModel.instanceMatrix.needsUpdate = true;
