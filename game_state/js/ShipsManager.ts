@@ -59,7 +59,7 @@ export class ShipsManager {
       this.boatModel = obj;
     });
 
-    const geometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const geometry = new THREE.SphereGeometry(0.5, 16, 16);
     const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
     // const referenceSphere = new THREE.Mesh(
     //   new THREE.SphereGeometry(10, 16, 16),
@@ -71,7 +71,6 @@ export class ShipsManager {
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "s") {
-        this.shoot();
       }
     });
   }
@@ -98,8 +97,13 @@ export class ShipsManager {
     }
   }
 
-  shoot() {
-    this.game.shoot_with_all(this.camera.position.x, this.camera.position.y);
+  shoot(x: number, y: number) {
+    this.game.shoot_with_all(
+      x,
+      y,
+      this.camera.position.x,
+      this.camera.position.y
+    );
   }
 
   moveShip(x: number, y: number) {

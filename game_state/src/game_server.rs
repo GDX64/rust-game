@@ -131,8 +131,8 @@ impl GameServer {
             bot.tick(&self.game_state);
             if !bot.has_ships(&self.game_state) {
                 for _ in 0..10 {
-                    let x = self.rand_gen.f64() * 10.0;
-                    let y = self.rand_gen.f64() * 10.0;
+                    let x = self.rand_gen.f64() * 1000.0;
+                    let y = self.rand_gen.f64() * 1000.0;
                     if self.game_state.game_map.is_allowed_place(x, y) {
                         bot.create_ship(x, y)
                     }

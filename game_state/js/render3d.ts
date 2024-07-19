@@ -109,16 +109,17 @@ export class Render3D {
   }
 
   private onMouseClick(event: PointerEvent) {
-    if (event.button !== 2) {
-      return;
-    }
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.rayCaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.rayCaster.intersectObject(this.waterMesh);
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
-      this.shipsManager.moveShip(x, y);
+      if (event.button === 2) {
+        this.shipsManager.moveShip(x, y);
+      } else {
+        this.shipsManager.shoot(x, y);
+      }
     }
   }
 

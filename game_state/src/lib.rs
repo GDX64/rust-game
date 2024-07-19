@@ -48,8 +48,9 @@ impl GameWasmState {
         result
     }
 
-    pub fn shoot_with_all(&self, camera_x: f64, camera_y: f64) {
+    pub fn shoot_with_all(&self, x: f64, y: f64, camera_x: f64, camera_y: f64) {
         self.player.shoot_with_all_ships(
+            &V2D::new(x, y),
             &V2D::new(camera_x, camera_y),
             self.running_mode.server_state(),
         );

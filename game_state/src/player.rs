@@ -73,29 +73,14 @@ impl Player {
         };
     }
 
-    pub fn shoot_with_all_ships(&self, camera: &V2D, game_state: &ServerState) {
-        fn cross_product_2d(a: &V2D, b: &V2D) -> f64 {
-            a.x * b.y - a.y * b.x
-        }
+    pub fn shoot_with_all_ships(&self, target: &V2D, _camera: &V2D, game_state: &ServerState) {
         self.moving_ships.iter().for_each(|(_, ship)| {
-            let ship = game_state
+            if let Some(ship) = game_state
                 .ship_collection
                 .get(&ShipKey::new(self.id, ship.id))
-                .unwrap();
-            let speed: V2D = ship.speed.into();
-            let position: V2D = ship.position.into();
-            if speed.magnitude() <= 0.01 {
-                return;
-            }
-            let speed_direction = speed.normalize();
-            let shoot_sign = if cross_product_2d(camera, &speed_direction) > 0.0 {
-                1.0
-            } else {
-                -1.0
+            {
+                self.shoot_at(ship.id, target.x, target.y);
             };
-            let speed_90_deg = shoot_sign * V2D::new(-speed_direction.y, speed_direction.x);
-            let target = position + speed_90_deg * 1000.0;
-            self.shoot_at(ship.id, target.x, target.y);
         });
     }
 
