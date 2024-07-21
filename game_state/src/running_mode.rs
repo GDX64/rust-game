@@ -74,7 +74,7 @@ pub enum RunningMode {
 impl RunningMode {
     pub fn server_state(&self) -> &ServerState {
         match self {
-            RunningMode::Local { ref state, .. } => state,
+            RunningMode::Local { ref game, .. } => &game.game_state,
             RunningMode::Online(data) => &data.game_state,
         }
     }

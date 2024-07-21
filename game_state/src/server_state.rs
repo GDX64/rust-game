@@ -12,6 +12,7 @@ const BULLET_SPEED: f64 = 100.0;
 const GRAVITY: f64 = 9.81;
 const BLAST_RADIUS: f64 = 10.0;
 const BOAT_SPEED: f64 = 8.0;
+const EXPLOSION_TTL: f64 = 1.0;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerState {
@@ -273,7 +274,14 @@ impl ServerState {
     pub fn tick(&mut self, dt: f64) {
         self.current_time += dt;
         let mut ships_hit: Vec<ShipKey> = vec![];
-        let explosions = self.explosions.borrow_mut();
+        let mut explosions = vec![];
+
+        self.explosions.retain(|_key, explosion| {
+            if self.current_time - explosion.time_created > EXPLOSION_TTL {
+                return false;
+            }
+            return true;
+        });
 
         self.bullets.retain(|_key, bullet| {
             bullet.evolve(dt);
@@ -295,16 +303,18 @@ impl ServerState {
                 }
             }
 
-            explosions.insert(
-                self.artifact_id,
-                Explosion {
-                    position: (pos.x, pos.y),
-                    id: self.artifact_id,
-                    time_created: self.current_time,
-                },
-            );
+            explosions.push((pos.x, pos.y));
 
             return false;
+        });
+
+        explosions.into_iter().for_each(|pos| {
+            let explosion = Explosion {
+                position: pos,
+                id: self.next_artifact_id(),
+                time_created: self.current_time,
+            };
+            self.explosions.insert(explosion.id, explosion);
         });
 
         self.ship_collection.retain(|id, ship| {

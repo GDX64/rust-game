@@ -54,7 +54,10 @@ export class Explosion {
     position = new THREE.Vector3(),
     id = 0,
   } = {}) {
-    const { points } = Explosion.makePoints(particles, size);
+    console.log("makePoints", id);
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(particlePNG);
+    const { points } = Explosion.makePoints(particles, size, texture);
     points.position.set(position.x, position.y, position.z);
     this.id = id;
     this.points = points;
@@ -138,10 +141,11 @@ export class Explosion {
     });
   }
 
-  static makePoints(particles: number = 1000, size: number = 1) {
-    const loader = new THREE.TextureLoader();
-    const texture = loader.load(particlePNG);
-
+  static makePoints(
+    particles: number = 1000,
+    size: number = 1,
+    texture: THREE.Texture
+  ) {
     const geometry = new THREE.BufferGeometry();
     const vertices = new Float32Array(particles * 3);
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
