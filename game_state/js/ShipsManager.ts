@@ -54,9 +54,7 @@ export class ShipsManager {
     const loader = new GLTFLoader();
     loader.load(boat, (_obj) => {
       const obj = _obj.scene;
-      console.log(obj.children[0]);
       obj.scale.set(this.scale, this.scale, this.scale);
-      console.log(_obj.animations);
       obj.rotation.set(Math.PI / 2, 0, 0);
       this.boatModel = obj;
     });
@@ -123,13 +121,7 @@ export class ShipsManager {
 
   update() {
     const ships: ShipData[] = this.game.get_all_ships();
-    console.log(
-      ships
-        .filter((ship) => ship.player_id === this.game.my_id())
-        .map((ship) => ship.acceleration)[0]
-    );
     const bullets: Bullet[] = this.game.get_all_bullets();
-    console.log(bullets);
     this.bulletModel.count = bullets.length;
     const matrix = new THREE.Matrix4();
     for (let i = 0; i < bullets.length; i++) {

@@ -1,4 +1,3 @@
-use crate::player::Player;
 use crate::ws_channel::WSChannel;
 use crate::{game_server, ClientMessage, GameMessage, ServerState};
 use futures::channel::mpsc::{channel, Receiver};

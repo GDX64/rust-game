@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import particlePNG from "./assets/gradFire.png";
 
 export type ExplosionData = {
   position: [number, number];
@@ -22,7 +21,7 @@ export class ExplosionManager {
     if (this.explosions.has(id)) {
       return;
     }
-    const explosion = new Explosion({ particles: 1000, size: 1, position, id });
+    const explosion = new Explosion({ particles: 2000, size: 1, position, id });
     explosion.addToScene(this.scene);
     this.explosions.set(id, explosion);
   }
@@ -43,21 +42,18 @@ export class Explosion {
   private points: THREE.Points;
   private particlesPosition: THREE.Vector3[];
   private particlesSpeed: THREE.Vector3[];
-  private timeToLive = 1;
+  private timeToLive;
   private t = 0;
   public readonly id: number;
   private scene: null | THREE.Scene = null;
   constructor({
     particles = 1000,
     size = 1,
-    timeToLive = 1,
+    timeToLive = 2,
     position = new THREE.Vector3(),
     id = 0,
   } = {}) {
-    console.log("makePoints", id);
-    const loader = new THREE.TextureLoader();
-    const texture = loader.load(particlePNG);
-    const { points } = Explosion.makePoints(particles, size, texture);
+    const { points } = Explosion.makePoints(particles, size);
     points.position.set(position.x, position.y, position.z);
     this.id = id;
     this.points = points;
@@ -90,16 +86,27 @@ export class Explosion {
 
   tick(dt: number) {
     const position = this.points.geometry.attributes.position;
+    const color = this.points.geometry.attributes.color;
+    color.needsUpdate = true;
     position.needsUpdate = true;
+
+    this.t += dt;
+    const animationPercent = this.t / this.timeToLive;
+    const maxPositionLength = this.timeToLive * this.v;
+
+    const newColor = new THREE.Color(0xffffff);
     this.particlesPosition.forEach((particle, i) => {
       particle.add(this.particlesSpeed[i].clone().multiplyScalar(dt));
       const vecIndex = i * 3;
       position.array[vecIndex] = particle.x;
       position.array[vecIndex + 1] = particle.y;
       position.array[vecIndex + 2] = particle.z;
+      const posPercent = particle.length() / maxPositionLength;
+      newColor.setHSL(0.16, 1 - posPercent, (1 - posPercent) / 2);
+      color.array[vecIndex] = newColor.r;
+      color.array[vecIndex + 1] = newColor.g;
+      color.array[vecIndex + 2] = newColor.b;
     });
-    this.t += dt;
-    const animationPercent = this.t / this.timeToLive;
     if (this.points.material instanceof THREE.PointsMaterial) {
       this.points.material.opacity = 1 - animationPercent;
     }
@@ -125,7 +132,10 @@ export class Explosion {
 
     const explosionManager = new ExplosionManager(scene);
     document.addEventListener("click", () => {
-      explosionManager.explodeAt(camera.position, 0);
+      explosionManager.explodeAt(
+        new THREE.Vector3(0, 0, 0),
+        Math.random() * 10000
+      );
     });
 
     const light = new THREE.DirectionalLight(0xffffff, 100);
@@ -141,21 +151,20 @@ export class Explosion {
     });
   }
 
-  static makePoints(
-    particles: number = 1000,
-    size: number = 1,
-    texture: THREE.Texture
-  ) {
+  static makePoints(particles: number = 1000, size: number = 1) {
     const geometry = new THREE.BufferGeometry();
     const vertices = new Float32Array(particles * 3);
+    const colors = new Float32Array(particles * 3);
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const pointMaterial = new THREE.PointsMaterial({
       color: 0xffffff,
-      map: texture,
+      // map: texture,
       blending: THREE.NormalBlending,
       size,
       depthTest: true,
       transparent: true,
+      vertexColors: true,
     });
     const points = new THREE.Points(geometry, pointMaterial);
     return { points };
