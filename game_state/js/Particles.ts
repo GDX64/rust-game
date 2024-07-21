@@ -1,7 +1,87 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import particlePNG from "./assets/gradFire.png";
+
+export class ExplosionManager {
+  explosions: Set<Explosion> = new Set();
+  constructor(public scene: THREE.Scene) {}
+
+  explodeAt(position: THREE.Vector3) {
+    const explosion = new Explosion({ particles: 1000, size: 1 });
+    explosion.addToScene(this.scene);
+    this.explosions.add(explosion);
+  }
+
+  tick(dt: number) {
+    this.explosions.forEach((explosion) => {
+      explosion.tick(dt);
+      if (explosion.isFinished) {
+        this.explosions.delete(explosion);
+      }
+    });
+  }
+}
 
 export class Explosion {
+  isFinished = false;
+  private v = 30;
+  private points: THREE.Points;
+  private particlesPosition: THREE.Vector3[];
+  private particlesSpeed: THREE.Vector3[];
+  private timeToLive = 1;
+  private t = 0;
+  private scene: null | THREE.Scene = null;
+  constructor({ particles = 1000, size = 1, timeToLive = 1 } = {}) {
+    const { points } = Explosion.makePoints(particles, size);
+    this.points = points;
+    this.particlesPosition = new Array(particles)
+      .fill(0)
+      .map(() => new THREE.Vector3());
+    this.particlesSpeed = new Array(particles).fill(0).map(() => {
+      return new THREE.Vector3();
+    });
+    this.randomizeSpeed();
+    this.timeToLive = timeToLive;
+  }
+
+  addToScene(scene: THREE.Scene) {
+    this.t = 0;
+    this.scene = scene;
+    scene.add(this.points);
+  }
+
+  private randomizeSpeed() {
+    this.particlesSpeed.forEach((particle) => {
+      particle.set(
+        Math.random() * 1 - 0.5,
+        Math.random() * 1 - 0.5,
+        Math.random() * 1 - 0.5
+      );
+      particle.normalize().multiplyScalar(this.v * Math.random());
+    });
+  }
+
+  tick(dt: number) {
+    const position = this.points.geometry.attributes.position;
+    position.needsUpdate = true;
+    this.particlesPosition.forEach((particle, i) => {
+      particle.add(this.particlesSpeed[i].clone().multiplyScalar(dt));
+      const vecIndex = i * 3;
+      position.array[vecIndex] = particle.x;
+      position.array[vecIndex + 1] = particle.y;
+      position.array[vecIndex + 2] = particle.z;
+    });
+    this.t += dt;
+    const animationPercent = this.t / this.timeToLive;
+    if (this.points.material instanceof THREE.PointsMaterial) {
+      this.points.material.opacity = 1 - animationPercent;
+    }
+    if (this.t > this.timeToLive) {
+      this.scene?.remove(this.points);
+      this.isFinished = true;
+    }
+  }
+
   static testRenderer() {
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -12,25 +92,44 @@ export class Explosion {
     camera.position.set(50, 0, 50);
     const scene = new THREE.Scene();
     const renderer = new THREE.WebGLRenderer();
-    const SphereGeometry = new THREE.BoxGeometry(10, 10, 10);
-    const SphereMaterial = new THREE.MeshPhongMaterial({
-      color: 0xff0000,
-      reflectivity: 0.5,
-      shininess: 100,
-    });
+
     const orbit = new OrbitControls(camera, renderer.domElement);
-    const sun = new THREE.Mesh(SphereGeometry, SphereMaterial);
-    scene.add(sun);
-    scene;
     document.body.appendChild(renderer.domElement);
+
+    const explosionManager = new ExplosionManager(scene);
+    document.addEventListener("click", () => {
+      explosionManager.explodeAt(camera.position);
+    });
+
     const light = new THREE.DirectionalLight(0xffffff, 100);
     light.position.set(50, 50, 50);
     scene.add(light);
     renderer.setClearColor(0xffffaa, 1);
     renderer.setSize(window.innerWidth, window.innerHeight);
+
     renderer.setAnimationLoop(() => {
       renderer.render(scene, camera);
       orbit.update();
+      explosionManager.tick(0.016);
     });
+  }
+
+  static makePoints(particles: number = 1000, size: number = 1) {
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(particlePNG);
+
+    const geometry = new THREE.BufferGeometry();
+    const vertices = new Float32Array(particles * 3);
+    geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
+    const pointMaterial = new THREE.PointsMaterial({
+      color: 0xffffff,
+      map: texture,
+      blending: THREE.NormalBlending,
+      size,
+      depthTest: true,
+      transparent: true,
+    });
+    const points = new THREE.Points(geometry, pointMaterial);
+    return { points };
   }
 }
