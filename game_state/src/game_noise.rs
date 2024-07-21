@@ -1,4 +1,4 @@
-use noise::{Add, Fbm, MultiFractal, NoiseFn, Perlin, Seedable, Simplex};
+use noise::{Fbm, MultiFractal, NoiseFn, Seedable, Simplex};
 use wasm_bindgen::prelude::*;
 
 type NoiseKind = Simplex;
