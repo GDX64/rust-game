@@ -2,21 +2,36 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import particlePNG from "./assets/gradFire.png";
 
+export type ExplosionData = {
+  position: [number, number];
+  id: number;
+};
+
 export class ExplosionManager {
-  explosions: Set<Explosion> = new Set();
+  explosions: Map<number, Explosion> = new Map();
   constructor(public scene: THREE.Scene) {}
 
-  explodeAt(position: THREE.Vector3) {
-    const explosion = new Explosion({ particles: 1000, size: 1 });
+  explodeData(data: ExplosionData) {
+    this.explodeAt(
+      new THREE.Vector3(data.position[0], data.position[1], 0),
+      data.id
+    );
+  }
+
+  explodeAt(position: THREE.Vector3, id: number) {
+    if (this.explosions.has(id)) {
+      return;
+    }
+    const explosion = new Explosion({ particles: 1000, size: 1, position, id });
     explosion.addToScene(this.scene);
-    this.explosions.add(explosion);
+    this.explosions.set(id, explosion);
   }
 
   tick(dt: number) {
     this.explosions.forEach((explosion) => {
       explosion.tick(dt);
       if (explosion.isFinished) {
-        this.explosions.delete(explosion);
+        this.explosions.delete(explosion.id);
       }
     });
   }
@@ -30,9 +45,18 @@ export class Explosion {
   private particlesSpeed: THREE.Vector3[];
   private timeToLive = 1;
   private t = 0;
+  public readonly id: number;
   private scene: null | THREE.Scene = null;
-  constructor({ particles = 1000, size = 1, timeToLive = 1 } = {}) {
+  constructor({
+    particles = 1000,
+    size = 1,
+    timeToLive = 1,
+    position = new THREE.Vector3(),
+    id = 0,
+  } = {}) {
     const { points } = Explosion.makePoints(particles, size);
+    points.position.set(position.x, position.y, position.z);
+    this.id = id;
     this.points = points;
     this.particlesPosition = new Array(particles)
       .fill(0)
@@ -98,7 +122,7 @@ export class Explosion {
 
     const explosionManager = new ExplosionManager(scene);
     document.addEventListener("click", () => {
-      explosionManager.explodeAt(camera.position);
+      explosionManager.explodeAt(camera.position, 0);
     });
 
     const light = new THREE.DirectionalLight(0xffffff, 100);

@@ -56,6 +56,16 @@ impl GameWasmState {
         );
     }
 
+    pub fn get_all_explosions(&self) -> JsValue {
+        let explosions = self
+            .running_mode
+            .server_state()
+            .explosions
+            .values()
+            .collect::<Vec<_>>();
+        serde_wasm_bindgen::to_value(&explosions).unwrap_or_default()
+    }
+
     pub fn start_local_server(&mut self) {
         self.running_mode = RunningMode::start_local();
         self.player = Player::new(self.running_mode.id());

@@ -2,6 +2,7 @@ import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import boat from "./assets/ship.glb?url";
+import { ExplosionData, ExplosionManager } from "./Particles";
 
 type Ship3D = THREE.Group<THREE.Object3DEventMap>;
 type ShipData = {
@@ -41,6 +42,7 @@ type Ship = {
 
 export class ShipsManager {
   boatModel: Ship3D | null = null;
+  explosionManager: ExplosionManager;
   bulletModel: THREE.InstancedMesh;
   ships: Map<string, Ship> = new Map();
   constructor(
@@ -59,8 +61,11 @@ export class ShipsManager {
       this.boatModel = obj;
     });
 
-    const geometry = new THREE.SphereGeometry(0.5, 16, 16);
-    const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const geometry = new THREE.SphereGeometry(1, 16, 16);
+    const material = new THREE.MeshLambertMaterial({
+      color: 0xffff00,
+      side: THREE.DoubleSide,
+    });
     // const referenceSphere = new THREE.Mesh(
     //   new THREE.SphereGeometry(10, 16, 16),
     //   material
@@ -68,6 +73,7 @@ export class ShipsManager {
     // this.scene.add(referenceSphere);
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 100);
     this.scene.add(this.bulletModel);
+    this.explosionManager = new ExplosionManager(scene);
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "s") {
@@ -166,6 +172,14 @@ export class ShipsManager {
     });
     this.ships.forEach((ship) => {
       ship.visitedThisFrame = false;
+    });
+
+    //==== explosions
+
+    const explosions: ExplosionData[] = this.game.get_all_explosions();
+    this.explosionManager.tick(0.016);
+    explosions.forEach((explosion) => {
+      this.explosionManager.explodeData(explosion);
     });
   }
 }

@@ -6,7 +6,7 @@ use crate::{
 use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{borrow::BorrowMut, collections::HashMap};
 
 const BULLET_SPEED: f64 = 100.0;
 const GRAVITY: f64 = 9.81;
@@ -34,6 +34,7 @@ pub struct BroadCastState {
     players: HashMap<u64, PlayerState>,
     ships: HashMap<ShipKey, ShipState>,
     bullets: HashMap<(u64, u64), Bullet>,
+    explosions: HashMap<u64, Explosion>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +48,7 @@ impl BroadCastState {
             players: HashMap::new(),
             ships: HashMap::new(),
             bullets: HashMap::new(),
+            explosions: HashMap::new(),
         }
     }
 
@@ -202,14 +204,23 @@ impl CanGo for (f64, TileKind) {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Explosion {
+    pub position: (f64, f64),
+    pub id: u64,
+    pub time_created: f64,
+}
+
 pub type GameMap = WorldGrid<(f64, TileKind)>;
 
 pub struct ServerState {
     pub players: HashMap<u64, PlayerState>,
+    pub explosions: HashMap<u64, Explosion>,
     pub game_map: GameMap,
     pub world_gen: world_gen::WorldGen,
     pub bullets: HashMap<(u64, u64), Bullet>,
     pub ship_collection: ShipCollection,
+    pub current_time: f64,
     artifact_id: u64,
 }
 
@@ -218,8 +229,10 @@ impl ServerState {
         let world_gen = world_gen::WorldGen::new(1);
         let game_map = world_gen.generate_grid(10_000.0);
         Self {
+            current_time: 0.0,
             artifact_id: 0,
             world_gen,
+            explosions: HashMap::new(),
             game_map,
             players: HashMap::new(),
             bullets: HashMap::new(),
@@ -253,11 +266,14 @@ impl ServerState {
             players: self.players.clone(),
             ships: self.ship_collection.clone(),
             bullets: self.bullets.clone(),
+            explosions: self.explosions.clone(),
         }
     }
 
     pub fn tick(&mut self, dt: f64) {
+        self.current_time += dt;
         let mut ships_hit: Vec<ShipKey> = vec![];
+        let explosions = self.explosions.borrow_mut();
 
         self.bullets.retain(|_key, bullet| {
             bullet.evolve(dt);
@@ -277,8 +293,16 @@ impl ServerState {
                     ships_hit.push(*id);
                     info!("Ship hit: {:?}", id);
                 }
-                return false;
             }
+
+            explosions.insert(
+                self.artifact_id,
+                Explosion {
+                    position: (pos.x, pos.y),
+                    id: self.artifact_id,
+                    time_created: self.current_time,
+                },
+            );
 
             return false;
         });
@@ -337,6 +361,7 @@ impl ServerState {
                 self.ship_collection = state.ships;
                 self.players = state.players;
                 self.bullets = state.bullets;
+                self.explosions = state.explosions;
             }
             ClientMessage::CreateShip { ship } => {
                 self.ship_collection
