@@ -9,7 +9,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
-
+import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 export class Render3D {
   gui = new GUI();
   state = {
@@ -144,7 +144,6 @@ export class Render3D {
     setInterval(() => this.saveState(), 1_000);
     const camera = this.camera;
     const scene = this.scene;
-    scene.add(this.pathLine);
 
     const { waterMaterial, waterMesh } = Water.startWater(this.PLANE_WIDTH);
 
@@ -177,15 +176,14 @@ export class Render3D {
     camera.lookAt(0, 5, 0);
     camera.up.set(0, 0, 1);
 
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setClearColor(this.state.skyColor, 1);
+    const renderer = new WebGPURenderer();
+    renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     this.gui.addColor(this.state, "skyColor").onChange(() => {
-      renderer.setClearColor(this.state.skyColor, 1);
+      renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     const orbit = new OrbitControls(camera, renderer.domElement);
-    renderer.domElement.style.backgroundColor = "skyblue";
 
     const controls = new TransformControls(camera, renderer.domElement);
     scene.add(controls);
@@ -195,10 +193,19 @@ export class Render3D {
     controls.addEventListener("mouseUp", () => {
       orbit.enabled = true;
     });
-
     this.makeSun(scene);
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+      this.gameState.tick();
+      this.shipsManager.tick();
+    });
+
+    window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
+  }
+
+  private addPostProcessing(renderer: THREE.WebGLRenderer) {
     const composer = new EffectComposer(renderer);
-    const renderPass = new RenderPass(scene, camera);
+    const renderPass = new RenderPass(this.scene, this.camera);
     renderer.setPixelRatio(window.devicePixelRatio);
     composer.addPass(renderPass);
 
@@ -226,8 +233,6 @@ export class Render3D {
       this.shipsManager.tick();
     });
     this.addBloomControls(bloomPass);
-
-    window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
   }
 
   private makeSun(scene: THREE.Scene) {

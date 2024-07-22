@@ -61,9 +61,10 @@ export class ShipsManager {
     });
 
     const geometry = new THREE.SphereGeometry(1, 16, 16);
-    const material = new THREE.MeshLambertMaterial({
+    const material = new THREE.MeshPhongMaterial({
       color: 0xffff00,
-      side: THREE.DoubleSide,
+      emissive: 0xffff00,
+      emissiveIntensity: 0.5,
     });
     // const referenceSphere = new THREE.Mesh(
     //   new THREE.SphereGeometry(10, 16, 16),
@@ -71,6 +72,7 @@ export class ShipsManager {
     // );
     // this.scene.add(referenceSphere);
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 100);
+    this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
 
