@@ -45,12 +45,12 @@ impl ShipState {
     }
 
     pub fn shoot_at(&mut self, current_time: f64, target: (f64, f64)) -> Option<Bullet> {
-        let cannon = self.find_available_cannon(current_time)?;
+        let cannon_index = self.find_available_cannon(current_time)?;
         let position: V2D = self.position.into();
         let ship_orientation = V2D::from(self.orientation);
-        let cannon_multiplier = (cannon - 1) as f64 * SHIP_SIZE / 2.0;
+        let cannon_multiplier = (cannon_index as i32 - 1) as f64 * SHIP_SIZE / 2.0;
         let cannon_pos = position + ship_orientation * cannon_multiplier;
-        self.mark_shoot_time(cannon, current_time);
+        self.mark_shoot_time(cannon_index, current_time);
 
         let bullet = Bullet {
             bullet_id: 0,

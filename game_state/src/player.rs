@@ -100,7 +100,7 @@ impl Player {
                 orientation: (1.0, 0.0),
                 player_id: self.id,
                 position: (x, y),
-                cannon_times: [0.0; 3],
+                cannon_times: Default::default(),
             },
         };
         if let Err(err) = self.actions.send(msg).context(file!()) {

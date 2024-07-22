@@ -73,7 +73,7 @@ pub enum RunningMode {
 impl RunningMode {
     pub fn server_state(&self) -> &ServerState {
         match self {
-            RunningMode::Local { ref game, .. } => &game.game_state,
+            RunningMode::Local { ref state, .. } => state,
             RunningMode::Online(data) => &data.game_state,
         }
     }
@@ -124,14 +124,12 @@ impl RunningMode {
         }
     }
 
-    pub fn send_message(&mut self, msg: ClientMessage) {
+    pub fn send_game_message(&mut self, msg: GameMessage) {
         match self {
             RunningMode::Local { ref mut game, .. } => {
-                let msg = GameMessage::ClientMessage(msg);
                 game.on_message(msg.to_bytes());
             }
             RunningMode::Online(data) => {
-                let msg = GameMessage::ClientMessage(msg);
                 data.send(msg);
             }
         }

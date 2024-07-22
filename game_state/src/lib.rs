@@ -87,7 +87,8 @@ impl GameWasmState {
     }
 
     fn send_message(&mut self, msg: ClientMessage) {
-        self.running_mode.send_message(msg);
+        self.running_mode
+            .send_game_message(GameMessage::ClientMessage(msg));
     }
 
     pub fn tile_size(&self) -> f64 {
@@ -101,6 +102,10 @@ impl GameWasmState {
     pub fn action_move_ship(&mut self, id: f64, x: f64, y: f64) {
         self.player
             .move_ship(&self.running_mode.server_state(), id as u64, x, y);
+    }
+
+    pub fn add_bot(&mut self) {
+        self.running_mode.send_game_message(GameMessage::AddBot)
     }
 
     pub fn get_all_ships(&self) -> JsValue {

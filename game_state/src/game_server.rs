@@ -6,6 +6,7 @@ use std::collections::HashMap;
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
     ClientMessage(ClientMessage),
+    AddBot,
     MyID(u64),
     None,
 }
@@ -104,6 +105,7 @@ impl GameServer {
         let msg = GameMessage::from_bytes(&msg);
         match msg {
             GameMessage::ClientMessage(msg) => self.game_state.on_message(msg),
+            GameMessage::AddBot => self.add_bot(),
             _ => {}
         }
     }
@@ -117,7 +119,6 @@ impl GameServer {
         self.game_state.on_message(msg.clone());
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
-        self.add_bot();
         return id;
     }
 
@@ -149,8 +150,8 @@ impl GameServer {
 
             if bot.number_of_ships(&self.game_state) < 5 {
                 for _ in 0..10 {
-                    let x = self.rand_gen.f64() * 1000.0;
-                    let y = self.rand_gen.f64() * 1000.0;
+                    let x = self.rand_gen.f64() * 1000.0 - 500.0;
+                    let y = self.rand_gen.f64() * 1000.0 - 500.0;
                     if self.game_state.game_map.is_allowed_place(x, y) {
                         bot.create_ship(x, y)
                     }
