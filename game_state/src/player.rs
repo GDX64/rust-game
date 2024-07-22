@@ -8,6 +8,8 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
+const BOAT_ACC: f64 = 20.0;
+
 #[derive(Debug)]
 pub struct PlayerShip {
     path: Vec<V2D>,
@@ -147,7 +149,7 @@ impl Player {
                             continue;
                         }
                     };
-                    let acceleration = direction.normalize() * 2.0;
+                    let acceleration = direction.normalize() * BOAT_ACC;
                     let speed: V2D = ship.speed.into();
                     self.actions
                         .send(ClientMessage::MoveShip {
