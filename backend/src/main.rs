@@ -81,7 +81,6 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
                 let msg = receive.next().await;
                 match msg {
                     Some(Ok(Message::Binary(msg))) => {
-                        println!("player sent message: {:?}", msg);
                         state.get_game_server().await.on_message(msg);
                     }
                     _ => {

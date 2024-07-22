@@ -71,7 +71,7 @@ export class ShipsManager {
     //   material
     // );
     // this.scene.add(referenceSphere);
-    this.bulletModel = new THREE.InstancedMesh(geometry, material, 100);
+    this.bulletModel = new THREE.InstancedMesh(geometry, material, 500);
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);

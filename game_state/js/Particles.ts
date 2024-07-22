@@ -21,7 +21,12 @@ export class ExplosionManager {
     if (this.explosions.has(id)) {
       return;
     }
-    const explosion = new Explosion({ particles: 2000, size: 1, position, id });
+    const explosion = new Explosion({
+      particles: 1_000,
+      size: 1,
+      position,
+      id,
+    });
     explosion.addToScene(this.scene);
     this.explosions.set(id, explosion);
   }

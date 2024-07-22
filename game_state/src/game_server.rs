@@ -75,6 +75,9 @@ impl GameServer {
     }
 
     fn add_bot(&mut self) {
+        if self.bots.len() > 2 {
+            return;
+        }
         let bot = Player::new(self.next_player_id());
         self.game_state
             .on_message(ClientMessage::CreatePlayer { id: bot.id });
