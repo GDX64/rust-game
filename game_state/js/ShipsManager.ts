@@ -11,6 +11,7 @@ type ShipData = {
   position: [number, number];
   speed: [number, number];
   acceleration: [number, number];
+  orientation: [number, number];
 };
 
 // type Diff<K, T> =
@@ -119,7 +120,7 @@ export class ShipsManager {
     }
   }
 
-  update() {
+  tick() {
     const ships: ShipData[] = this.game.get_all_ships();
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.bulletModel.count = bullets.length;
@@ -142,7 +143,7 @@ export class ShipsManager {
         existing.visitedThisFrame = true;
         if (ship.speed[0] !== 0 || ship.speed[1] !== 0) {
           const xyAngle =
-            Math.atan2(ship.speed[1], ship.speed[0]) + Math.PI / 2;
+            Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
           existing.model.rotation.set(Math.PI / 2, 0, xyAngle, "ZXY");
         }
       } else if (this.boatModel) {

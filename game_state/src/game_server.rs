@@ -1,6 +1,5 @@
 use crate::{player::Player, ClientMessage, ServerState};
 use futures::channel::mpsc::Sender;
-use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -76,6 +75,8 @@ impl GameServer {
 
     fn add_bot(&mut self) {
         let bot = Player::new(self.next_player_id());
+        self.game_state
+            .on_message(ClientMessage::CreatePlayer { id: bot.id });
         self.bots.push(bot);
     }
 
@@ -129,7 +130,24 @@ impl GameServer {
     fn handle_bots(&mut self) {
         self.bots.iter_mut().for_each(|bot| {
             bot.tick(&self.game_state);
-            if !bot.has_ships(&self.game_state) {
+
+            let mut enemies = self
+                .game_state
+                .ship_collection
+                .values()
+                .filter(|ship| ship.player_id != bot.id);
+
+            bot.player_ships(&self.game_state).for_each(|ship| {
+                let cannon = ship.find_available_cannon(self.game_state.current_time);
+                if cannon.is_none() {
+                    return;
+                };
+                if let Some(enemy) = enemies.next() {
+                    bot.shoot_at(ship.id, enemy.position.0, enemy.position.1);
+                };
+            });
+
+            if bot.number_of_ships(&self.game_state) < 5 {
                 for _ in 0..10 {
                     let x = self.rand_gen.f64() * 1000.0;
                     let y = self.rand_gen.f64() * 1000.0;

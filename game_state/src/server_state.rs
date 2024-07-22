@@ -13,6 +13,8 @@ const GRAVITY: f64 = 9.81;
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
+const CANON_RELOAD_TIME: f64 = 5.0;
+const SHIP_SIZE: f64 = 10.0;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerState {
@@ -25,9 +27,42 @@ pub struct PlayerState {
 pub struct ShipState {
     pub position: (f64, f64),
     pub speed: (f64, f64),
+    pub orientation: (f64, f64),
     pub acceleration: (f64, f64),
     pub id: u64,
     pub player_id: u64,
+    pub cannon_times: [f64; 3],
+}
+
+impl ShipState {
+    pub fn find_available_cannon(&self, current_time: f64) -> Option<usize> {
+        for (i, time) in self.cannon_times.iter().enumerate() {
+            if current_time - time > CANON_RELOAD_TIME {
+                return Some(i);
+            }
+        }
+        None
+    }
+
+    pub fn shoot_at(&mut self, current_time: f64, target: (f64, f64)) -> Option<Bullet> {
+        let cannon = self.find_available_cannon(current_time)?;
+        let position: V2D = self.position.into();
+        let ship_orientation = V2D::from(self.orientation);
+        let cannon_multiplier = (cannon - 1) as f64 * SHIP_SIZE / 2.0;
+        let cannon_pos = position + ship_orientation * cannon_multiplier;
+        self.mark_shoot_time(cannon, current_time);
+
+        let bullet = Bullet {
+            bullet_id: 0,
+            player_id: self.player_id,
+            ..Bullet::from_target(cannon_pos.into(), target.into())
+        };
+        return Some(bullet);
+    }
+
+    pub fn mark_shoot_time(&mut self, cannon: usize, current_time: f64) {
+        self.cannon_times[cannon] = current_time;
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -36,6 +71,8 @@ pub struct BroadCastState {
     ships: HashMap<ShipKey, ShipState>,
     bullets: HashMap<(u64, u64), Bullet>,
     explosions: HashMap<u64, Explosion>,
+    artifact_id: u64,
+    current_time: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,6 +87,8 @@ impl BroadCastState {
             ships: HashMap::new(),
             bullets: HashMap::new(),
             explosions: HashMap::new(),
+            artifact_id: 0,
+            current_time: 0.0,
         }
     }
 
@@ -268,6 +307,8 @@ impl ServerState {
             ships: self.ship_collection.clone(),
             bullets: self.bullets.clone(),
             explosions: self.explosions.clone(),
+            artifact_id: self.artifact_id,
+            current_time: self.current_time,
         }
     }
 
@@ -327,6 +368,9 @@ impl ServerState {
             } else {
                 speed
             };
+            if speed.magnitude() > 0.001 {
+                ship.orientation = speed.normalize().into();
+            }
             let position = position + speed * dt;
             ship.position = position.into();
             ship.speed = speed.into();
@@ -372,8 +416,12 @@ impl ServerState {
                 self.players = state.players;
                 self.bullets = state.bullets;
                 self.explosions = state.explosions;
+                self.artifact_id = state.artifact_id;
+                self.current_time = state.current_time;
             }
-            ClientMessage::CreateShip { ship } => {
+            ClientMessage::CreateShip { mut ship } => {
+                ship.id = self.next_artifact_id();
+                info!("Creating ship: {:?}", ship);
                 self.ship_collection
                     .insert(ShipKey::new(ship.id, ship.player_id), ship);
             }
@@ -395,22 +443,15 @@ impl ServerState {
                 player_id,
                 target,
             } => {
-                let ship = self.ship_collection.get(&ShipKey {
-                    id: ship_id,
-                    player_id,
-                });
-                let position = if let Some(ship) = ship {
-                    ship.position.clone()
-                } else {
-                    return;
-                };
-                let bullet = Bullet {
-                    bullet_id: self.next_artifact_id(),
-                    player_id,
-                    ..Bullet::from_target(position.into(), target.into())
-                };
-                self.bullets
-                    .insert((bullet.player_id, bullet.bullet_id), bullet);
+                let bullet = self
+                    .ship_collection
+                    .get_mut(&ShipKey::new(ship_id, player_id))
+                    .and_then(|ship| ship.shoot_at(self.current_time, target));
+                if let Some(mut bullet) = bullet {
+                    bullet.bullet_id = self.next_artifact_id();
+                    self.bullets
+                        .insert((bullet.player_id, bullet.bullet_id), bullet);
+                }
             }
             ClientMessage::None => {}
         }

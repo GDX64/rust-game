@@ -1,6 +1,6 @@
 use anyhow::Context;
 use cgmath::InnerSpace;
-use log::error;
+use log::{error, info};
 
 use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
@@ -17,7 +17,6 @@ pub struct PlayerShip {
 
 pub struct Player {
     pub id: u64,
-    ship_id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
     actions: Sender<ClientMessage>,
     actions_buffer: Receiver<ClientMessage>,
@@ -31,7 +30,6 @@ impl Player {
             moving_ships: HashMap::new(),
             actions: sender,
             actions_buffer: receiver,
-            ship_id: 0,
         }
     }
 
@@ -44,7 +42,7 @@ impl Player {
     ) -> Option<()> {
         let server_ship = game_state
             .ship_collection
-            .get(&ShipKey::new(self.id, ship_id))?;
+            .get(&ShipKey::new(ship_id, self.id))?;
         let path = game_state
             .game_map
             .find_path(server_ship.position, (x, y))?;
@@ -62,7 +60,7 @@ impl Player {
         Some(())
     }
 
-    fn shoot_at(&self, ship_id: u64, x: f64, y: f64) {
+    pub fn shoot_at(&self, ship_id: u64, x: f64, y: f64) {
         let msg = ClientMessage::Shoot {
             ship_id,
             player_id: self.id,
@@ -73,25 +71,34 @@ impl Player {
         };
     }
 
-    pub fn shoot_with_all_ships(&self, target: &V2D, _camera: &V2D, game_state: &ServerState) {
-        self.moving_ships.iter().for_each(|(_, ship)| {
+    pub fn shoot_with_all_ships(&self, target: &V2D, game_state: &ServerState) {
+        self.player_ships(game_state).into_iter().for_each(|ship| {
             if let Some(ship) = game_state
                 .ship_collection
-                .get(&ShipKey::new(self.id, ship.id))
+                .get(&ShipKey::new(ship.id, self.id))
             {
                 self.shoot_at(ship.id, target.x, target.y);
             };
         });
     }
 
+    pub fn player_ships<'a>(&self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
+        let id = self.id;
+        game.ship_collection
+            .values()
+            .filter(move |ship| ship.player_id == id)
+    }
+
     pub fn create_ship(&mut self, x: f64, y: f64) {
         let msg = ClientMessage::CreateShip {
             ship: ShipState {
-                id: self.next_id(),
+                id: 0,
                 acceleration: (0.0, 0.0),
                 speed: (0.0, 0.0),
+                orientation: (1.0, 0.0),
                 player_id: self.id,
                 position: (x, y),
+                cannon_times: [0.0; 3],
             },
         };
         if let Err(err) = self.actions.send(msg).context(file!()) {
@@ -103,16 +110,8 @@ impl Player {
         self.actions_buffer.try_recv().ok()
     }
 
-    pub fn has_ships(&self, state: &ServerState) -> bool {
-        return state
-            .ship_collection
-            .iter()
-            .any(|(key, _)| key.player_id == self.id);
-    }
-
-    fn next_id(&mut self) -> u64 {
-        self.ship_id += 1;
-        self.ship_id
+    pub fn number_of_ships(&self, state: &ServerState) -> usize {
+        return self.player_ships(state).count();
     }
 
     pub fn tick(&mut self, game_state: &ServerState) {
@@ -120,7 +119,7 @@ impl Player {
             let path = &mut player_ship.path;
             let ship = game_state
                 .ship_collection
-                .get(&ShipKey::new(self.id, player_ship.id));
+                .get(&ShipKey::new(player_ship.id, self.id));
             let ship = if let Some(ship) = ship {
                 ship
             } else {
@@ -165,5 +164,7 @@ impl Player {
                 }
             }
         }
+
+        self.moving_ships.retain(|_, ship| !ship.destroyed);
     }
 }

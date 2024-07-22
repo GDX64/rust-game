@@ -223,7 +223,7 @@ export class Render3D {
     renderer.setAnimationLoop(() => {
       composer.render();
       this.gameState.tick();
-      this.shipsManager.update();
+      this.shipsManager.tick();
     });
     this.addBloomControls(bloomPass);
 
