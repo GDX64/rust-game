@@ -32,6 +32,7 @@ type Bullet = {
   position: [number, number, number];
   speed: [number, number, number];
   id: number;
+  player_id: number;
 };
 
 export class ShipsManager {
@@ -47,9 +48,8 @@ export class ShipsManager {
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
     const material = new THREE.MeshPhongMaterial({
-      color: 0xffff00,
-      emissive: 0xffff00,
-      emissiveIntensity: 0.5,
+      color: 0xffffff,
+      shininess: 80,
     });
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 500);
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -136,6 +136,9 @@ export class ShipsManager {
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.bulletModel.count = bullets.length;
     this.bulletModel.instanceMatrix.needsUpdate = true;
+    if (this.bulletModel.instanceColor) {
+      this.bulletModel.instanceColor.needsUpdate = true;
+    }
     const matrix = new THREE.Matrix4();
     for (let i = 0; i < bullets.length; i++) {
       matrix.setPosition(
@@ -143,6 +146,7 @@ export class ShipsManager {
         bullets[i].position[1],
         bullets[i].position[2]
       );
+      this.bulletModel.setColorAt(i, this.playerColor(bullets[i].player_id));
       this.bulletModel.setMatrixAt(i, matrix);
     }
 

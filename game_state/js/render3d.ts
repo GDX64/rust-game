@@ -138,6 +138,9 @@ export class Render3D {
     // await this.startRemoteServer();
     this.gameState.add_bot();
     this.gameState.add_bot();
+    this.gameState.add_bot();
+    this.gameState.add_bot();
+    this.gameState.add_bot();
   }
 
   async init() {
@@ -196,11 +199,7 @@ export class Render3D {
       orbit.enabled = true;
     });
     this.makeSun(scene);
-    renderer.setAnimationLoop(() => {
-      renderer.render(scene, camera);
-      this.gameState.tick();
-      this.shipsManager.tick();
-    });
+    this.addPostProcessing(renderer);
 
     window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
   }

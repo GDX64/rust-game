@@ -3,6 +3,8 @@ use futures::channel::mpsc::Sender;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+const MAX_BOTS: usize = 5;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
     ClientMessage(ClientMessage),
@@ -75,7 +77,7 @@ impl GameServer {
     }
 
     fn add_bot(&mut self) {
-        if self.bots.len() > 2 {
+        if self.bots.len() > MAX_BOTS {
             return;
         }
         let bot = Player::new(self.next_player_id());
