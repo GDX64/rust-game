@@ -1,10 +1,9 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import boat from "./assets/ship.glb?url";
+import boat from "./assets/boat.glb?url";
 import { ExplosionData, ExplosionManager } from "./Particles";
 
-type Ship3D = THREE.Group<THREE.Object3DEventMap>;
 type ShipData = {
   player_id: number;
   id: number;
@@ -35,42 +34,23 @@ type Bullet = {
   id: number;
 };
 
-type Ship = {
-  data: ShipData;
-  model: Ship3D;
-  visitedThisFrame: boolean;
-};
-
 export class ShipsManager {
-  boatModel: Ship3D | null = null;
+  boatMesh: THREE.InstancedMesh | null = null;
   explosionManager: ExplosionManager;
   bulletModel: THREE.InstancedMesh;
-  ships: Map<string, Ship> = new Map();
+  ships: ShipData[] = [];
   constructor(
     private game: GameWasmState,
     private scale: number,
     private scene: THREE.Scene,
     private camera: THREE.Camera
   ) {
-    const loader = new GLTFLoader();
-    loader.load(boat, (_obj) => {
-      const obj = _obj.scene;
-      obj.scale.set(this.scale, this.scale, this.scale);
-      obj.rotation.set(Math.PI / 2, 0, 0);
-      this.boatModel = obj;
-    });
-
     const geometry = new THREE.SphereGeometry(1, 16, 16);
     const material = new THREE.MeshPhongMaterial({
       color: 0xffff00,
       emissive: 0xffff00,
       emissiveIntensity: 0.5,
     });
-    // const referenceSphere = new THREE.Mesh(
-    //   new THREE.SphereGeometry(10, 16, 16),
-    //   material
-    // );
-    // this.scene.add(referenceSphere);
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 500);
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
@@ -80,6 +60,34 @@ export class ShipsManager {
       if (event.key === "s") {
       }
     });
+    this.loadModel();
+  }
+
+  async loadModel() {
+    const loader = new GLTFLoader();
+    const obj = await new Promise<THREE.Group<THREE.Object3DEventMap>>(
+      (resolve) =>
+        loader.load(boat, (_obj) => {
+          resolve(_obj.scene);
+        })
+    );
+    const material = new THREE.MeshPhongMaterial({
+      color: 0xff5555,
+      emissive: 0x0000ff,
+      emissiveIntensity: 0.5,
+      shininess: 20,
+    });
+
+    const mesh = obj.children[0] as THREE.Mesh;
+
+    mesh.geometry.scale(200, 200, 200);
+    mesh.geometry.translate(0, 0, 4);
+    const instancedMesh = new THREE.InstancedMesh(mesh.geometry, material, 500);
+    // obj.scale.set(this.scale, this.scale, this.scale);
+    // obj.rotation.set(Math.PI / 2, 0, 0);
+    instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.boatMesh = instancedMesh;
+    this.scene.add(instancedMesh);
   }
 
   createShip(x: number, y: number) {
@@ -97,8 +105,8 @@ export class ShipsManager {
 
   *myShips() {
     const myID = this.game.my_id();
-    for (const ship of this.ships.values()) {
-      if (ship.data.player_id === myID) {
+    for (const ship of this.ships) {
+      if (ship.player_id === myID) {
         yield ship;
       }
     }
@@ -116,16 +124,20 @@ export class ShipsManager {
   moveShip(x: number, y: number) {
     const first = this.myShips().next().value;
     if (first) {
-      this.game.action_move_ship(first.data.id, x, y);
+      this.game.action_move_ship(first.id, x, y);
     } else {
       this.createShip(0, 0);
     }
   }
 
   tick() {
+    if (!this.boatMesh) {
+      return;
+    }
     const ships: ShipData[] = this.game.get_all_ships();
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.bulletModel.count = bullets.length;
+    this.bulletModel.instanceMatrix.needsUpdate = true;
     const matrix = new THREE.Matrix4();
     for (let i = 0; i < bullets.length; i++) {
       matrix.setPosition(
@@ -135,39 +147,16 @@ export class ShipsManager {
       );
       this.bulletModel.setMatrixAt(i, matrix);
     }
-    this.bulletModel.instanceMatrix.needsUpdate = true;
 
-    ships.forEach((ship) => {
-      const key = `${ship.player_id}_${ship.id}`;
-      const existing = this.ships.get(key);
-      if (existing) {
-        existing.model.position.set(ship.position[0], ship.position[1], 0);
-        existing.visitedThisFrame = true;
-        if (ship.speed[0] !== 0 || ship.speed[1] !== 0) {
-          const xyAngle =
-            Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
-          existing.model.rotation.set(Math.PI / 2, 0, xyAngle, "ZXY");
-        }
-      } else if (this.boatModel) {
-        const newShip = this.boatModel.clone();
-        newShip.position.set(ship.position[0], ship.position[1], 0);
-        this.ships.set(key, {
-          model: newShip,
-          data: ship,
-          visitedThisFrame: true,
-        });
-        this.scene.add(newShip);
-      }
-    });
-    this.ships.forEach((ship, key) => {
-      if (!ship.visitedThisFrame) {
-        this.scene.remove(ship.model);
-        this.ships.delete(key);
-      }
-    });
-    this.ships.forEach((ship) => {
-      ship.visitedThisFrame = false;
-    });
+    this.boatMesh.count = ships.length;
+    this.boatMesh.instanceMatrix.needsUpdate = true;
+    for (let i = 0; i < ships.length; i++) {
+      const ship = ships[i];
+      calcBoatAngle(ship, matrix);
+      matrix.setPosition(ship.position[0], ship.position[1], 0);
+      this.boatMesh.setMatrixAt(i, matrix);
+    }
+    this.ships = ships;
 
     //==== explosions
 
@@ -177,4 +166,10 @@ export class ShipsManager {
       this.explosionManager.explodeData(explosion);
     });
   }
+}
+
+function calcBoatAngle(ship: ShipData, matrix: THREE.Matrix4) {
+  const xyAngle =
+    Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
+  matrix.makeRotationZ(xyAngle);
 }

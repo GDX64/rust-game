@@ -9,7 +9,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
-import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
+// import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 export class Render3D {
   gui = new GUI();
   state = {
@@ -178,7 +178,7 @@ export class Render3D {
     camera.lookAt(0, 5, 0);
     camera.up.set(0, 0, 1);
 
-    const renderer = new WebGPURenderer();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     this.gui.addColor(this.state, "skyColor").onChange(() => {
       renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
