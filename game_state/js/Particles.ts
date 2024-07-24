@@ -91,26 +91,17 @@ export class Explosion {
 
   tick(dt: number) {
     const position = this.points.geometry.attributes.position;
-    const color = this.points.geometry.attributes.color;
-    color.needsUpdate = true;
     position.needsUpdate = true;
 
     this.t += dt;
     const animationPercent = this.t / this.timeToLive;
-    const maxPositionLength = this.timeToLive * this.v;
 
-    const newColor = new THREE.Color(0xffffff);
     this.particlesPosition.forEach((particle, i) => {
       particle.add(this.particlesSpeed[i].clone().multiplyScalar(dt));
       const vecIndex = i * 3;
       position.array[vecIndex] = particle.x;
       position.array[vecIndex + 1] = particle.y;
       position.array[vecIndex + 2] = particle.z;
-      const posPercent = particle.length() / maxPositionLength;
-      newColor.setHSL(0.16, 1 - posPercent, (1 - posPercent) / 2);
-      color.array[vecIndex] = newColor.r;
-      color.array[vecIndex + 1] = newColor.g;
-      color.array[vecIndex + 2] = newColor.b;
     });
     if (this.points.material instanceof THREE.PointsMaterial) {
       this.points.material.opacity = 1 - animationPercent;
@@ -159,17 +150,18 @@ export class Explosion {
   static makePoints(particles: number = 1000, size: number = 1) {
     const geometry = new THREE.BufferGeometry();
     const vertices = new Float32Array(particles * 3);
-    const colors = new Float32Array(particles * 3);
+    // const colors = new Float32Array(particles * 3);
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
-    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    // geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const pointMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
+      color: 0xffff00,
       // map: texture,
       blending: THREE.NormalBlending,
       size,
       depthTest: true,
       transparent: true,
-      vertexColors: true,
+      opacity: 1,
+      // vertexColors: true,
     });
     const points = new THREE.Points(geometry, pointMaterial);
     return { points };
