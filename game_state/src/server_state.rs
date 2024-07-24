@@ -341,7 +341,6 @@ impl ServerState {
                 let distance = (ship_pos - pos).magnitude();
                 if distance < BLAST_RADIUS {
                     ships_hit.push(*id);
-                    info!("Ship hit: {:?}", id);
                 }
             }
 

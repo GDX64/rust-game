@@ -50,6 +50,7 @@ export class ShipsManager {
     const material = new THREE.MeshPhongMaterial({
       color: 0xffffff,
       shininess: 80,
+      emissiveIntensity: 10,
     });
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 500);
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);

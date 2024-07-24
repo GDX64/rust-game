@@ -1,5 +1,6 @@
 use crate::{player::Player, ClientMessage, ServerState};
 use futures::channel::mpsc::Sender;
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -129,6 +130,11 @@ impl GameServer {
 
     pub fn disconnect_player(&mut self, id: u64) {
         self.players.remove(&id);
+        info!(
+            "Player {} disconnected, total players {}",
+            id,
+            self.players.len()
+        );
         let msg = ClientMessage::RemovePlayer { id };
         self.game_state.on_message(msg);
     }
@@ -169,6 +175,10 @@ impl GameServer {
     }
 
     pub fn tick(&mut self, dt: f64) {
+        if self.players.is_empty() {
+            // no players, no need to tick
+            return;
+        }
         self.handle_bots();
         self.game_state.tick(dt);
         self.broadcast_message(self.game_state.state_message());
