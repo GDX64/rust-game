@@ -72,9 +72,7 @@ export class ShipsManager {
         })
     );
     const material = new THREE.MeshPhongMaterial({
-      color: 0xff5555,
-      emissive: 0x0000ff,
-      emissiveIntensity: 0.5,
+      color: 0xffffff,
       shininess: 20,
     });
 
