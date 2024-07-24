@@ -248,6 +248,7 @@ impl CanGo for (f64, TileKind) {
 pub struct Explosion {
     pub position: (f64, f64),
     pub id: u64,
+    pub player_id: u64,
     pub time_created: f64,
 }
 
@@ -344,16 +345,17 @@ impl ServerState {
                 }
             }
 
-            explosions.push((pos.x, pos.y));
+            explosions.push(((pos.x, pos.y), bullet.player_id));
 
             return false;
         });
 
-        explosions.into_iter().for_each(|pos| {
+        explosions.into_iter().for_each(|(pos, player_id)| {
             let explosion = Explosion {
                 position: pos,
                 id: self.next_artifact_id(),
                 time_created: self.current_time,
+                player_id,
             };
             self.explosions.insert(explosion.id, explosion);
         });

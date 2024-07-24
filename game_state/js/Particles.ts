@@ -4,20 +4,22 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 export type ExplosionData = {
   position: [number, number];
   id: number;
+  player_id: number;
 };
 
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
   constructor(public scene: THREE.Scene) {}
 
-  explodeData(data: ExplosionData) {
+  explodeData(data: ExplosionData, color: THREE.Color) {
     this.explodeAt(
       new THREE.Vector3(data.position[0], data.position[1], 0),
-      data.id
+      data.id,
+      color
     );
   }
 
-  explodeAt(position: THREE.Vector3, id: number) {
+  explodeAt(position: THREE.Vector3, id: number, color: THREE.Color) {
     if (this.explosions.has(id)) {
       return;
     }
@@ -26,6 +28,7 @@ export class ExplosionManager {
       size: 1,
       position,
       id,
+      color,
     });
     explosion.addToScene(this.scene);
     this.explosions.set(id, explosion);
@@ -57,8 +60,9 @@ export class Explosion {
     timeToLive = 2,
     position = new THREE.Vector3(),
     id = 0,
+    color = new THREE.Color(0xffff00),
   } = {}) {
-    const { points } = Explosion.makePoints(particles, size);
+    const { points } = Explosion.makePoints(particles, size, color);
     points.position.set(position.x, position.y, position.z);
     this.id = id;
     this.points = points;
@@ -130,7 +134,8 @@ export class Explosion {
     document.addEventListener("click", () => {
       explosionManager.explodeAt(
         new THREE.Vector3(0, 0, 0),
-        Math.random() * 10000
+        Math.random() * 10000,
+        new THREE.Color(Math.random() * 0xffffff)
       );
     });
 
@@ -147,14 +152,18 @@ export class Explosion {
     });
   }
 
-  static makePoints(particles: number = 1000, size: number = 1) {
+  static makePoints(
+    particles: number = 1000,
+    size: number = 1,
+    color: THREE.Color
+  ) {
     const geometry = new THREE.BufferGeometry();
     const vertices = new Float32Array(particles * 3);
     // const colors = new Float32Array(particles * 3);
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
     // geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const pointMaterial = new THREE.PointsMaterial({
-      color: 0xffff00,
+      color,
       // map: texture,
       blending: THREE.NormalBlending,
       size,

@@ -150,11 +150,15 @@ export class ShipsManager {
 
     this.boatMesh.count = ships.length;
     this.boatMesh.instanceMatrix.needsUpdate = true;
+    if (this.boatMesh.instanceColor) {
+      this.boatMesh.instanceColor.needsUpdate = true;
+    }
     for (let i = 0; i < ships.length; i++) {
       const ship = ships[i];
       calcBoatAngle(ship, matrix);
       matrix.setPosition(ship.position[0], ship.position[1], 0);
       this.boatMesh.setMatrixAt(i, matrix);
+      this.boatMesh.setColorAt(i, this.playerColor(ship.player_id));
     }
     this.ships = ships;
 
@@ -163,10 +167,25 @@ export class ShipsManager {
     const explosions: ExplosionData[] = this.game.get_all_explosions();
     this.explosionManager.tick(0.016);
     explosions.forEach((explosion) => {
-      this.explosionManager.explodeData(explosion);
+      this.explosionManager.explodeData(
+        explosion,
+        this.playerColor(explosion.player_id)
+      );
     });
   }
+
+  private playerColor(playerID: number) {
+    return playerArray[playerID % playerArray.length];
+  }
 }
+
+const P1 = new THREE.Color("#e43131");
+const P2 = new THREE.Color("#1b69cf");
+const P3 = new THREE.Color("#35d435");
+const P4 = new THREE.Color("#d8d840");
+const P5 = new THREE.Color("#d643d6");
+const P6 = new THREE.Color("#43d8d8");
+const playerArray = [P1, P2, P3, P4, P5, P6];
 
 function calcBoatAngle(ship: ShipData, matrix: THREE.Matrix4) {
   const xyAngle =
