@@ -106,7 +106,7 @@ export class Render3D {
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.rayCaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.rayCaster.intersectObject(this.water.mesh);
+    const intersects = this.water.intersects(this.rayCaster);
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
       if (event.button === 2) {
@@ -147,7 +147,7 @@ export class Render3D {
     this.addWaterColorControl();
     const sunPos = this.makeSun(scene);
     this.water.setSunPosition(sunPos);
-    scene.add(this.water.mesh);
+    this.water.addToScene(scene);
 
     const planeGeometry = new THREE.PlaneGeometry(
       this.PLANE_WIDTH,

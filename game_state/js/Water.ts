@@ -3,9 +3,8 @@ import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 export class Water {
   constructor(
-    public geometry: THREE.PlaneGeometry,
-    public material: THREE.ShaderMaterial,
-    public mesh: THREE.Mesh
+    private material: THREE.ShaderMaterial,
+    private mesh: THREE.Mesh
   ) {}
 
   private getDirections(): THREE.Vector2[] {
@@ -18,6 +17,14 @@ export class Water {
 
   private time(): number {
     return this.material.uniforms.time.value;
+  }
+
+  intersects(ray: THREE.Raycaster) {
+    return ray.intersectObject(this.mesh);
+  }
+
+  addToScene(scene: THREE.Scene) {
+    scene.add(this.mesh);
   }
 
   calcElevationAt(x: number, y: number) {
@@ -42,14 +49,9 @@ export class Water {
   }
 
   static startWater(WIDTH: number) {
-    const waterPlaneGeometry = new THREE.PlaneGeometry(
-      WIDTH / 5,
-      WIDTH / 5,
-      400,
-      400
-    );
+    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 400, 400);
 
-    const waterShader = new THREE.ShaderMaterial({
+    const params: THREE.ShaderMaterialParameters = {
       vertexShader: vertShader,
       fragmentShader: fragShader,
       blending: THREE.NormalBlending,
@@ -63,11 +65,15 @@ export class Water {
         amplitude: { value: 1.5 },
         sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       },
+    };
+
+    const waterShader = new THREE.ShaderMaterial({
+      ...params,
     });
 
     const mesh = new THREE.Mesh(waterPlaneGeometry, waterShader);
 
-    return new Water(waterPlaneGeometry, waterShader, mesh);
+    return new Water(waterShader, mesh);
   }
 
   setSunPosition(sunPosition: THREE.Vector3) {
