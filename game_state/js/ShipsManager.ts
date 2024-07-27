@@ -36,11 +36,15 @@ type Bullet = {
   player_id: number;
 };
 
+const up = new THREE.Vector3(0, 0, 1);
+
 export class ShipsManager {
-  boatMesh: THREE.InstancedMesh | null = null;
-  explosionManager: ExplosionManager;
-  bulletModel: THREE.InstancedMesh;
-  ships: ShipData[] = [];
+  private boatMesh: THREE.InstancedMesh | null = null;
+  private explosionManager: ExplosionManager;
+  private bulletModel: THREE.InstancedMesh;
+  private ships: ShipData[] = [];
+  private arrowHelper = new THREE.ArrowHelper();
+
   constructor(
     private game: GameWasmState,
     private scene: THREE.Scene,
@@ -57,6 +61,7 @@ export class ShipsManager {
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
+    this.scene.add(this.arrowHelper);
 
     document.addEventListener("keydown", (event) => {
       if (event.key === "s") {
@@ -159,12 +164,7 @@ export class ShipsManager {
     }
     for (let i = 0; i < ships.length; i++) {
       const ship = ships[i];
-      calcBoatAngle(ship, matrix);
-      const zPos = this.water.calcElevationAt(
-        ship.position[0],
-        ship.position[1]
-      );
-      matrix.setPosition(ship.position[0], ship.position[1], zPos);
+      this.calcBoatAngle(ship, matrix);
       this.boatMesh.setMatrixAt(i, matrix);
       this.boatMesh.setColorAt(i, this.playerColor(ship.player_id));
     }
@@ -185,6 +185,25 @@ export class ShipsManager {
   private playerColor(playerID: number) {
     return playerArray[playerID % playerArray.length];
   }
+
+  private calcBoatAngle(ship: ShipData, matrix: THREE.Matrix4) {
+    const [zPos, normal] = this.water.calcElevationAt(
+      ship.position[0],
+      ship.position[1]
+    );
+    const xyAngle =
+      Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
+    const quaternion = new THREE.Quaternion().setFromUnitVectors(up, normal);
+    this.arrowHelper.setLength(30);
+    this.arrowHelper.setDirection(normal);
+    this.arrowHelper.position.set(ship.position[0], ship.position[1], zPos);
+    matrix.makeRotationZ(xyAngle);
+    matrix.multiplyMatrices(
+      new THREE.Matrix4().makeRotationFromQuaternion(quaternion),
+      matrix
+    );
+    matrix.setPosition(ship.position[0], ship.position[1], zPos);
+  }
 }
 
 const P1 = new THREE.Color("#e43131");
@@ -194,9 +213,3 @@ const P4 = new THREE.Color("#d8d840");
 const P5 = new THREE.Color("#d643d6");
 const P6 = new THREE.Color("#43d8d8");
 const playerArray = [P1, P2, P3, P4, P5, P6];
-
-function calcBoatAngle(ship: ShipData, matrix: THREE.Matrix4) {
-  const xyAngle =
-    Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
-  matrix.makeRotationZ(xyAngle);
-}

@@ -21,7 +21,7 @@ void main() {
   float diffusion_intensity = dot(normal, sun_light);
   diffusion_intensity = clamp(diffusion_intensity, 0.0, 1.0);
 
-  float intensity = 0.1 + 0.8 * diffusion_intensity + 0.5 * reflect_intensity;
+  float intensity = 0.2 + 0.8 * diffusion_intensity + 0.5 * reflect_intensity;
 
   vec3 color = vec3(0.2, 0.42, 0.64) * intensity;
   gl_FragColor = vec4(color, 0.8);

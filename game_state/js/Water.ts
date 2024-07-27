@@ -12,10 +12,6 @@ export class Water {
     return this.material.uniforms.directions.value;
   }
 
-  private freq(): number {
-    return this.material.uniforms.freq.value;
-  }
-
   private amplitude(): number {
     return this.material.uniforms.amplitude.value;
   }
@@ -26,15 +22,23 @@ export class Water {
 
   calcElevationAt(x: number, y: number) {
     let acc = 0;
-    const freq = this.freq();
+    let derivative = new THREE.Vector2(0, 0);
     const time = this.time();
     const pos = new THREE.Vector2(x, y);
     this.getDirections().forEach((d, i) => {
-      const harmonic = i + 1;
-      const angle = d.dot(pos) * harmonic * freq + time;
-      acc += Math.sin(angle) / harmonic / harmonic;
+      const harmonic = (i + 1) ** 2;
+      const angle = d.dot(pos) + time;
+      acc += Math.sin(angle) / harmonic;
+
+      const derivativeLength = Math.cos(angle) / harmonic;
+      derivative.x += d.x * derivativeLength;
+      derivative.y += d.y * derivativeLength;
     });
-    return acc * this.amplitude();
+    derivative.multiplyScalar(this.amplitude());
+    const normal = new THREE.Vector3(1, 0, derivative.x)
+      .cross(new THREE.Vector3(0, 1, derivative.y))
+      .normalize();
+    return [acc * this.amplitude(), normal] as const;
   }
 
   static startWater(WIDTH: number) {
@@ -56,8 +60,7 @@ export class Water {
         directions: {
           value: [...makeDs()],
         },
-        freq: { value: 0.1 },
-        amplitude: { value: 1 },
+        amplitude: { value: 1.5 },
         sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       },
     });
@@ -76,8 +79,10 @@ export class Water {
   }
 }
 
-function makeDs() {
-  return [...Array(10)].map((_, i) =>
-    new THREE.Vector2(Math.random(), Math.random()).normalize()
+function makeDs(freq = 0.1) {
+  return [...Array(8)].map((_, i) =>
+    new THREE.Vector2(Math.random(), Math.random())
+      .normalize()
+      .multiplyScalar((i + 1) * freq)
   );
 }
