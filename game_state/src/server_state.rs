@@ -268,7 +268,7 @@ pub struct ServerState {
 impl ServerState {
     pub fn new() -> Self {
         let world_gen = world_gen::WorldGen::new(1);
-        let game_map = world_gen.generate_grid(10_000.0);
+        let game_map = world_gen.generate_grid(1_000.0);
         Self {
             current_time: 0.0,
             artifact_id: 0,

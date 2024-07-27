@@ -35,7 +35,7 @@ export class Render3D {
     75,
     window.innerWidth / window.innerHeight,
     0.1,
-    this.gameState.map_size() / 2
+    5_000
   );
   readonly rayCaster = new THREE.Raycaster();
   readonly mouse = new THREE.Vector2(0, 0);
@@ -134,13 +134,13 @@ export class Render3D {
   }
 
   async startServer() {
-    // this.gameState.start_local_server();
-    await this.startRemoteServer();
-    this.gameState.add_bot();
-    this.gameState.add_bot();
-    this.gameState.add_bot();
-    this.gameState.add_bot();
-    this.gameState.add_bot();
+    this.gameState.start_local_server();
+    // await this.startRemoteServer();
+    // this.gameState.add_bot();
+    // this.gameState.add_bot();
+    // this.gameState.add_bot();
+    // this.gameState.add_bot();
+    // this.gameState.add_bot();
   }
 
   async init() {
@@ -150,7 +150,9 @@ export class Render3D {
     const camera = this.camera;
     const scene = this.scene;
 
-    const { waterMaterial, waterMesh } = Water.startWater(this.PLANE_WIDTH);
+    const { waterMaterial, waterMesh, waterShader } = Water.startWater(
+      this.PLANE_WIDTH
+    );
 
     this.addWaterColorControl(waterMaterial);
     this.waterMesh = waterMesh;
@@ -176,9 +178,9 @@ export class Render3D {
     this.planeMesh = plane;
     this.updateMesh();
 
-    camera.position.z = 5;
-    camera.position.y = -10;
-    camera.lookAt(0, 5, 0);
+    camera.position.z = 100;
+    camera.position.y = -200;
+    camera.lookAt(0, 0, 0);
     camera.up.set(0, 0, 1);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -199,7 +201,14 @@ export class Render3D {
       orbit.enabled = true;
     });
     this.makeSun(scene);
-    this.addPostProcessing(renderer);
+    const composer = this.addPostProcessing(renderer);
+    renderer.setAnimationLoop((time) => {
+      composer.render();
+      this.gameState.tick();
+      this.shipsManager.tick();
+      waterShader.uniforms.time.value = time / 1000;
+      // waterShader.uniforms.cameraPosition.value = camera.position;
+    });
 
     window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
   }
@@ -228,12 +237,8 @@ export class Render3D {
         composer.removePass(redShift);
       }
     });
-    renderer.setAnimationLoop(() => {
-      composer.render();
-      this.gameState.tick();
-      this.shipsManager.tick();
-    });
     this.addBloomControls(bloomPass);
+    return composer;
   }
 
   private makeSun(scene: THREE.Scene) {
@@ -249,8 +254,8 @@ export class Render3D {
     const sunMesh = new THREE.Mesh(sun, sunMaterial);
     const sunPosition = new THREE.Vector3(
       this.gameState.map_size(),
-      0,
-      this.gameState.map_size() / 2
+      this.gameState.map_size(),
+      this.gameState.map_size()
     );
     sunMesh.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
     scene.add(sunMesh);
