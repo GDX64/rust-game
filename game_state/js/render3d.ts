@@ -1,6 +1,4 @@
 import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { TransformControls } from "three/addons/controls/TransformControls.js";
 import { GameWasmState, OnlineData } from "../pkg/game_state";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -9,6 +7,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
+import { CameraControl } from "./CameraControl";
 // import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 export class Render3D {
   gui = new GUI();
@@ -171,11 +170,6 @@ export class Render3D {
     this.planeMesh = plane;
     this.updateMesh();
 
-    camera.position.z = 100;
-    camera.position.y = -200;
-    camera.lookAt(0, 0, 0);
-    camera.up.set(0, 0, 1);
-
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     this.gui.addColor(this.state, "skyColor").onChange(() => {
@@ -183,18 +177,12 @@ export class Render3D {
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-    const orbit = new OrbitControls(camera, renderer.domElement);
 
-    const controls = new TransformControls(camera, renderer.domElement);
-    scene.add(controls);
-    controls.addEventListener("mouseDown", () => {
-      orbit.enabled = false;
-    });
-    controls.addEventListener("mouseUp", () => {
-      orbit.enabled = true;
-    });
+    const controls = new CameraControl(camera, renderer.domElement);
+    controls.addListeners();
     const composer = this.addPostProcessing(renderer);
     renderer.setAnimationLoop((time) => {
+      controls.tick(time);
       composer.render();
       this.gameState.tick();
       this.shipsManager.tick();

@@ -58,6 +58,7 @@ export class ShipsManager {
       emissiveIntensity: 10,
     });
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 500);
+    this.bulletModel.frustumCulled = false;
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
@@ -93,6 +94,7 @@ export class ShipsManager {
     // obj.rotation.set(Math.PI / 2, 0, 0);
     instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.boatMesh = instancedMesh;
+    this.boatMesh.frustumCulled = false;
     this.scene.add(instancedMesh);
   }
 

@@ -150,7 +150,11 @@ impl GameServer {
                 .filter(|ship| ship.player_id != bot.id);
 
             bot.player_ships(&self.game_state).for_each(|ship| {
+                if ship.last_shoot_time + 1.0 > self.game_state.current_time {
+                    return;
+                }
                 let cannon = ship.find_available_cannon(self.game_state.current_time);
+
                 if cannon.is_none() {
                     return;
                 };

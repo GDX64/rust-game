@@ -32,6 +32,7 @@ pub struct ShipState {
     pub id: u64,
     pub player_id: u64,
     pub cannon_times: [f64; 3],
+    pub last_shoot_time: f64,
 }
 
 impl ShipState {
@@ -57,6 +58,7 @@ impl ShipState {
             player_id: self.player_id,
             ..Bullet::from_target(cannon_pos.into(), target.into())
         };
+        self.last_shoot_time = current_time;
         return Some(bullet);
     }
 

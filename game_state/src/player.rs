@@ -101,6 +101,7 @@ impl Player {
                 player_id: self.id,
                 position: (x, y),
                 cannon_times: Default::default(),
+                last_shoot_time: 0.0,
             },
         };
         if let Err(err) = self.actions.send(msg).context(file!()) {
