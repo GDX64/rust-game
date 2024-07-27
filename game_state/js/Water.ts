@@ -5,7 +5,7 @@ export class Water {
   constructor() {}
 
   static startWater(WIDTH: number) {
-    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 100, 100);
+    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 400, 400);
 
     const waterMaterial = new THREE.MeshPhongMaterial({
       color: 0x0000ff,
