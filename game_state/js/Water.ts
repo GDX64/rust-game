@@ -2,20 +2,19 @@ import * as THREE from "three";
 import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 export class Water {
-  constructor() {}
+  constructor(
+    public geometry: THREE.PlaneGeometry,
+    public material: THREE.ShaderMaterial,
+    public mesh: THREE.Mesh
+  ) {}
 
   static startWater(WIDTH: number) {
-    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 400, 400);
-
-    const waterMaterial = new THREE.MeshPhongMaterial({
-      color: 0x0000ff,
-      transparent: true,
-      opacity: 0.9,
-      shininess: 30,
-      side: THREE.DoubleSide,
-      fog: true,
-      blendAlpha: 0.5,
-    });
+    const waterPlaneGeometry = new THREE.PlaneGeometry(
+      WIDTH / 5,
+      WIDTH / 5,
+      400,
+      400
+    );
 
     const waterShader = new THREE.ShaderMaterial({
       vertexShader: vertShader,
@@ -25,13 +24,31 @@ export class Water {
       opacity: 1.0,
       uniforms: {
         time: { value: 1.0 },
-        resolution: { value: new THREE.Vector2() },
-        // cameraPosition: { value: new THREE.Vector3() },
+        directions: {
+          value: [...makeDs()],
+        },
+        freq: { value: 0.1 },
+        amplitude: { value: 1 },
+        sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       },
     });
 
-    const waterMesh = new THREE.Mesh(waterPlaneGeometry, waterShader);
+    const mesh = new THREE.Mesh(waterPlaneGeometry, waterShader);
 
-    return { waterPlaneGeometry, waterMaterial, waterMesh, waterShader };
+    return new Water(waterPlaneGeometry, waterShader, mesh);
   }
+
+  setSunPosition(sunPosition: THREE.Vector3) {
+    this.material.uniforms.sunPosition.value = sunPosition.clone().normalize();
+  }
+
+  tick(time: number) {
+    this.material.uniforms.time.value = time / 1000;
+  }
+}
+
+function makeDs() {
+  return [...Array(10)].map((_, i) =>
+    new THREE.Vector2(Math.random(), Math.random()).normalize()
+  );
 }

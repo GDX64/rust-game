@@ -49,7 +49,7 @@ export class Render3D {
     this.camera
   );
 
-  waterMesh = new THREE.Mesh();
+  water = Water.startWater(this.PLANE_WIDTH);
 
   private updateMesh() {
     const { geometry } = this.planeMesh;
@@ -83,12 +83,7 @@ export class Render3D {
     }
   }
 
-  private addWaterColorControl(waterMaterial: THREE.MeshPhongMaterial) {
-    waterMaterial.color.set(this.state.waterColor);
-    this.gui.addColor(this.state, "waterColor").onChange((val) => {
-      waterMaterial.color.set(val);
-    });
-  }
+  private addWaterColorControl() {}
 
   private addTerrainColorControl(terrainMaterial: THREE.MeshLambertMaterial) {
     this.gui.addColor(this.state, "terrainColor").onChange((val) => {
@@ -112,7 +107,7 @@ export class Render3D {
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.rayCaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.rayCaster.intersectObject(this.waterMesh);
+    const intersects = this.rayCaster.intersectObject(this.water.mesh);
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
       if (event.button === 2) {
@@ -150,13 +145,10 @@ export class Render3D {
     const camera = this.camera;
     const scene = this.scene;
 
-    const { waterMaterial, waterMesh, waterShader } = Water.startWater(
-      this.PLANE_WIDTH
-    );
-
-    this.addWaterColorControl(waterMaterial);
-    this.waterMesh = waterMesh;
-    scene.add(waterMesh);
+    this.addWaterColorControl();
+    const sunPos = this.makeSun(scene);
+    this.water.setSunPosition(sunPos);
+    scene.add(this.water.mesh);
 
     const planeGeometry = new THREE.PlaneGeometry(
       this.PLANE_WIDTH,
@@ -200,13 +192,12 @@ export class Render3D {
     controls.addEventListener("mouseUp", () => {
       orbit.enabled = true;
     });
-    this.makeSun(scene);
     const composer = this.addPostProcessing(renderer);
     renderer.setAnimationLoop((time) => {
       composer.render();
       this.gameState.tick();
       this.shipsManager.tick();
-      waterShader.uniforms.time.value = time / 1000;
+      this.water.tick(time);
       // waterShader.uniforms.cameraPosition.value = camera.position;
     });
 
@@ -252,11 +243,7 @@ export class Render3D {
       fog: false,
     });
     const sunMesh = new THREE.Mesh(sun, sunMaterial);
-    const sunPosition = new THREE.Vector3(
-      this.gameState.map_size(),
-      this.gameState.map_size(),
-      this.gameState.map_size()
-    );
+    const sunPosition = new THREE.Vector3(500, 0, 200);
     sunMesh.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
     scene.add(sunMesh);
     const light = new THREE.DirectionalLight(0xffffff, 10);
@@ -265,6 +252,7 @@ export class Render3D {
     light.target.position.set(0, 0, 0);
     scene.add(light);
     scene.add(ambientLight);
+    return sunPosition;
   }
 }
 

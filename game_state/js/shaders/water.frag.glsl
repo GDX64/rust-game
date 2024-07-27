@@ -1,10 +1,12 @@
 // uniform vec3 cameraPosition;
 
+uniform vec3 sunPosition;
+
 varying vec3 normal_v;
 varying vec3 vViewPosition;
 
 void main() {
-  vec3 sun_light = normalize(vec3(1.0, 1.0, 0.8));
+  vec3 sun_light = sunPosition;
   vec3 normal = normalize(normal_v);
   // vec3 normal = vec3(0.0, 0.0, 1.0);
 
@@ -19,8 +21,8 @@ void main() {
   float diffusion_intensity = dot(normal, sun_light);
   diffusion_intensity = clamp(diffusion_intensity, 0.0, 1.0);
 
-  float intensity = 0.05 + 0.8 * diffusion_intensity + 0.5 * reflect_intensity;
+  float intensity = 0.1 + 0.8 * diffusion_intensity + 0.5 * reflect_intensity;
 
-  vec3 color = vec3(0.24, 0.49, 0.77) * intensity;
-  gl_FragColor = vec4(color, 0.85);
+  vec3 color = vec3(0.2, 0.42, 0.64) * intensity;
+  gl_FragColor = vec4(color, 1.0);
 }
