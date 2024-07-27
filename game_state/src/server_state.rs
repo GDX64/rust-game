@@ -11,7 +11,7 @@ use std::collections::HashMap;
 const BULLET_SPEED: f64 = 100.0;
 const GRAVITY: f64 = 9.81;
 const BLAST_RADIUS: f64 = 20.0;
-const BOAT_SPEED: f64 = 16.0;
+const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;

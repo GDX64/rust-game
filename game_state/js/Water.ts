@@ -8,6 +8,35 @@ export class Water {
     public mesh: THREE.Mesh
   ) {}
 
+  private getDirections(): THREE.Vector2[] {
+    return this.material.uniforms.directions.value;
+  }
+
+  private freq(): number {
+    return this.material.uniforms.freq.value;
+  }
+
+  private amplitude(): number {
+    return this.material.uniforms.amplitude.value;
+  }
+
+  private time(): number {
+    return this.material.uniforms.time.value;
+  }
+
+  calcElevationAt(x: number, y: number) {
+    let acc = 0;
+    const freq = this.freq();
+    const time = this.time();
+    const pos = new THREE.Vector2(x, y);
+    this.getDirections().forEach((d, i) => {
+      const harmonic = i + 1;
+      const angle = d.dot(pos) * harmonic * freq + time;
+      acc += Math.sin(angle) / harmonic / harmonic;
+    });
+    return acc * this.amplitude();
+  }
+
   static startWater(WIDTH: number) {
     const waterPlaneGeometry = new THREE.PlaneGeometry(
       WIDTH / 5,

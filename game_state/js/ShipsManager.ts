@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import boat from "./assets/boat.glb?url";
 import { ExplosionData, ExplosionManager } from "./Particles";
+import { Water } from "./Water";
 
 type ShipData = {
   player_id: number;
@@ -42,9 +43,9 @@ export class ShipsManager {
   ships: ShipData[] = [];
   constructor(
     private game: GameWasmState,
-    private scale: number,
     private scene: THREE.Scene,
-    private camera: THREE.Camera
+    private camera: THREE.Camera,
+    private water: Water
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
     const material = new THREE.MeshPhongMaterial({
@@ -159,7 +160,11 @@ export class ShipsManager {
     for (let i = 0; i < ships.length; i++) {
       const ship = ships[i];
       calcBoatAngle(ship, matrix);
-      matrix.setPosition(ship.position[0], ship.position[1], 0);
+      const zPos = this.water.calcElevationAt(
+        ship.position[0],
+        ship.position[1]
+      );
+      matrix.setPosition(ship.position[0], ship.position[1], zPos);
       this.boatMesh.setMatrixAt(i, matrix);
       this.boatMesh.setColorAt(i, this.playerColor(ship.player_id));
     }

@@ -42,14 +42,13 @@ export class Render3D {
   readonly PLANE_WIDTH = this.gameState.map_size();
   readonly SEGMENTS_DENSITY = this.gameState.tile_size();
   readonly PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
+  readonly water = Water.startWater(this.PLANE_WIDTH);
   readonly shipsManager = new ShipsManager(
     this.gameState,
-    this.state.boatScale,
     this.scene,
-    this.camera
+    this.camera,
+    this.water
   );
-
-  water = Water.startWater(this.PLANE_WIDTH);
 
   private updateMesh() {
     const { geometry } = this.planeMesh;
