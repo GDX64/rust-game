@@ -5,7 +5,7 @@ export class Water {
   constructor() {}
 
   static startWater(WIDTH: number) {
-    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 300, 300);
+    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 100, 100);
 
     const waterMaterial = new THREE.MeshPhongMaterial({
       color: 0x0000ff,
@@ -14,11 +14,15 @@ export class Water {
       shininess: 30,
       side: THREE.DoubleSide,
       fog: true,
+      blendAlpha: 0.5,
     });
 
     const waterShader = new THREE.ShaderMaterial({
       vertexShader: vertShader,
       fragmentShader: fragShader,
+      blending: THREE.NormalBlending,
+      transparent: true,
+      opacity: 1.0,
       uniforms: {
         time: { value: 1.0 },
         resolution: { value: new THREE.Vector2() },
