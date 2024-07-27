@@ -61,6 +61,7 @@ export class ShipsManager {
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
+    this.arrowHelper.visible = false;
     this.scene.add(this.arrowHelper);
 
     document.addEventListener("keydown", (event) => {
@@ -194,9 +195,6 @@ export class ShipsManager {
     const xyAngle =
       Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
     const quaternion = new THREE.Quaternion().setFromUnitVectors(up, normal);
-    this.arrowHelper.setLength(30);
-    this.arrowHelper.setDirection(normal);
-    this.arrowHelper.position.set(ship.position[0], ship.position[1], zPos);
     matrix.makeRotationZ(xyAngle);
     matrix.multiplyMatrices(
       new THREE.Matrix4().makeRotationFromQuaternion(quaternion),

@@ -82,7 +82,9 @@ export class Render3D {
     }
   }
 
-  private addWaterColorControl() {}
+  private addWaterColorControl() {
+    this.water.addControls(this.gui);
+  }
 
   private addTerrainColorControl(terrainMaterial: THREE.MeshLambertMaterial) {
     this.gui.addColor(this.state, "terrainColor").onChange((val) => {
@@ -130,8 +132,8 @@ export class Render3D {
   async startServer() {
     this.gameState.start_local_server();
     // await this.startRemoteServer();
-    // this.gameState.add_bot();
-    // this.gameState.add_bot();
+    this.gameState.add_bot();
+    this.gameState.add_bot();
     // this.gameState.add_bot();
     // this.gameState.add_bot();
     // this.gameState.add_bot();

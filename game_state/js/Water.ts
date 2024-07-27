@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
+
+const FREQ_START = 0.05;
 export class Water {
+  freq = FREQ_START;
   constructor(
     private material: THREE.ShaderMaterial,
     private mesh: THREE.Mesh
@@ -17,6 +20,14 @@ export class Water {
 
   private time(): number {
     return this.material.uniforms.time.value;
+  }
+
+  addControls(gui: dat.GUI) {
+    const waterFolder = gui.addFolder("Water");
+    waterFolder.add(this.material.uniforms.amplitude, "value", 0, 20);
+    waterFolder.add(this, "freq", 0.01, 0.1).onChange(() => {
+      this.material.uniforms.directions.value = makeDs(this.freq);
+    });
   }
 
   intersects(ray: THREE.Raycaster) {
@@ -51,6 +62,8 @@ export class Water {
   static startWater(WIDTH: number) {
     const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 400, 400);
 
+    const ds = makeDs(FREQ_START);
+
     const params: THREE.ShaderMaterialParameters = {
       vertexShader: vertShader,
       fragmentShader: fragShader,
@@ -60,9 +73,9 @@ export class Water {
       uniforms: {
         time: { value: 1.0 },
         directions: {
-          value: [...makeDs()],
+          value: ds,
         },
-        amplitude: { value: 1.5 },
+        amplitude: { value: 2 },
         sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       },
     };
@@ -85,7 +98,7 @@ export class Water {
   }
 }
 
-function makeDs(freq = 0.1) {
+function makeDs(freq: number) {
   return [...Array(8)].map((_, i) =>
     new THREE.Vector2(Math.random(), Math.random())
       .normalize()
