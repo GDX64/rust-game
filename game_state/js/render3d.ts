@@ -158,8 +158,8 @@ export class Render3D {
   async startServer() {
     this.gameState.start_local_server();
     // await this.startRemoteServer();
-    this.gameState.add_bot();
-    this.gameState.add_bot();
+    // this.gameState.add_bot();
+    // this.gameState.add_bot();
     // this.gameState.add_bot();
     // this.gameState.add_bot();
     // this.gameState.add_bot();

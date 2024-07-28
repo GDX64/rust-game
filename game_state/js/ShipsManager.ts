@@ -44,6 +44,7 @@ export class ShipsManager {
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
   private arrowHelper = new THREE.ArrowHelper();
+  showArrow = false;
 
   constructor(
     private game: GameWasmState,
@@ -62,7 +63,8 @@ export class ShipsManager {
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
-    this.arrowHelper.visible = false;
+    this.arrowHelper.visible = this.showArrow;
+    this.arrowHelper.setLength(10);
     this.scene.add(this.arrowHelper);
 
     document.addEventListener("keydown", (event) => {
@@ -88,7 +90,7 @@ export class ShipsManager {
     const mesh = obj.children[0] as THREE.Mesh;
 
     mesh.geometry.scale(200, 200, 200);
-    mesh.geometry.translate(0, 0, 4);
+    mesh.geometry.translate(0, -2, 3.5);
     const instancedMesh = new THREE.InstancedMesh(mesh.geometry, material, 500);
     // obj.scale.set(this.scale, this.scale, this.scale);
     // obj.rotation.set(Math.PI / 2, 0, 0);
@@ -202,12 +204,16 @@ export class ShipsManager {
       new THREE.Matrix4().makeRotationFromQuaternion(quaternion),
       matrix
     );
+    if (this.showArrow) {
+      this.arrowHelper.position.set(ship.position[0], ship.position[1], zPos);
+      this.arrowHelper.setDirection(normal);
+    }
     matrix.setPosition(ship.position[0], ship.position[1], zPos);
   }
 }
 
-const P1 = new THREE.Color("#e43131");
-const P2 = new THREE.Color("#1b69cf");
+const P1 = new THREE.Color("#1b69cf");
+const P2 = new THREE.Color("#e43131");
 const P3 = new THREE.Color("#35d435");
 const P4 = new THREE.Color("#d8d840");
 const P5 = new THREE.Color("#d643d6");
