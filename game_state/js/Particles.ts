@@ -7,8 +7,11 @@ export type ExplosionData = {
   player_id: number;
 };
 
+const PARTICLES = 1000;
+
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
+  explosionPool: Explosion[] = [];
   constructor(public scene: THREE.Scene) {}
 
   explodeData(data: ExplosionData, color: THREE.Color) {
@@ -23,8 +26,8 @@ export class ExplosionManager {
     if (this.explosions.has(id)) {
       return;
     }
-    const explosion = new Explosion({
-      particles: 1_000,
+    const explosion = this.explosionPool.pop() ?? new Explosion();
+    explosion.setParams({
       size: 1,
       position,
       id,
@@ -39,6 +42,7 @@ export class ExplosionManager {
       explosion.tick(dt);
       if (explosion.isFinished) {
         this.explosions.delete(explosion.id);
+        this.explosionPool.push(explosion);
       }
     });
   }
@@ -48,32 +52,44 @@ export class Explosion {
   isFinished = false;
   private v = 30;
   private points: THREE.Points;
-  private particlesPosition: THREE.Vector3[];
-  private particlesSpeed: THREE.Vector3[];
-  private timeToLive;
+  private particlesPosition: THREE.Vector3[] = [];
+  private particlesSpeed: THREE.Vector3[] = [];
+  private timeToLive = 0;
   private t = 0;
-  public readonly id: number;
+  public id: number = -1;
   private scene: null | THREE.Scene = null;
-  constructor({
-    particles = 1000,
+  constructor() {
+    const { points } = Explosion.makePoints(1000, 1);
+    this.points = points;
+    this.particlesPosition = new Array(PARTICLES)
+      .fill(0)
+      .map(() => new THREE.Vector3());
+    this.particlesSpeed = new Array(PARTICLES).fill(0).map(() => {
+      return new THREE.Vector3();
+    });
+  }
+
+  setParams({
     size = 1,
     timeToLive = 2,
     position = new THREE.Vector3(),
     id = 0,
     color = new THREE.Color(0xffff00),
   } = {}) {
-    const { points } = Explosion.makePoints(particles, size, color);
-    points.position.set(position.x, position.y, position.z);
-    this.id = id;
-    this.points = points;
-    this.particlesPosition = new Array(particles)
-      .fill(0)
-      .map(() => new THREE.Vector3());
-    this.particlesSpeed = new Array(particles).fill(0).map(() => {
-      return new THREE.Vector3();
+    this.points.position.set(position.x, position.y, position.z);
+    this.particlesPosition.forEach((particle) => {
+      particle.set(0, 0, 0);
     });
-    this.randomizeSpeed();
+    this.id = id;
+    this.isFinished = false;
+    this.t = 0;
+    if (this.points.material instanceof THREE.PointsMaterial) {
+      this.points.material.color = color;
+      this.points.material.size = size;
+    }
     this.timeToLive = timeToLive;
+    this.randomizeSpeed();
+    this.tick(0);
   }
 
   addToScene(scene: THREE.Scene) {
@@ -152,18 +168,13 @@ export class Explosion {
     });
   }
 
-  static makePoints(
-    particles: number = 1000,
-    size: number = 1,
-    color: THREE.Color
-  ) {
+  static makePoints(particles: number = 1000, size: number = 1) {
     const geometry = new THREE.BufferGeometry();
     const vertices = new Float32Array(particles * 3);
     // const colors = new Float32Array(particles * 3);
     geometry.setAttribute("position", new THREE.BufferAttribute(vertices, 3));
     // geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     const pointMaterial = new THREE.PointsMaterial({
-      color,
       // map: texture,
       blending: THREE.NormalBlending,
       size,
