@@ -20,7 +20,7 @@ export class Terrain {
     const sand = new THREE.Color("#beb76f");
     const grass = new THREE.Color("#1e4e1e");
     const rock = new THREE.Color("#382323");
-    const oceanBottom = new THREE.Color("#3d180a");
+    const oceanBottom = new THREE.Color("#0a2a3d");
     for (let x = 0; x < this.PLANE_SEGMENTS; x += 1) {
       for (let y = 0; y < this.PLANE_SEGMENTS; y += 1) {
         const i = (y * this.PLANE_SEGMENTS + x) * 3;
