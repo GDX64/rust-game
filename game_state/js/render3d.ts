@@ -8,6 +8,7 @@ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
+import { Terrain } from "./Terrain";
 // import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 
 function defaultState() {
@@ -54,6 +55,8 @@ export class Render3D {
     this.water
   );
 
+  readonly terrain = Terrain.new(this.gameState);
+
   constructor() {
     //reset gui defaults
     this.gui.add(
@@ -65,27 +68,6 @@ export class Render3D {
       },
       "reset"
     );
-  }
-
-  private updateMesh() {
-    const { geometry } = this.planeMesh;
-    const arr = geometry.attributes.position.array;
-    for (let x = 0; x < this.PLANE_SEGMENTS; x += 1) {
-      for (let y = 0; y < this.PLANE_SEGMENTS; y += 1) {
-        const i = (y * this.PLANE_SEGMENTS + x) * 3;
-        const yProportion = y / this.PLANE_SEGMENTS;
-        let height =
-          this.gameState.get_land_value(
-            (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
-            (0.5 - yProportion) * this.PLANE_WIDTH
-          ) ?? 0;
-        height = height * 500;
-
-        arr[i + 2] = height;
-      }
-    }
-    geometry.attributes.position.needsUpdate = true;
-    geometry.computeVertexNormals();
   }
 
   private saveState() {
@@ -101,12 +83,6 @@ export class Render3D {
 
   private addWaterColorControl() {
     this.water.addControls(this.gui);
-  }
-
-  private addTerrainColorControl(terrainMaterial: THREE.MeshLambertMaterial) {
-    this.gui.addColor(this.state, "terrainColor").onChange((val) => {
-      terrainMaterial.color.set(val);
-    });
   }
 
   private addBloomControls(bloomPass: UnrealBloomPass) {
@@ -177,25 +153,8 @@ export class Render3D {
     this.water.setSunPosition(sunPos);
     this.water.addToScene(scene);
 
-    const planeGeometry = new THREE.PlaneGeometry(
-      this.PLANE_WIDTH,
-      this.PLANE_WIDTH,
-      this.PLANE_SEGMENTS - 1,
-      this.PLANE_SEGMENTS - 1
-    );
-
-    // scene.fog = new THREE.Fog(0x999999, 0, 100);
-
-    const planeMaterial = new THREE.MeshLambertMaterial({
-      color: this.state.terrainColor,
-      fog: true,
-    });
-    this.addTerrainColorControl(planeMaterial);
-    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-    scene.add(plane);
-
-    this.planeMesh = plane;
-    this.updateMesh();
+    this.terrain.addToScene(scene);
+    this.terrain.updateMesh();
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
