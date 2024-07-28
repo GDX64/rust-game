@@ -69,6 +69,7 @@ export class Water {
       fragmentShader: fragShader,
       blending: THREE.NormalBlending,
       transparent: true,
+      depthTest: true,
       opacity: 1.0,
       uniforms: {
         time: { value: 1.0 },

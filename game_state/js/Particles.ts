@@ -9,12 +9,16 @@ export type ExplosionData = {
   player_id: number;
 };
 
-const PARTICLES = 10_000;
+const PARTICLES = 2_000;
 
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
   explosionPool: Explosion[] = [];
-  constructor(public scene: THREE.Scene) {}
+  group = new THREE.Group();
+  constructor(scene: THREE.Scene) {
+    scene.add(this.group);
+    this.group.renderOrder = 999;
+  }
 
   explodeData(data: ExplosionData, color: THREE.Color) {
     this.explodeAt(
@@ -35,17 +39,17 @@ export class ExplosionManager {
       id,
       color,
     });
-    explosion.addToScene(this.scene);
+    explosion.addToScene(this.group);
     this.explosions.set(id, explosion);
   }
 
   tick(time: number) {
     this.explosions.forEach((explosion) => {
-      console.log("tick");
       explosion.tick(0.016);
       if (explosion.isFinished) {
         this.explosions.delete(explosion.id);
         this.explosionPool.push(explosion);
+        this.group.remove(explosion.points);
       }
     });
   }
@@ -54,12 +58,11 @@ export class ExplosionManager {
 export class Explosion {
   isFinished = false;
   private v = 30;
-  private points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
   private particlesPosition: THREE.Vector3[] = [];
   private timeToLive = 0;
   private t = 0;
   public id: number = -1;
-  private scene: null | THREE.Scene = null;
   constructor() {
     const { points } = Explosion.makePoints();
     this.points = points;
@@ -91,10 +94,9 @@ export class Explosion {
     this.tick(0);
   }
 
-  addToScene(scene: THREE.Scene) {
+  addToScene(group: THREE.Group) {
     this.t = 0;
-    this.scene = scene;
-    scene.add(this.points);
+    group.add(this.points);
   }
 
   private randomizeSpeed() {
@@ -105,7 +107,7 @@ export class Explosion {
       particle.set(
         Math.random() * 1 - 0.5,
         Math.random() * 1 - 0.5,
-        Math.random() * 1 - 0.5
+        Math.random() * 0.5
       );
       particle.normalize().multiplyScalar(this.v * Math.random());
       const index = i * 3;
@@ -121,7 +123,6 @@ export class Explosion {
     this.points.material.uniforms.progress.value = animationPercent;
     this.points.material.uniforms.time.value = this.t;
     if (this.t > this.timeToLive) {
-      this.scene?.remove(this.points);
       this.isFinished = true;
     }
   }
@@ -184,7 +185,6 @@ export class Explosion {
       blending: THREE.NormalBlending,
       transparent: true,
       depthTest: true,
-      // depthTest: true,
       // vertexColors: true,
     });
     const points = new THREE.Points(geometry, pointMaterial);

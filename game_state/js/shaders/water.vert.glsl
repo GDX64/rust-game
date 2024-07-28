@@ -25,12 +25,11 @@ void wave(vec3 pos, out float wave, out vec3 normal) {
 }
 
 void main() {
-  vec3 pos = position;
-  vec4 my_pos = modelMatrix * vec4(pos, 1.0);
+  vec4 pos = vec4(position, 1.0);
   vec3 normal_calc;
-  wave(my_pos.xyz, my_pos.z, normal_calc);
-  vViewPosition = my_pos.xyz;
-  gl_Position = projectionMatrix * viewMatrix * my_pos;
+  wave(pos.xyz, pos.z, normal_calc);
+  vViewPosition = (modelMatrix * pos).xyz;
+  gl_Position = projectionMatrix * modelViewMatrix * pos;
   normal_v = normal_calc;
   // normal_v = vec3(0.0, 0.0, 1.0);
 }

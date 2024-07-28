@@ -9,9 +9,9 @@ import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
 // import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
-export class Render3D {
-  gui = new GUI();
-  state = {
+
+function defaultState() {
+  return {
     boatScale: 2.5,
     boatPosition: [0, 0, 0.5],
     controlsEnabled: false,
@@ -22,7 +22,12 @@ export class Render3D {
     bloomRadius: 0.4,
     bloomThreshold: 0.85,
     redShift: false,
+    bloomEnabled: false,
   };
+}
+export class Render3D {
+  gui = new GUI();
+  state = defaultState();
   gameState = GameWasmState.new();
   planeMesh = new THREE.Mesh();
   readonly pathLine = new THREE.Line(
@@ -48,6 +53,19 @@ export class Render3D {
     this.camera,
     this.water
   );
+
+  constructor() {
+    //reset gui defaults
+    this.gui.add(
+      {
+        reset: () => {
+          Object.assign(this.state, defaultState());
+          this.gui.updateDisplay();
+        },
+      },
+      "reset"
+    );
+  }
 
   private updateMesh() {
     const { geometry } = this.planeMesh;
@@ -92,14 +110,23 @@ export class Render3D {
   }
 
   private addBloomControls(bloomPass: UnrealBloomPass) {
-    this.gui.add(this.state, "bloomStrength", 0, 3).onChange((val) => {
+    bloomPass.enabled = this.state.bloomEnabled;
+    const bloomFolder = this.gui.addFolder("Bloom");
+    bloomFolder.add(this.state, "bloomStrength", 0, 3).onChange((val) => {
       bloomPass.strength = val;
     });
-    this.gui.add(this.state, "bloomRadius", 0, 1).onChange((val) => {
+    bloomFolder.add(this.state, "bloomRadius", 0, 1).onChange((val) => {
       bloomPass.radius = val;
     });
-    this.gui.add(this.state, "bloomThreshold", 0, 1).onChange((val) => {
+    bloomFolder.add(this.state, "bloomThreshold", 0, 1).onChange((val) => {
       bloomPass.threshold = val;
+    });
+    bloomFolder.add(this.state, "bloomEnabled").onChange((val) => {
+      if (val) {
+        bloomPass.enabled = true;
+      } else {
+        bloomPass.enabled = false;
+      }
     });
   }
 
