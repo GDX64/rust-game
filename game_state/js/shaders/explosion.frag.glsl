@@ -1,9 +1,9 @@
 uniform float progress;
+uniform vec3 color;
 
 void main() {
   float opacity = 1.0 - progress;
   opacity = pow(opacity, 2.0);
-  float color = 1.0 - progress;
-  color = pow(color, 4.0);
-  gl_FragColor = vec4(color, color, color, opacity);
+  vec3 final_color = mix(color, vec3(0.0), progress);
+  gl_FragColor = vec4(final_color, opacity);
 }

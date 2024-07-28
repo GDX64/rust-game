@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import vertexShader from "./shaders/explosion.vert.glsl?raw";
 import fragmentShader from "./shaders/explosion.frag.glsl?raw";
+import { RenderOrder } from "./RenderOrder";
 
 export type ExplosionData = {
   position: [number, number];
@@ -17,7 +18,7 @@ export class ExplosionManager {
   group = new THREE.Group();
   constructor(scene: THREE.Scene) {
     scene.add(this.group);
-    this.group.renderOrder = 999;
+    this.group.renderOrder = RenderOrder.PARTICLES;
   }
 
   explodeData(data: ExplosionData, color: THREE.Color) {
@@ -85,10 +86,7 @@ export class Explosion {
     this.id = id;
     this.isFinished = false;
     this.t = 0;
-    if (this.points.material instanceof THREE.PointsMaterial) {
-      this.points.material.color = color;
-      this.points.material.size = size;
-    }
+    this.points.material.uniforms.color.value = color;
     this.timeToLive = timeToLive;
     this.randomizeSpeed();
     this.tick(0);
@@ -180,12 +178,11 @@ export class Explosion {
       uniforms: {
         time: { value: 0 },
         progress: { value: 0 },
+        color: { value: new THREE.Color(0xffff00) },
       },
-      // colorWrite: true,
       blending: THREE.NormalBlending,
       transparent: true,
       depthTest: true,
-      // vertexColors: true,
     });
     const points = new THREE.Points(geometry, pointMaterial);
     return { points };
