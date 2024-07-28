@@ -90,7 +90,7 @@ impl BroadCastState {
             bullets: HashMap::new(),
             explosions: HashMap::new(),
             artifact_id: 0,
-            current_time: 0.0,
+            current_time: 5.0,
         }
     }
 
