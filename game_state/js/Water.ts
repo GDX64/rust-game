@@ -95,7 +95,7 @@ export class Water {
   }
 
   tick(time: number) {
-    this.material.uniforms.time.value = time / 1000;
+    this.material.uniforms.time.value = time;
   }
 }
 

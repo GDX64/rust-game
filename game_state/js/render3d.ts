@@ -14,6 +14,7 @@ import { Terrain } from "./Terrain";
 function defaultState() {
   return {
     boatScale: 2.5,
+    online: false,
     boatPosition: [0, 0, 0.5],
     controlsEnabled: false,
     terrainColor: "#2b5232",
@@ -58,6 +59,8 @@ export class Render3D {
   readonly terrain = Terrain.new(this.gameState);
 
   constructor() {
+    this.loadState();
+
     //reset gui defaults
     this.gui.add(
       {
@@ -84,6 +87,13 @@ export class Render3D {
       },
       "removeBot"
     );
+    this.gui.add(this.state, "online").onChange((val) => {
+      if (val) {
+        this.startRemoteServer();
+      } else {
+        this.gameState.start_local_server();
+      }
+    });
   }
 
   private saveState() {
@@ -138,7 +148,7 @@ export class Render3D {
   }
 
   private async startRemoteServer() {
-    const url = "http://game.glmachado.com:5000/ws";
+    const url = "https://game.glmachado.com/ws";
     // const url = "http://localhost:5000/ws";
     const ws = new WebSocket(url);
     ws.binaryType = "arraybuffer";
@@ -147,19 +157,12 @@ export class Render3D {
     this.gameState.start_online(onlineData);
   }
 
-  async startServer() {
-    this.gameState.start_local_server();
-    // await this.startRemoteServer();
-    // this.gameState.add_bot();
-    // this.gameState.add_bot();
-    // this.gameState.add_bot();
-    // this.gameState.add_bot();
-    // this.gameState.add_bot();
-  }
-
   async init() {
-    await this.startServer();
-    this.loadState();
+    if (this.state.online) {
+      await this.startRemoteServer();
+    } else {
+      this.gameState.start_local_server();
+    }
     setInterval(() => this.saveState(), 1_000);
     const camera = this.camera;
     const scene = this.scene;
@@ -186,9 +189,9 @@ export class Render3D {
     renderer.setAnimationLoop((time) => {
       controls.tick(time);
       composer.render();
-      this.gameState.tick();
-      this.shipsManager.tick();
-      this.water.tick(time);
+      this.gameState.tick(time / 1000);
+      this.shipsManager.tick(time / 1000);
+      this.water.tick(time / 1000);
       // waterShader.uniforms.cameraPosition.value = camera.position;
     });
 

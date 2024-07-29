@@ -28,6 +28,7 @@ pub struct GameWasmState {
     running_mode: RunningMode,
     player: Player,
     last_state: BroadCastState,
+    current_time: f64,
 }
 
 #[wasm_bindgen]
@@ -37,6 +38,7 @@ impl GameWasmState {
             running_mode: RunningMode::start_local(),
             player: Player::new(0),
             last_state: BroadCastState::new(),
+            current_time: 0.0,
         }
     }
 
@@ -73,12 +75,14 @@ impl GameWasmState {
         self.player = Player::new(self.running_mode.id());
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, time: f64) {
+        let dt = time - self.current_time;
+        self.current_time = time;
         self.player.tick(&self.running_mode.server_state());
         while let Some(action) = self.player.next_message() {
             self.send_message(action);
         }
-        self.running_mode.tick();
+        self.running_mode.tick(dt);
     }
 
     pub fn get_all_bullets(&self) -> JsValue {

@@ -140,7 +140,7 @@ export class ShipsManager {
     }
   }
 
-  tick() {
+  tick(time: number) {
     if (!this.boatMesh) {
       return;
     }
@@ -178,7 +178,7 @@ export class ShipsManager {
     //==== explosions
 
     const explosions: ExplosionData[] = this.game.get_all_explosions();
-    this.explosionManager.tick(0.016);
+    this.explosionManager.tick(time);
     explosions.forEach((explosion) => {
       this.explosionManager.explodeData(
         explosion,

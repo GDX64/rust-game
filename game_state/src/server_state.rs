@@ -317,6 +317,7 @@ impl ServerState {
 
     pub fn tick(&mut self, dt: f64) {
         self.current_time += dt;
+        info!("Ticking server state: {}", self.current_time);
         let mut ships_hit: Vec<ShipKey> = vec![];
         let mut explosions = vec![];
 

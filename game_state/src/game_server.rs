@@ -187,13 +187,13 @@ impl GameServer {
         });
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    pub fn tick(&mut self, time: f64) {
         if self.players.is_empty() {
             // no players, no need to tick
             return;
         }
         self.handle_bots();
-        self.game_state.tick(dt);
+        self.game_state.tick(time);
         self.broadcast_message(self.game_state.state_message());
     }
 }

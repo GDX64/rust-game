@@ -1,3 +1,5 @@
+use core::time;
+
 use crate::ws_channel::WSChannel;
 use crate::{game_server, ClientMessage, GameMessage, ServerState};
 use futures::channel::mpsc::{channel, Receiver};
@@ -41,7 +43,7 @@ impl OnlineData {
         self.ws.send(msg.to_bytes());
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, dt: f64) {
         loop {
             let msg = self.ws.receive();
             let msg = match msg {
@@ -56,7 +58,7 @@ impl OnlineData {
                 _ => {}
             }
         }
-        self.game_state.tick(0.016);
+        self.game_state.tick(dt);
     }
 }
 
@@ -91,7 +93,7 @@ impl RunningMode {
         };
     }
 
-    pub fn tick(&mut self) {
+    pub fn tick(&mut self, dt: f64) {
         match self {
             RunningMode::Local {
                 receiver,
@@ -99,7 +101,7 @@ impl RunningMode {
                 game,
                 ..
             } => {
-                game.tick(0.016);
+                game.tick(dt);
                 while let Ok(Some(msg)) = receiver.try_next() {
                     let game_message = GameMessage::from_bytes(&msg);
                     match game_message {
@@ -109,10 +111,10 @@ impl RunningMode {
                         _ => {}
                     }
                 }
-                state.tick(0.016);
+                state.tick(dt);
             }
             RunningMode::Online(data) => {
-                data.tick();
+                data.tick(dt);
             }
         };
     }

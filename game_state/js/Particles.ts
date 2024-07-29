@@ -16,6 +16,7 @@ export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
   explosionPool: Explosion[] = [];
   group = new THREE.Group();
+  currentTime = 0;
   constructor(scene: THREE.Scene) {
     scene.add(this.group);
     this.group.renderOrder = RenderOrder.PARTICLES;
@@ -45,8 +46,10 @@ export class ExplosionManager {
   }
 
   tick(time: number) {
+    const delta = time - this.currentTime;
+    this.currentTime = time;
     this.explosions.forEach((explosion) => {
-      explosion.tick(0.016);
+      explosion.tick(delta);
       if (explosion.isFinished) {
         this.explosions.delete(explosion.id);
         this.explosionPool.push(explosion);

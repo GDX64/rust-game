@@ -1,6 +1,6 @@
 use anyhow::Context;
 use cgmath::InnerSpace;
-use log::{error, info};
+use log::error;
 
 use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
@@ -8,7 +8,7 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-const BOAT_ACC: f64 = 20.0;
+const BOAT_ACC: f64 = 30.0;
 
 #[derive(Debug)]
 pub struct PlayerShip {
@@ -133,7 +133,7 @@ impl Player {
                 if let Some(next) = path.first() {
                     let position: V2D = ship.position.into();
                     let direction = next - position;
-                    if direction.magnitude() < 0.1 {
+                    if direction.magnitude() < 1.0 {
                         path.remove(0);
                         if path.is_empty() {
                             self.actions
