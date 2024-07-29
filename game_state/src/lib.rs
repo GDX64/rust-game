@@ -108,6 +108,10 @@ impl GameWasmState {
         self.running_mode.send_game_message(GameMessage::AddBot)
     }
 
+    pub fn remove_bot(&mut self) {
+        self.running_mode.send_game_message(GameMessage::RemoveBot)
+    }
+
     pub fn get_all_ships(&self) -> JsValue {
         let ships: Vec<ShipState> = self.running_mode.server_state().get_ships();
         serde_wasm_bindgen::to_value(&ships).unwrap_or_default()

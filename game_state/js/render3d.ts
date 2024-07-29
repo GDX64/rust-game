@@ -68,6 +68,22 @@ export class Render3D {
       },
       "reset"
     );
+    this.gui.add(
+      {
+        addBot: () => {
+          this.gameState.add_bot();
+        },
+      },
+      "addBot"
+    );
+    this.gui.add(
+      {
+        removeBot: () => {
+          this.gameState.remove_bot();
+        },
+      },
+      "removeBot"
+    );
   }
 
   private saveState() {

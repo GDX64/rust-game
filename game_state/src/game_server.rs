@@ -10,6 +10,7 @@ const MAX_BOTS: usize = 5;
 pub enum GameMessage {
     ClientMessage(ClientMessage),
     AddBot,
+    RemoveBot,
     MyID(u64),
     None,
 }
@@ -87,6 +88,13 @@ impl GameServer {
         self.bots.push(bot);
     }
 
+    fn remove_bot(&mut self) {
+        if let Some(bot) = self.bots.pop() {
+            self.game_state
+                .on_message(ClientMessage::RemovePlayer { id: bot.id });
+        }
+    }
+
     pub fn next_player_id(&mut self) -> u64 {
         self.player_id_counter += 1;
         self.player_id_counter
@@ -112,6 +120,7 @@ impl GameServer {
         match msg {
             GameMessage::ClientMessage(msg) => self.game_state.on_message(msg),
             GameMessage::AddBot => self.add_bot(),
+            GameMessage::RemoveBot => self.remove_bot(),
             _ => {}
         }
     }
