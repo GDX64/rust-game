@@ -85,6 +85,14 @@ impl GameWasmState {
         self.running_mode.tick(dt);
     }
 
+    pub fn change_wind(&mut self, x: f64, y: f64) {
+        self.send_message(ClientMessage::GameConstants {
+            constants: GameConstants {
+                wind_speed: (x, y, 0.0),
+            },
+        });
+    }
+
     pub fn get_all_bullets(&self) -> JsValue {
         let bullets = self.running_mode.server_state().get_bullets();
         serde_wasm_bindgen::to_value(&bullets).unwrap_or_default()

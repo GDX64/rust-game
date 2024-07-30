@@ -24,6 +24,7 @@ function defaultState() {
     bloomRadius: 0.4,
     bloomThreshold: 0.85,
     redShift: false,
+    windSpeed: 0,
     bloomEnabled: false,
   };
 }
@@ -93,6 +94,10 @@ export class Render3D {
       } else {
         this.gameState.start_local_server();
       }
+    });
+    this.gui.add(this.state, "windSpeed", 0, 100).onChange((val) => {
+      this.gameState.change_wind(val, 1.0);
+      this.water.changeWind(val, 0);
     });
   }
 

@@ -23,6 +23,12 @@ export class Water {
     return this.material.uniforms.time.value;
   }
 
+  changeWind(x: number, y: number) {
+    const ds = makeDs(this.freq);
+    ds[0].set(x / 1000, y / 1000);
+    this.material.uniforms.directions.value = ds;
+  }
+
   addControls(gui: dat.GUI) {
     const waterFolder = gui.addFolder("Water");
     waterFolder.add(this.material.uniforms.amplitude, "value", 0, 20);
@@ -115,7 +121,7 @@ export class Water {
           value: ds,
         },
         scatter_color: { value: new THREE.Color("#00ff9d") },
-        water_color: { value: new THREE.Color("#0686c2") },
+        water_color: { value: new THREE.Color("#30b4ca") },
         scatter_factor: { value: 5.5 },
         amplitude: { value: 2 },
         sunPosition: { value: new THREE.Vector3(1, 1, 1) },

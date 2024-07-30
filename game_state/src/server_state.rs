@@ -17,6 +17,11 @@ const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GameConstants {
+    pub wind_speed: (f64, f64, f64),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct PlayerState {
     name: String,
     position: (f64, f64),
@@ -134,11 +139,13 @@ impl Bullet {
         }
     }
 
-    pub fn evolve(&mut self, dt: f64) {
+    pub fn evolve(&mut self, dt: f64, game_constants: &GameConstants) {
         let speed: V3D = self.speed.into();
         let pos: V3D = self.position.into();
         let speed = speed + dt * V3D::new(0.0, 0.0, -GRAVITY);
         let pos = pos + speed * dt;
+        let wind_diff = V3D::from(game_constants.wind_speed) - speed;
+        let speed = speed + wind_diff * 0.03 * dt;
         self.position = pos.into();
         self.speed = speed.into();
     }
@@ -173,6 +180,9 @@ pub enum ClientMessage {
     },
     RemovePlayer {
         id: u64,
+    },
+    GameConstants {
+        constants: GameConstants,
     },
     None,
 }
@@ -264,6 +274,7 @@ pub struct ServerState {
     pub bullets: HashMap<(u64, u64), Bullet>,
     pub ship_collection: ShipCollection,
     pub current_time: f64,
+    pub game_constants: GameConstants,
     artifact_id: u64,
 }
 
@@ -280,6 +291,9 @@ impl ServerState {
             players: HashMap::new(),
             bullets: HashMap::new(),
             ship_collection: ShipCollection::new(),
+            game_constants: GameConstants {
+                wind_speed: (0.0, 0.0, 0.0),
+            },
         }
     }
 
@@ -329,7 +343,7 @@ impl ServerState {
         });
 
         self.bullets.retain(|_key, bullet| {
-            bullet.evolve(dt);
+            bullet.evolve(dt, &self.game_constants);
             let pos: V3D = bullet.position.into();
 
             if pos.z > 0.0 {
@@ -457,6 +471,9 @@ impl ServerState {
                         .insert((bullet.player_id, bullet.bullet_id), bullet);
                 }
             }
+            ClientMessage::GameConstants { constants } => {
+                self.game_constants = constants;
+            }
             ClientMessage::None => {}
         }
     }
@@ -471,7 +488,12 @@ mod test {
     fn verify_hits_target(initial: (f64, f64), target: (f64, f64)) -> bool {
         let mut bullet = Bullet::from_target(initial.into(), target.into());
         for _ in 0..100 {
-            bullet.evolve(0.016);
+            bullet.evolve(
+                0.016,
+                &crate::server_state::GameConstants {
+                    wind_speed: (0.0, 0.0, 0.0),
+                },
+            );
             let pos: V3D = bullet.position.into();
             let target = V3D::from(bullet.target);
             if (pos - target).magnitude() < BLAST_RADIUS {
