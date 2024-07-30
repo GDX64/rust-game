@@ -3,6 +3,7 @@ import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 
 const FREQ_START = 0.05;
+const WATER_DETAIL = 400;
 export class Water {
   freq = FREQ_START;
   constructor(
@@ -28,6 +29,38 @@ export class Water {
     waterFolder.add(this, "freq", 0.01, 0.1).onChange(() => {
       this.material.uniforms.directions.value = makeDs(this.freq);
     });
+    waterFolder
+      .addColor(
+        {
+          scatter_color: this.material.uniforms.scatter_color.value.getHex(),
+        },
+        "scatter_color"
+      )
+      .onChange((color: string) => {
+        this.material.uniforms.scatter_color.value = new THREE.Color(color);
+      });
+    waterFolder
+      .add(
+        {
+          scatter_factor: this.material.uniforms.scatter_factor.value,
+        },
+        "scatter_factor",
+        1,
+        10
+      )
+      .onChange((value: number) => {
+        this.material.uniforms.scatter_factor.value = value;
+      });
+    waterFolder
+      .addColor(
+        {
+          water_color: this.material.uniforms.water_color.value.getHex(),
+        },
+        "water_color"
+      )
+      .onChange((color: string) => {
+        this.material.uniforms.water_color.value = new THREE.Color(color);
+      });
   }
 
   intersects(ray: THREE.Raycaster) {
@@ -60,7 +93,12 @@ export class Water {
   }
 
   static startWater(WIDTH: number) {
-    const waterPlaneGeometry = new THREE.PlaneGeometry(WIDTH, WIDTH, 400, 400);
+    const waterPlaneGeometry = new THREE.PlaneGeometry(
+      WIDTH,
+      WIDTH,
+      WATER_DETAIL,
+      WATER_DETAIL
+    );
 
     const ds = makeDs(FREQ_START);
 
@@ -76,6 +114,9 @@ export class Water {
         directions: {
           value: ds,
         },
+        scatter_color: { value: new THREE.Color("#00ff9d") },
+        water_color: { value: new THREE.Color("#0686c2") },
+        scatter_factor: { value: 5.5 },
         amplitude: { value: 2 },
         sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       },
