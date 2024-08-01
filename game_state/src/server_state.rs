@@ -2,6 +2,7 @@ use crate::{
     diffing::{hashmap_diff, Diff},
     sparse_matrix::{CanGo, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
+    Boids::{BoidLike, BoidsTeam},
 };
 use cgmath::InnerSpace;
 use log::info;
@@ -15,6 +16,7 @@ const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
+const WIND_FACTOR: f64 = 0.01;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GameConstants {
@@ -28,7 +30,7 @@ pub struct PlayerState {
     id: u64,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ShipState {
     pub position: (f64, f64),
     pub speed: (f64, f64),
@@ -38,6 +40,25 @@ pub struct ShipState {
     pub player_id: u64,
     pub cannon_times: [f64; 3],
     pub last_shoot_time: f64,
+}
+
+impl BoidLike for ShipState {
+    fn update(&self, speed: V2D) -> Self {
+        let mut ship = self.clone();
+        let current_speed: V2D = ship.speed.into();
+        let new_speed = current_speed + speed * BOAT_SPEED / 20.0;
+        let new_speed = new_speed.normalize() * BOAT_SPEED;
+        ship.speed = new_speed.into();
+        ship
+    }
+
+    fn position(&self) -> V2D {
+        self.position.into()
+    }
+
+    fn velocity(&self) -> V2D {
+        self.speed.into()
+    }
 }
 
 impl ShipState {
@@ -145,7 +166,7 @@ impl Bullet {
         let speed = speed + dt * V3D::new(0.0, 0.0, -GRAVITY);
         let pos = pos + speed * dt;
         let wind_diff = V3D::from(game_constants.wind_speed) - speed;
-        let speed = speed + wind_diff * 0.03 * dt;
+        let speed = speed + wind_diff * WIND_FACTOR * dt;
         self.position = pos.into();
         self.speed = speed.into();
     }
@@ -331,7 +352,6 @@ impl ServerState {
 
     pub fn tick(&mut self, dt: f64) {
         self.current_time += dt;
-        info!("Ticking server state: {}", self.current_time);
         let mut ships_hit: Vec<ShipKey> = vec![];
         let mut explosions = vec![];
 
@@ -394,6 +414,20 @@ impl ServerState {
             ship.speed = speed.into();
             return !ships_hit.contains(id);
         });
+
+        //update boid style
+        let all_ships = self.players.iter().flat_map(|(_, player)| {
+            let ships = self.ship_collection.values().filter(|ship| {
+                return ship.player_id == player.id;
+            });
+            let updated = BoidsTeam::update_boids_like(ships.cloned().collect());
+            return updated;
+        });
+
+        self.ship_collection = all_ships
+            .map(|ship| (ShipKey::new(ship.id, ship.player_id), ship))
+            .collect();
+        info!("ships: {:?}", self.ship_collection.len());
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {

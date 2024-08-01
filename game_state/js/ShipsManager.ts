@@ -55,7 +55,8 @@ export class ShipsManager {
     this.scene.add(this.arrowHelper);
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "s") {
+      if (event.key === "c") {
+        this.createShip(0, 0);
       }
     });
     this.loadModel();
@@ -118,12 +119,9 @@ export class ShipsManager {
     );
   }
 
-  moveShip(x: number, y: number) {
-    const first = this.myShips().next().value;
-    if (first) {
-      this.game.action_move_ship(first.id, x, y);
-    } else {
-      this.createShip(0, 0);
+  moveSelected(x: number, y: number) {
+    for (const ship of this.myShips()) {
+      this.game.action_move_ship(ship.id, x, y);
     }
   }
 

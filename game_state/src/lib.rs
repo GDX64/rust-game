@@ -14,6 +14,7 @@ mod sparse_matrix;
 mod world_gen;
 use sparse_matrix::V2D;
 use wasm_bindgen::prelude::*;
+mod Boids;
 mod diffing;
 mod ws_channel;
 
@@ -91,6 +92,19 @@ impl GameWasmState {
                 wind_speed: (x, y, 0.0),
             },
         });
+    }
+
+    pub fn move_selected_ships(&mut self, x: f64, y: f64) {
+        self.player
+            .move_selected_ships(&self.running_mode.server_state(), x, y);
+    }
+
+    pub fn clear_selected(&mut self) {
+        self.player.clear_selected_ships();
+    }
+
+    pub fn selec_ship(&mut self, id: f64) {
+        self.player.selec_ship(id as u64);
     }
 
     pub fn get_all_bullets(&self) -> JsValue {

@@ -10,6 +10,7 @@ import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
+import { GammaCorrectionShader } from "three/addons/shaders/GammaCorrectionShader.js";
 
 function defaultState() {
   return {
@@ -97,6 +98,7 @@ export class Render3D {
         this.gameState.start_local_server();
       }
     });
+    this.gameState.change_wind(0, 0);
     this.gui.add(this.state, "windSpeed", 0, 100).onChange((val) => {
       this.gameState.change_wind(val, 1.0);
       this.water.changeWind(val, 0);
@@ -147,7 +149,7 @@ export class Render3D {
     if (intersects.length > 0) {
       const [x, y] = intersects[0].point.toArray();
       if (event.button === 2) {
-        this.shipsManager.moveShip(x, y);
+        this.shipsManager.moveSelected(x, y);
       } else {
         this.shipsManager.shoot(x, y);
       }
@@ -220,9 +222,11 @@ export class Render3D {
       this.scene,
       this.camera
     );
+    const gammaCorrection = new ShaderPass(GammaCorrectionShader);
     renderer.setPixelRatio(window.devicePixelRatio);
     composer.addPass(renderPass);
     composer.addPass(outline);
+    composer.addPass(gammaCorrection);
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),

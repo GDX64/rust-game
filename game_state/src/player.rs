@@ -1,6 +1,6 @@
 use anyhow::Context;
 use cgmath::InnerSpace;
-use log::error;
+use log::{error, info};
 
 use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
@@ -20,6 +20,7 @@ pub struct PlayerShip {
 pub struct Player {
     pub id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
+    selected_ships: Vec<u64>,
     actions: Sender<ClientMessage>,
     actions_buffer: Receiver<ClientMessage>,
 }
@@ -32,7 +33,22 @@ impl Player {
             moving_ships: HashMap::new(),
             actions: sender,
             actions_buffer: receiver,
+            selected_ships: Vec::new(),
         }
+    }
+
+    pub fn move_selected_ships(&mut self, game_state: &ServerState, x: f64, y: f64) {
+        for ship_id in self.selected_ships.clone() {
+            self.move_ship(game_state, ship_id, x, y);
+        }
+    }
+
+    pub fn clear_selected_ships(&mut self) {
+        self.selected_ships.clear();
+    }
+
+    pub fn selec_ship(&mut self, ship_id: u64) {
+        self.selected_ships.push(ship_id);
     }
 
     pub fn move_ship(
@@ -45,6 +61,7 @@ impl Player {
         let server_ship = game_state
             .ship_collection
             .get(&ShipKey::new(ship_id, self.id))?;
+        info!("ship {:?}", server_ship);
         let path = game_state
             .game_map
             .find_path(server_ship.position, (x, y))?;
