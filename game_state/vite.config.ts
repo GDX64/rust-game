@@ -12,6 +12,9 @@ export default defineConfig({
   server: {
     open: true,
   },
+  optimizeDeps: {
+    exclude: ["three"],
+  },
   build: {
     target: "esnext",
   },

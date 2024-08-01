@@ -5,11 +5,11 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import { OutlinePass } from "three/addons/postprocessing/OutlinePass.js";
 import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
-// import WebGPURenderer from "three/addons/renderers/webgpu/WebGPURenderer.js";
 
 function defaultState() {
   return {
@@ -56,6 +56,8 @@ export class Render3D {
     this.camera,
     this.water
   );
+
+  outline = new OutlinePass(new THREE.Vector2(), this.scene, this.camera);
 
   readonly terrain = Terrain.new(this.gameState);
 
@@ -190,7 +192,10 @@ export class Render3D {
 
     const controls = new CameraControl(camera, renderer.domElement);
     controls.addListeners();
-    const composer = this.addPostProcessing(renderer);
+    const { composer, outline } = this.addPostProcessing(renderer);
+
+    this.outline = outline;
+
     renderer.setAnimationLoop((time) => {
       controls.tick(time);
       composer.render();
@@ -201,13 +206,23 @@ export class Render3D {
     });
 
     window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
+
+    this.shipsManager.selected$.subscribe((ship) => {
+      this.outline.selectedObjects = [ship];
+    });
   }
 
   private addPostProcessing(renderer: THREE.WebGLRenderer) {
     const composer = new EffectComposer(renderer);
     const renderPass = new RenderPass(this.scene, this.camera);
+    const outline = new OutlinePass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      this.scene,
+      this.camera
+    );
     renderer.setPixelRatio(window.devicePixelRatio);
     composer.addPass(renderPass);
+    composer.addPass(outline);
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
@@ -228,7 +243,7 @@ export class Render3D {
       }
     });
     this.addBloomControls(bloomPass);
-    return composer;
+    return { composer, outline };
   }
 
   private makeSun(scene: THREE.Scene) {

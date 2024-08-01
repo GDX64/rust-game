@@ -4,6 +4,7 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import boat from "./assets/boat.glb?url";
 import { ExplosionData, ExplosionManager } from "./Particles";
 import { Water } from "./Water";
+import { Subject } from "rxjs";
 
 type ShipData = {
   player_id: number;
@@ -13,21 +14,6 @@ type ShipData = {
   acceleration: [number, number];
   orientation: [number, number];
 };
-
-// type Diff<K, T> =
-//   | {
-//       Update: [K, T];
-//     }
-//   | {
-//       Remove: K;
-//     }
-//   | {
-//       Add: [K, T];
-//     };
-
-// type StateDiff = {
-//   bullets: Diff<[number, number], Bullet>[];
-// };
 
 type Bullet = {
   position: [number, number, number];
@@ -44,6 +30,7 @@ export class ShipsManager {
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
   private arrowHelper = new THREE.ArrowHelper();
+  selected$ = new Subject<THREE.InstancedMesh>();
   showArrow = false;
 
   constructor(
@@ -185,6 +172,8 @@ export class ShipsManager {
         this.playerColor(explosion.player_id)
       );
     });
+
+    this.selected$.next(this.boatMesh);
   }
 
   private playerColor(playerID: number) {
