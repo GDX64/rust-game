@@ -11,6 +11,7 @@ import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
 import { GammaCorrectionShader } from "three/addons/shaders/GammaCorrectionShader.js";
+import { PlayerActions } from "./PlayerActions";
 
 function defaultState() {
   return {
@@ -45,8 +46,6 @@ export class Render3D {
     0.1,
     5_000
   );
-  readonly rayCaster = new THREE.Raycaster();
-  readonly mouse = new THREE.Vector2(0, 0);
   readonly PLANE_WIDTH = this.gameState.map_size();
   readonly SEGMENTS_DENSITY = this.gameState.tile_size();
   readonly PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
@@ -54,16 +53,26 @@ export class Render3D {
   readonly shipsManager = new ShipsManager(
     this.gameState,
     this.scene,
-    this.camera,
     this.water
   );
 
   outline = new OutlinePass(new THREE.Vector2(), this.scene, this.camera);
 
   readonly terrain = Terrain.new(this.gameState);
+  readonly playerActions;
+  readonly canvas;
+  readonly cameraControls;
 
   constructor() {
     this.loadState();
+    this.canvas = document.createElement("canvas");
+    this.cameraControls = new CameraControl(this.camera, this.canvas);
+    this.playerActions = new PlayerActions(
+      this.canvas,
+      this.shipsManager,
+      this.cameraControls,
+      this.water
+    );
 
     //reset gui defaults
     this.gui.add(
@@ -141,21 +150,6 @@ export class Render3D {
     });
   }
 
-  private onMouseClick(event: PointerEvent) {
-    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    this.rayCaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.water.intersects(this.rayCaster);
-    if (intersects.length > 0) {
-      const [x, y] = intersects[0].point.toArray();
-      if (event.button === 2) {
-        this.shipsManager.moveSelected(x, y);
-      } else {
-        this.shipsManager.shoot(x, y);
-      }
-    }
-  }
-
   private async startRemoteServer() {
     const url = "https://game.glmachado.com/ws";
     // const url = "http://localhost:5000/ws";
@@ -173,7 +167,8 @@ export class Render3D {
       this.gameState.start_local_server();
     }
     setInterval(() => this.saveState(), 1_000);
-    const camera = this.camera;
+    document.body.appendChild(this.canvas);
+    this.playerActions.bindEvents();
     const scene = this.scene;
 
     this.addWaterColorControl();
@@ -184,22 +179,23 @@ export class Render3D {
     this.terrain.addToScene(scene);
     this.terrain.updateMesh();
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      canvas: this.canvas,
+    });
     renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     this.gui.addColor(this.state, "skyColor").onChange(() => {
       renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
 
-    const controls = new CameraControl(camera, renderer.domElement);
-    controls.addListeners();
+    this.cameraControls.addListeners();
     const { composer, outline } = this.addPostProcessing(renderer);
 
     this.outline = outline;
 
     renderer.setAnimationLoop((time) => {
-      controls.tick(time);
+      this.cameraControls.tick(time);
       composer.render();
       this.gameState.tick(time / 1000);
       this.shipsManager.tick(time / 1000);
@@ -207,10 +203,9 @@ export class Render3D {
       // waterShader.uniforms.cameraPosition.value = camera.position;
     });
 
-    window.addEventListener("pointerdown", (event) => this.onMouseClick(event));
-
     this.shipsManager.selected$.subscribe((ship) => {
       this.outline.selectedObjects = [ship];
+      this.outline.selectedObjects;
     });
   }
 

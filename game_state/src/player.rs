@@ -20,7 +20,7 @@ pub struct PlayerShip {
 pub struct Player {
     pub id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
-    selected_ships: Vec<u64>,
+    pub selected_ships: Vec<u64>,
     actions: Sender<ClientMessage>,
     actions_buffer: Receiver<ClientMessage>,
 }
@@ -47,8 +47,10 @@ impl Player {
         self.selected_ships.clear();
     }
 
-    pub fn selec_ship(&mut self, ship_id: u64) {
+    pub fn selec_ship(&mut self, ship_id: u64, game: &ServerState) {
         self.selected_ships.push(ship_id);
+        self.selected_ships
+            .retain(|&id| game.get_ship(id, self.id).is_some())
     }
 
     pub fn move_ship(
@@ -61,7 +63,6 @@ impl Player {
         let server_ship = game_state
             .ship_collection
             .get(&ShipKey::new(ship_id, self.id))?;
-        info!("ship {:?}", server_ship);
         let path = game_state
             .game_map
             .find_path(server_ship.position, (x, y))?;
@@ -79,7 +80,7 @@ impl Player {
         Some(())
     }
 
-    pub fn shoot_at(&self, ship_id: u64, x: f64, y: f64) {
+    pub fn shoot_at_with(&self, ship_id: u64, x: f64, y: f64) {
         let msg = ClientMessage::Shoot {
             ship_id,
             player_id: self.id,
@@ -90,15 +91,19 @@ impl Player {
         };
     }
 
-    pub fn shoot_with_all_ships(&self, target: &V2D, game_state: &ServerState) {
-        self.player_ships(game_state).into_iter().for_each(|ship| {
-            if let Some(ship) = game_state
-                .ship_collection
-                .get(&ShipKey::new(ship.id, self.id))
-            {
-                self.shoot_at(ship.id, target.x, target.y);
-            };
-        });
+    pub fn shoot_at(&self, target: &V2D, game_state: &ServerState) {
+        self.player_ships(game_state)
+            .filter(|ship| {
+                let is_selected = self.selected_ships.contains(&ship.id);
+                let can_shoot = ship
+                    .find_available_cannon(game_state.current_time)
+                    .is_some();
+                return is_selected && can_shoot;
+            })
+            .take(1)
+            .for_each(|ship| {
+                self.shoot_at_with(ship.id, target.x, target.y);
+            });
     }
 
     pub fn player_ships<'a>(&self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {

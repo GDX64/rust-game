@@ -51,9 +51,14 @@ impl GameWasmState {
         result
     }
 
-    pub fn shoot_with_all(&self, x: f64, y: f64, camera_x: f64, camera_y: f64) {
+    pub fn action_shoot_at(&self, x: f64, y: f64) {
         self.player
-            .shoot_with_all_ships(&V2D::new(x, y), self.running_mode.server_state());
+            .shoot_at(&V2D::new(x, y), self.running_mode.server_state());
+    }
+
+    pub fn get_selected_ships(&self) -> JsValue {
+        let ships = &self.player.selected_ships;
+        serde_wasm_bindgen::to_value(ships).unwrap_or_default()
     }
 
     pub fn get_all_explosions(&self) -> JsValue {
@@ -99,12 +104,13 @@ impl GameWasmState {
             .move_selected_ships(&self.running_mode.server_state(), x, y);
     }
 
-    pub fn clear_selected(&mut self) {
+    pub fn action_clear_selected(&mut self) {
         self.player.clear_selected_ships();
     }
 
-    pub fn selec_ship(&mut self, id: f64) {
-        self.player.selec_ship(id as u64);
+    pub fn action_selec_ship(&mut self, id: f64) {
+        self.player
+            .selec_ship(id as u64, &self.running_mode.server_state());
     }
 
     pub fn get_all_bullets(&self) -> JsValue {

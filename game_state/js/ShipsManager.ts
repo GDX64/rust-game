@@ -22,10 +22,18 @@ type Bullet = {
   player_id: number;
 };
 
+const SHIP_SIZE = 10;
+
 const up = new THREE.Vector3(0, 0, 1);
 
 export class ShipsManager {
-  private boatMesh: THREE.InstancedMesh | null = null;
+  boatMesh: THREE.InstancedMesh = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1, 1),
+    new THREE.MeshBasicMaterial(),
+    1
+  );
+  selected: number[] = [];
+  outlines;
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
@@ -34,9 +42,8 @@ export class ShipsManager {
   showArrow = false;
 
   constructor(
-    private game: GameWasmState,
+    readonly game: GameWasmState,
     private scene: THREE.Scene,
-    private camera: THREE.Camera,
     private water: Water
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
@@ -53,12 +60,8 @@ export class ShipsManager {
     this.arrowHelper.visible = this.showArrow;
     this.arrowHelper.setLength(10);
     this.scene.add(this.arrowHelper);
+    this.outlines = this.boatMesh.clone();
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "c") {
-        this.createShip(0, 0);
-      }
-    });
     this.loadModel();
   }
 
@@ -85,7 +88,9 @@ export class ShipsManager {
     instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.boatMesh = instancedMesh;
     this.boatMesh.frustumCulled = false;
-    this.scene.add(instancedMesh);
+    this.outlines = this.boatMesh.clone();
+    this.scene.add(this.boatMesh);
+    this.scene.add(this.outlines);
   }
 
   createShip(x: number, y: number) {
@@ -101,6 +106,22 @@ export class ShipsManager {
     return null;
   }
 
+  selectBoat(id: number) {
+    this.game.action_selec_ship(id);
+  }
+
+  getBoatAt(x: number, y: number) {
+    for (const ship of this.myShips()) {
+      const distance = Math.sqrt(
+        (ship.position[0] - x) ** 2 + (ship.position[1] - y) ** 2
+      );
+      if (distance < SHIP_SIZE) {
+        return ship.id;
+      }
+    }
+    return null;
+  }
+
   *myShips() {
     const myID = this.game.my_id();
     for (const ship of this.ships) {
@@ -110,17 +131,20 @@ export class ShipsManager {
     }
   }
 
+  *selectedShips() {
+    for (const ship of this.myShips()) {
+      if (this.selected.includes(ship.id)) {
+        yield ship;
+      }
+    }
+  }
+
   shoot(x: number, y: number) {
-    this.game.shoot_with_all(
-      x,
-      y,
-      this.camera.position.x,
-      this.camera.position.y
-    );
+    this.game.action_shoot_at(x, y);
   }
 
   moveSelected(x: number, y: number) {
-    for (const ship of this.myShips()) {
+    for (const ship of this.selectedShips()) {
       this.game.action_move_ship(ship.id, x, y);
     }
   }
@@ -131,6 +155,8 @@ export class ShipsManager {
     }
     const ships: ShipData[] = this.game.get_all_ships();
     const bullets: Bullet[] = this.game.get_all_bullets();
+    this.selected = this.game.get_selected_ships();
+
     this.bulletModel.count = bullets.length;
     this.bulletModel.instanceMatrix.needsUpdate = true;
     if (this.bulletModel.instanceColor) {
@@ -147,17 +173,39 @@ export class ShipsManager {
       this.bulletModel.setMatrixAt(i, matrix);
     }
 
-    this.boatMesh.count = ships.length;
     this.boatMesh.instanceMatrix.needsUpdate = true;
     if (this.boatMesh.instanceColor) {
       this.boatMesh.instanceColor.needsUpdate = true;
     }
-    for (let i = 0; i < ships.length; i++) {
-      const ship = ships[i];
-      this.calcBoatAngle(ship, matrix);
-      this.boatMesh.setMatrixAt(i, matrix);
-      this.boatMesh.setColorAt(i, this.playerColor(ship.player_id));
+    this.outlines.instanceMatrix.needsUpdate = true;
+    if (this.outlines.instanceColor) {
+      this.outlines.instanceColor.needsUpdate = true;
     }
+
+    const myID = this.game.my_id();
+    let normalBoats = 0;
+    let outlineBoats = 0;
+    for (let _i = 0; _i < ships.length; _i++) {
+      const ship = ships[_i];
+      const isMine = ship.player_id === myID;
+      let meshToUse;
+      let i;
+      if (isMine && this.selected.includes(ship.id)) {
+        i = outlineBoats;
+        outlineBoats += 1;
+        meshToUse = this.outlines;
+      } else {
+        i = normalBoats;
+        normalBoats += 1;
+        meshToUse = this.boatMesh;
+      }
+      this.calcBoatAngle(ship, matrix);
+      meshToUse.setMatrixAt(i, matrix);
+      const color = this.playerColor(ship.player_id);
+      meshToUse.setColorAt(i, color);
+    }
+    this.boatMesh.count = normalBoats;
+    this.outlines.count = outlineBoats;
     this.ships = ships;
 
     //==== explosions
@@ -171,7 +219,7 @@ export class ShipsManager {
       );
     });
 
-    this.selected$.next(this.boatMesh);
+    this.selected$.next(this.outlines);
   }
 
   private playerColor(playerID: number) {

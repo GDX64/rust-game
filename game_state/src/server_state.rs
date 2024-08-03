@@ -370,7 +370,7 @@ impl ServerState {
             bullet.evolve(dt, &self.game_constants);
             let pos: V3D = bullet.position.into();
 
-            if pos.z > self.game_map.height_of(pos.x, pos.y) {
+            if pos.z > self.game_map.height_of(pos.x, pos.y).max(0.0) {
                 return true;
             };
 
@@ -431,7 +431,6 @@ impl ServerState {
         self.ship_collection = all_ships
             .map(|ship| (ShipKey::new(ship.id, ship.player_id), ship))
             .collect();
-        info!("ships: {:?}", self.ship_collection.len());
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {

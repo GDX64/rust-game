@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 export class CameraControl {
-  private orbit: OrbitControls;
+  orbit: OrbitControls;
   constructor(camera: THREE.Camera, element: HTMLElement) {
     camera.position.z = 100;
     camera.position.y = -200;
@@ -12,7 +12,7 @@ export class CameraControl {
     this.orbit.enableDamping = true;
   }
 
-  private get camera() {
+  get camera() {
     return this.orbit.object;
   }
 

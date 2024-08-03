@@ -168,7 +168,7 @@ impl GameServer {
                     return;
                 };
                 if let Some(enemy) = enemies.next() {
-                    bot.shoot_at(ship.id, enemy.position.0, enemy.position.1);
+                    bot.shoot_at_with(ship.id, enemy.position.0, enemy.position.1);
                 };
             });
 
