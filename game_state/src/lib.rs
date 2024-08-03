@@ -56,6 +56,11 @@ impl GameWasmState {
             .shoot_at(&V2D::new(x, y), self.running_mode.server_state());
     }
 
+    pub fn add_bot_ship_at(&mut self, x: f64, y: f64) {
+        self.running_mode
+            .send_game_message(GameMessage::AddBotShipAt(x, y));
+    }
+
     pub fn get_selected_ships(&self) -> JsValue {
         let ships = &self.player.selected_ships;
         serde_wasm_bindgen::to_value(ships).unwrap_or_default()

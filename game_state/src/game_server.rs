@@ -10,6 +10,7 @@ const MAX_BOTS: usize = 5;
 pub enum GameMessage {
     ClientMessage(ClientMessage),
     AddBot,
+    AddBotShipAt(f64, f64),
     RemoveBot,
     MyID(u64),
     None,
@@ -121,7 +122,15 @@ impl GameServer {
             GameMessage::ClientMessage(msg) => self.game_state.on_message(msg),
             GameMessage::AddBot => self.add_bot(),
             GameMessage::RemoveBot => self.remove_bot(),
-            _ => {}
+            GameMessage::AddBotShipAt(x, y) => {
+                if let Some(bot) = self.bots.last_mut() {
+                    bot.create_ship(x, y);
+                } else {
+                    self.add_bot();
+                }
+            }
+            GameMessage::MyID(_) => {}
+            GameMessage::None => {}
         }
     }
 
@@ -173,7 +182,7 @@ impl GameServer {
             });
 
             if bot.number_of_ships(&self.game_state) < 5 {
-                for _ in 0..10 {
+                for _ in 0..5 {
                     let x = self.rand_gen.f64() * 1000.0 - 500.0;
                     let y = self.rand_gen.f64() * 1000.0 - 500.0;
                     if self.game_state.game_map.is_allowed_place(x, y) {

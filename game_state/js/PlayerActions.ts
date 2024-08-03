@@ -37,6 +37,11 @@ export class PlayerActions {
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
     this.canvas.addEventListener("pointermove", this.onMouseMove.bind(this));
     document.addEventListener("keydown", this.onKeyDown.bind(this));
+    document.addEventListener("keyup", this.onKeyUp.bind(this));
+  }
+
+  onKeyUp(event: KeyboardEvent) {
+    this.canvas.style.cursor = "auto";
   }
 
   onKeyDown(event: KeyboardEvent) {
@@ -46,6 +51,15 @@ export class PlayerActions {
       if (!intersection) return;
       const { x, y } = intersection.point;
       this.shipsManager.createShip(x, y);
+    }
+    if (event.ctrlKey) {
+      this.canvas.style.cursor = "crosshair";
+    }
+    if (event.key === "b") {
+      const intersection = this.waterIntersection();
+      if (!intersection) return;
+      const { x, y } = intersection.point;
+      this.game.add_bot_ship_at(x, y);
     }
   }
 
@@ -59,13 +73,7 @@ export class PlayerActions {
     this.mouse.y = event.offsetY;
 
     const hasShift = event.shiftKey;
-    if (hasShift) {
-      const boat = this.boatClicked();
-      if (boat !== null) {
-        this.shipsManager.selectBoat(boat);
-      }
-      return;
-    }
+    const hasControl = event.ctrlKey;
 
     const intersection = this.waterIntersection();
     if (!intersection) {
@@ -74,8 +82,24 @@ export class PlayerActions {
     const { x, y } = intersection.point;
     if (event.button === 2) {
       this.shipsManager.moveSelected(x, y);
-    } else {
+    } else if (hasControl) {
       this.shipsManager.shoot(x, y);
+    } else {
+      const boat = this.boatClicked();
+      if (boat == null) {
+        if (hasShift) {
+          return;
+        } else {
+          this.shipsManager.clearSelection();
+        }
+      } else {
+        if (hasShift) {
+          this.shipsManager.selectBoat(boat);
+        } else {
+          this.shipsManager.clearSelection();
+          this.shipsManager.selectBoat(boat);
+        }
+      }
     }
   }
 

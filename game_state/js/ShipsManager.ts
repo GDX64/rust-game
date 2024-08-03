@@ -110,6 +110,10 @@ export class ShipsManager {
     this.game.action_selec_ship(id);
   }
 
+  clearSelection() {
+    this.game.action_clear_selected();
+  }
+
   getBoatAt(x: number, y: number) {
     for (const ship of this.myShips()) {
       const distance = Math.sqrt(
