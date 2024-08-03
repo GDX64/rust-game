@@ -25,12 +25,10 @@ export class Terrain {
       for (let y = 0; y < this.PLANE_SEGMENTS; y += 1) {
         const i = (y * this.PLANE_SEGMENTS + x) * 3;
         const yProportion = y / this.PLANE_SEGMENTS;
-        let height =
-          this.gameState.get_land_value(
-            (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
-            (0.5 - yProportion) * this.PLANE_WIDTH
-          ) ?? 0;
-        height = height * 500;
+        let height = this.gameState.get_land_value(
+          (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
+          (0.5 - yProportion) * this.PLANE_WIDTH
+        );
 
         arr[i + 2] = height;
         let thisColor;

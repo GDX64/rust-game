@@ -21,8 +21,9 @@ impl<T> Default for WorldGrid<T> {
     }
 }
 
-pub trait CanGo {
+pub trait Tile: Clone + Copy {
     fn can_go(&self) -> bool;
+    fn height(&self) -> f64;
 }
 
 pub struct TileUnit(usize);
@@ -33,7 +34,7 @@ impl TileUnit {
     }
 }
 
-impl<T> WorldGrid<T> {
+impl<T: Tile> WorldGrid<T> {
     fn tile_unit(&self, val: f64) -> usize {
         TileUnit::div(val + self.dim / 2.0, self.tile_size).0
     }
@@ -52,9 +53,7 @@ impl<T> WorldGrid<T> {
         let index = (y * self.tiles_dim + x) as usize;
         self.data.get(index)
     }
-}
 
-impl<T: Copy + Clone> WorldGrid<T> {
     pub fn new(dim: f64, default: T, tile_size: f64) -> Self {
         let tiles_dim = TileUnit::div(dim, tile_size).0;
 
@@ -89,68 +88,7 @@ impl<T: Copy + Clone> WorldGrid<T> {
         let index = (y * self.tiles_dim + x) as usize;
         self.data[index] = value;
     }
-}
 
-pub type V2D = Vector2<f64>;
-pub type V3D = Vector3<f64>;
-
-mod grid_line {
-    use cgmath::InnerSpace;
-
-    use super::V2D;
-
-    pub struct GridLinePath {
-        start: V2D,
-        end: V2D,
-        step: f64,
-        current_length: f64,
-    }
-
-    impl GridLinePath {
-        pub fn new(start: V2D, end: V2D, step: f64) -> Self {
-            Self {
-                start,
-                end,
-                step,
-                current_length: 0.0,
-            }
-        }
-
-        pub fn next(&mut self) -> Option<V2D> {
-            let distance = self.start - self.end;
-            if self.current_length > distance.magnitude() {
-                return None;
-            }
-            let direction = self.end - self.start;
-            let direction = direction.normalize();
-            let next = self.start + direction * self.current_length;
-            self.current_length += self.step;
-            return Some(next);
-        }
-    }
-
-    #[cfg(test)]
-    mod test {
-        use cgmath::InnerSpace;
-
-        use crate::game_map::{grid_line::GridLinePath, V2D};
-
-        #[test]
-        fn test_line() {
-            let mut line = GridLinePath::new(V2D::new(0.0, 0.0), V2D::new(2.0, 2.0), 1.0);
-            assert_eq!(line.next(), Some(V2D::new(0.0, 0.0)));
-            let point = line.next().unwrap();
-            assert_eq!(point.magnitude() - 1.0 < 0.001, true);
-            let point = line.next().unwrap();
-            assert_eq!(point.magnitude() - 2.0 < 0.001, true);
-            assert_eq!(line.next(), None);
-        }
-    }
-}
-
-const MAX_SEARCH: usize = 10_000;
-
-impl<T: CanGo> WorldGrid<T> {
     pub fn is_allowed_place(&self, x: f64, y: f64) -> bool {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
@@ -158,6 +96,15 @@ impl<T: CanGo> WorldGrid<T> {
             return value.can_go();
         }
         return false;
+    }
+
+    pub fn height_of(&self, x: f64, y: f64) -> f64 {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        if let Some(value) = self.get_tiles(x, y) {
+            return value.height();
+        }
+        return 0.0;
     }
 
     fn can_go_straight(&self, initial: &V2D, fin: &V2D) -> bool {
@@ -233,9 +180,86 @@ impl<T: CanGo> WorldGrid<T> {
     }
 }
 
+pub type V2D = Vector2<f64>;
+pub type V3D = Vector3<f64>;
+
+mod grid_line {
+    use cgmath::InnerSpace;
+
+    use super::V2D;
+
+    pub struct GridLinePath {
+        start: V2D,
+        end: V2D,
+        step: f64,
+        current_length: f64,
+    }
+
+    impl GridLinePath {
+        pub fn new(start: V2D, end: V2D, step: f64) -> Self {
+            Self {
+                start,
+                end,
+                step,
+                current_length: 0.0,
+            }
+        }
+
+        pub fn next(&mut self) -> Option<V2D> {
+            let distance = self.start - self.end;
+            if self.current_length > distance.magnitude() {
+                return None;
+            }
+            let direction = self.end - self.start;
+            let direction = direction.normalize();
+            let next = self.start + direction * self.current_length;
+            self.current_length += self.step;
+            return Some(next);
+        }
+    }
+
+    #[cfg(test)]
+    mod test {
+        use cgmath::InnerSpace;
+
+        use crate::game_map::{grid_line::GridLinePath, V2D};
+
+        #[test]
+        fn test_line() {
+            let mut line = GridLinePath::new(V2D::new(0.0, 0.0), V2D::new(2.0, 2.0), 1.0);
+            assert_eq!(line.next(), Some(V2D::new(0.0, 0.0)));
+            let point = line.next().unwrap();
+            assert_eq!(point.magnitude() - 1.0 < 0.001, true);
+            let point = line.next().unwrap();
+            assert_eq!(point.magnitude() - 2.0 < 0.001, true);
+            assert_eq!(line.next(), None);
+        }
+    }
+}
+
+const MAX_SEARCH: usize = 10_000;
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    impl Tile for f64 {
+        fn can_go(&self) -> bool {
+            return true;
+        }
+        fn height(&self) -> f64 {
+            return *self;
+        }
+    }
+
+    impl Tile for bool {
+        fn can_go(&self) -> bool {
+            return *self;
+        }
+        fn height(&self) -> f64 {
+            return 0.0;
+        }
+    }
 
     #[test]
     fn test_grid_isomorphism() {
@@ -250,12 +274,6 @@ mod test {
         //going back
         assert_eq!(grid.from_tile_unit(2), 0.0);
         assert_eq!(grid.from_tile_unit(3), 10.0);
-    }
-
-    impl CanGo for bool {
-        fn can_go(&self) -> bool {
-            return *self;
-        }
     }
 
     #[test]

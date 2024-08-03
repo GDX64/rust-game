@@ -57,6 +57,7 @@ pub struct WorldGenConfig {
     pub low_land: Option<NoiseConfig>,
     pub high_land: Option<NoiseConfig>,
     pub forest: Option<NoiseConfig>,
+    pub height_scale: f64,
     pub weight_low_land: f64,
     pub forest_threshold: f64,
     pub land_threshold: f64,
@@ -88,6 +89,7 @@ impl Default for WorldGenConfig {
             land_threshold: 0.0,
             noise_scale: 0.0005,
             tile_size: 20.0,
+            height_scale: 500.0,
             view_info: ViewInfo::default(),
         }
     }
@@ -167,6 +169,7 @@ impl WorldGen {
         self.terrain_interpolation
             .interpolate(land_value)
             .unwrap_or(0.0)
+            * self.config.height_scale
     }
 
     fn get_terrain_at(&self, x: f64, y: f64) -> (f64, TileKind) {

@@ -1,6 +1,6 @@
 use crate::{
     diffing::{hashmap_diff, Diff},
-    game_map::{CanGo, WorldGrid, V2D, V3D},
+    game_map::{Tile, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
     Boids::{BoidLike, BoidsTeam},
 };
@@ -271,9 +271,13 @@ impl ShipKey {
 
 type ShipCollection = HashMap<ShipKey, ShipState>;
 
-impl CanGo for (f64, TileKind) {
+impl Tile for (f64, TileKind) {
     fn can_go(&self) -> bool {
         self.1 == TileKind::Water
+    }
+
+    fn height(&self) -> f64 {
+        self.0
     }
 }
 
@@ -366,7 +370,7 @@ impl ServerState {
             bullet.evolve(dt, &self.game_constants);
             let pos: V3D = bullet.position.into();
 
-            if pos.z > 0.0 {
+            if pos.z > self.game_map.height_of(pos.x, pos.y) {
                 return true;
             };
 
