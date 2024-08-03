@@ -66,7 +66,7 @@ export class Render3D {
   constructor() {
     this.loadState();
     this.canvas = document.createElement("canvas");
-    this.cameraControls = new CameraControl(this.camera, this.canvas);
+    this.cameraControls = new CameraControl(this.camera);
     this.playerActions = new PlayerActions(
       this.canvas,
       this.shipsManager,
@@ -195,11 +195,12 @@ export class Render3D {
     this.outline = outline;
 
     renderer.setAnimationLoop((time) => {
-      this.cameraControls.tick(time);
-      composer.render();
+      this.playerActions.tick();
       this.gameState.tick(time / 1000);
       this.shipsManager.tick(time / 1000);
       this.water.tick(time / 1000);
+      this.cameraControls.tick(time / 1000);
+      composer.render();
       // waterShader.uniforms.cameraPosition.value = camera.position;
     });
 

@@ -36,6 +36,9 @@ export class PlayerActions {
   bindEvents() {
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
     this.canvas.addEventListener("pointermove", this.onMouseMove.bind(this));
+    this.canvas.addEventListener("contextmenu", (event) =>
+      event.preventDefault()
+    );
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
   }
@@ -61,7 +64,21 @@ export class PlayerActions {
       const { x, y } = intersection.point;
       this.game.add_bot_ship_at(x, y);
     }
+    if (event.key === " ") {
+      this.targetSelected();
+    }
   }
+
+  targetSelected() {
+    const selected = this.shipsManager.selectedShips().next().value;
+    if (!selected) {
+      return;
+    }
+    const [x, y] = selected.position;
+    this.camera.changeTarget(new THREE.Vector3(x, y, 0));
+  }
+
+  tick() {}
 
   onMouseMove(event: MouseEvent) {
     this.mouse.x = event.offsetX;
@@ -69,6 +86,7 @@ export class PlayerActions {
   }
 
   private pointerdown(event: PointerEvent) {
+    event.preventDefault();
     this.mouse.x = event.offsetX;
     this.mouse.y = event.offsetY;
 

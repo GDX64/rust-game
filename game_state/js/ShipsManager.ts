@@ -126,6 +126,15 @@ export class ShipsManager {
     return null;
   }
 
+  getMyShip(id: number) {
+    for (const ship of this.myShips()) {
+      if (ship.id === id) {
+        return ship;
+      }
+    }
+    return null;
+  }
+
   *myShips() {
     const myID = this.game.my_id();
     for (const ship of this.ships) {
