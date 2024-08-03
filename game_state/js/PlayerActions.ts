@@ -78,9 +78,30 @@ export class PlayerActions {
     this.camera.changeTarget(new THREE.Vector3(x, y, 0));
   }
 
-  tick() {}
+  handleMousePos() {
+    const isCloserToTheRight = this.mouse.x > this.width * 0.9;
+    if (isCloserToTheRight) {
+      this.camera.rotateAroundZ(-1);
+    }
+    const isCloserToTheLeft = this.mouse.x < this.width * 0.1;
+    if (isCloserToTheLeft) {
+      this.camera.rotateAroundZ(1);
+    }
+    const isCloserToTop = this.mouse.y < this.height * 0.1;
+    if (isCloserToTop) {
+      this.camera.rotateAroundPlane(-1);
+    }
+    const isCloserToBottom = this.mouse.y > this.height * 0.9;
+    if (isCloserToBottom) {
+      this.camera.rotateAroundPlane(1);
+    }
+  }
 
-  onMouseMove(event: MouseEvent) {
+  tick() {
+    this.handleMousePos();
+  }
+
+  onMouseMove(event: PointerEvent) {
     this.mouse.x = event.offsetX;
     this.mouse.y = event.offsetY;
   }

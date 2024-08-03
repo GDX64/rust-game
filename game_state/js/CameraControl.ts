@@ -30,8 +30,8 @@ class LerpBox {
 }
 
 export class CameraControl {
-  private target = new LerpBox().duration(0.3);
-  private position = new LerpBox().duration(0.3);
+  private target = new LerpBox().duration(0.166);
+  private position = new LerpBox().duration(0.166);
   private keys: Record<string, boolean> = {};
   private time = 0;
   constructor(public camera: THREE.Camera) {
@@ -71,18 +71,53 @@ export class CameraControl {
     document.addEventListener("keydown", (event: KeyboardEvent) => {
       this.keys[event.key] = true;
     });
+    document.addEventListener("wheel", (event: WheelEvent) => {
+      this.onWeel(event);
+    });
+  }
+
+  private onWeel(event: WheelEvent) {
+    const delta = event.deltaY;
+    const amount = delta / 500;
+    const position = this.camera.position.clone();
+    const target = this.target.to.clone();
+    //rotate position around target
+    const direction = position.clone().sub(target);
+    console.log(amount);
+    direction.multiplyScalar(amount);
+    position.add(direction);
+    this.changePosition(position);
+  }
+
+  rotateAroundZ(sign: number) {
+    const amount = 0.05 * sign;
+    const position = this.camera.position.clone();
+    const target = this.target.to.clone();
+    //rotate position around target
+    target.sub(position);
+    target.applyAxisAngle(new THREE.Vector3(0, 0, 1), amount);
+    target.add(position);
+    this.changeTarget(target);
+  }
+
+  rotateAroundPlane(sign: number) {
+    const projected = this.lookDirectionProjected();
+    const orthogonal = new THREE.Vector3(0, 0, 1).cross(projected);
+
+    const amount = 0.02 * sign;
+    const position = this.camera.position.clone();
+    const target = this.target.to.clone();
+    //rotate position around target
+    target.sub(position);
+    target.applyAxisAngle(orthogonal, amount);
+    target.add(position);
+    this.changeTarget(target);
   }
 
   private handlePressedKeys() {
     if (this.keys.q || this.keys.e) {
-      const amount = 0.2 * (this.keys.q ? 1 : -1);
-      const position = this.camera.position.clone();
-      const target = this.target.to.clone();
-      //rotate position around target
-      position.sub(target);
-      position.applyAxisAngle(new THREE.Vector3(0, 0, 1), amount);
-      position.add(target);
-      this.changePosition(position);
+      const amount = this.keys.q ? 1 : -1;
+      this.rotateAroundZ(amount);
       return;
     }
     if (this.keys.W || this.keys.S) {
