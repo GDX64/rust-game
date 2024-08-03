@@ -1,6 +1,6 @@
 use crate::{
     diffing::{hashmap_diff, Diff},
-    sparse_matrix::{CanGo, WorldGrid, V2D, V3D},
+    game_map::{CanGo, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
     Boids::{BoidLike, BoidsTeam},
 };
@@ -517,7 +517,7 @@ impl ServerState {
 mod test {
     use cgmath::InnerSpace;
 
-    use crate::{server_state::BLAST_RADIUS, sparse_matrix::V3D, Bullet};
+    use crate::{game_map::V3D, server_state::BLAST_RADIUS, Bullet};
 
     fn verify_hits_target(initial: (f64, f64), target: (f64, f64)) -> bool {
         let mut bullet = Bullet::from_target(initial.into(), target.into());

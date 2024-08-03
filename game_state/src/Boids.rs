@@ -1,6 +1,6 @@
 use cgmath::{InnerSpace, MetricSpace};
 
-use crate::sparse_matrix::V2D;
+use crate::game_map::V2D;
 
 const NEAR: f64 = 40.0;
 

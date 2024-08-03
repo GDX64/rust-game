@@ -1,7 +1,5 @@
 use super::game_noise::GameNoise;
-use crate::{
-    game_noise::NoiseConfig, interpolation::LinearInterpolation, sparse_matrix::WorldGrid,
-};
+use crate::{game_map::WorldGrid, game_noise::NoiseConfig, interpolation::LinearInterpolation};
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]

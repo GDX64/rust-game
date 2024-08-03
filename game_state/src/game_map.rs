@@ -133,7 +133,7 @@ mod grid_line {
     mod test {
         use cgmath::InnerSpace;
 
-        use crate::sparse_matrix::{grid_line::GridLinePath, V2D};
+        use crate::game_map::{grid_line::GridLinePath, V2D};
 
         #[test]
         fn test_line() {

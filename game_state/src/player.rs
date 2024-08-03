@@ -2,7 +2,7 @@ use anyhow::Context;
 use cgmath::InnerSpace;
 use log::{error, info};
 
-use crate::{sparse_matrix::V2D, ClientMessage, ServerState, ShipKey, ShipState};
+use crate::{game_map::V2D, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
     collections::HashMap,
     sync::mpsc::{Receiver, Sender},
