@@ -9,7 +9,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const BULLET_SPEED: f64 = 100.0;
+const BULLET_SPEED: f64 = 200.0;
 const GRAVITY: f64 = 9.81;
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;

@@ -29,6 +29,7 @@ class LerpBox {
   }
 }
 
+const MIN_Z = 10;
 export class CameraControl {
   private target = new LerpBox().duration(0.166);
   private position = new LerpBox().duration(0.166);
@@ -36,14 +37,14 @@ export class CameraControl {
   private time = 0;
   constructor(public camera: THREE.Camera) {
     camera.position.z = 100;
-    camera.position.y = -200;
+    camera.position.y = -150;
     camera.up.set(0, 0, 1);
     camera.lookAt(this.target.to);
     this.position.updateTo(this.camera.position.clone());
   }
 
   private lookDirectionProjected() {
-    const look = this.camera.getWorldDirection(new THREE.Vector3(0, 0, 0));
+    const look = this.target.to.clone().sub(this.position.to);
     return look.projectOnPlane(new THREE.Vector3(0, 0, 1));
   }
 
@@ -51,8 +52,8 @@ export class CameraControl {
     this.handlePressedKeys();
     const target = this.target.evolve();
     const position = this.position.evolve();
-    this.camera.lookAt(target);
     this.camera.position.set(position.x, position.y, position.z);
+    this.camera.lookAt(target);
     this.time = time;
   }
 
@@ -77,9 +78,22 @@ export class CameraControl {
   }
 
   private onWeel(event: WheelEvent) {
-    const delta = event.deltaY;
+    this.moveCameraOnZ(event.deltaY / 100);
+  }
+
+  moveCameraOnZ(sign: number) {
+    let multiplier = sign * 10;
+    const currentPosTarget = this.position.to.clone();
+    multiplier = Math.max(multiplier, MIN_Z - currentPosTarget.z);
+    console.log(currentPosTarget.z, multiplier);
+    const delta = new THREE.Vector3(0, 0, multiplier);
+    this.changeTarget(this.target.to.clone().add(delta));
+    this.changePosition(this.position.to.clone().add(delta));
+  }
+
+  zoom(delta: number) {
     const amount = delta / 500;
-    const position = this.camera.position.clone();
+    const position = this.position.to.clone();
     const target = this.target.to.clone();
     //rotate position around target
     const direction = position.clone().sub(target);
@@ -91,7 +105,7 @@ export class CameraControl {
 
   rotateAroundZ(sign: number) {
     const amount = 0.05 * sign;
-    const position = this.camera.position.clone();
+    const position = this.position.to.clone();
     const target = this.target.to.clone();
     //rotate position around target
     target.sub(position);
@@ -105,7 +119,7 @@ export class CameraControl {
     const orthogonal = new THREE.Vector3(0, 0, 1).cross(projected);
 
     const amount = 0.02 * sign;
-    const position = this.camera.position.clone();
+    const position = this.position.to.clone();
     const target = this.target.to.clone();
     //rotate position around target
     target.sub(position);
@@ -122,18 +136,12 @@ export class CameraControl {
     }
     if (this.keys.W || this.keys.S) {
       const sign = this.keys.W ? 1 : -1;
-      const up = new THREE.Vector3(0, 0, 1);
-      const delta = up.normalize().multiplyScalar(sign * 10);
-      this.changeTarget(this.target.to.clone().add(delta));
-      this.changePosition(this.position.to.clone().add(delta));
+      this.moveCameraOnZ(sign);
       return;
     }
     if (this.keys["w"] || this.keys["s"]) {
       const sign = this.keys.w ? 1 : -1;
-      const projected = this.lookDirectionProjected();
-      const delta = projected.normalize().multiplyScalar(sign * 10);
-      this.changeTarget(this.target.to.clone().add(delta));
-      this.changePosition(this.position.to.clone().add(delta));
+      this.moveForward(sign);
       return;
     }
     if (this.keys["a"] || this.keys["d"]) {
@@ -146,5 +154,12 @@ export class CameraControl {
       this.changePosition(this.position.to.clone().add(delta));
       return;
     }
+  }
+
+  moveForward(sign: number) {
+    const projected = this.lookDirectionProjected();
+    const delta = projected.normalize().multiplyScalar(sign * 10);
+    this.changeTarget(this.target.to.clone().add(delta));
+    this.changePosition(this.position.to.clone().add(delta));
   }
 }

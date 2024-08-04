@@ -79,21 +79,21 @@ export class PlayerActions {
   }
 
   handleMousePos() {
-    const isCloserToTheRight = this.mouse.x > this.width * 0.9;
+    const isCloserToTheRight = this.mouse.x > this.width * 0.95;
     if (isCloserToTheRight) {
       this.camera.rotateAroundZ(-1);
     }
-    const isCloserToTheLeft = this.mouse.x < this.width * 0.1;
+    const isCloserToTheLeft = this.mouse.x < this.width * 0.05;
     if (isCloserToTheLeft) {
       this.camera.rotateAroundZ(1);
     }
-    const isCloserToTop = this.mouse.y < this.height * 0.1;
+    const isCloserToTop = this.mouse.y < this.height * 0.05;
     if (isCloserToTop) {
-      this.camera.rotateAroundPlane(-1);
+      this.camera.moveForward(1);
     }
-    const isCloserToBottom = this.mouse.y > this.height * 0.9;
+    const isCloserToBottom = this.mouse.y > this.height * 0.95;
     if (isCloserToBottom) {
-      this.camera.rotateAroundPlane(1);
+      this.camera.moveForward(-1);
     }
   }
 
