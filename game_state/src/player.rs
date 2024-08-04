@@ -1,8 +1,8 @@
 use anyhow::Context;
 use cgmath::InnerSpace;
-use log::{error, info};
+use log::error;
 
-use crate::{game_map::V2D, ClientMessage, ServerState, ShipKey, ShipState};
+use crate::{game_map::V2D, Bullet, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
     collections::HashMap,
     sync::mpsc::{Receiver, Sender},
@@ -92,18 +92,25 @@ impl Player {
     }
 
     pub fn shoot_at(&self, target: &V2D, game_state: &ServerState) {
-        self.player_ships(game_state)
-            .filter(|ship| {
-                let is_selected = self.selected_ships.contains(&ship.id);
-                let can_shoot = ship
-                    .find_available_cannon(game_state.current_time)
-                    .is_some();
-                return is_selected && can_shoot;
-            })
-            .take(1)
-            .for_each(|ship| {
-                self.shoot_at_with(ship.id, target.x, target.y);
-            });
+        self.shooting_ships(game_state).for_each(|ship| {
+            self.shoot_at_with(ship.id, target.x, target.y);
+        });
+    }
+
+    fn shooting_ships<'a>(&'a self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
+        self.player_ships(game).filter(|ship| {
+            let is_selected = self.selected_ships.contains(&ship.id);
+            let can_shoot = ship.find_available_cannon(game.current_time).is_some();
+            return is_selected && can_shoot;
+        })
+    }
+
+    pub fn shoot_error_margin(&self, target: V2D, game: &ServerState) -> Option<f64> {
+        let mut ships = self.shooting_ships(game);
+        let ship = ships.next()?;
+        let bullet = Bullet::from_target(ship.position.into(), target);
+        let error = bullet.error_margin(&game.game_constants);
+        return error;
     }
 
     pub fn player_ships<'a>(&self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {

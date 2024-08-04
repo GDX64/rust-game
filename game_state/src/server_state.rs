@@ -4,7 +4,7 @@ use crate::{
     world_gen::{self, TileKind},
     Boids::{BoidLike, BoidsTeam},
 };
-use cgmath::InnerSpace;
+use cgmath::{InnerSpace, MetricSpace};
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -158,6 +158,19 @@ impl Bullet {
             bullet_id: 0,
             target: target.into(),
         }
+    }
+
+    pub fn error_margin(&self, game_constants: &GameConstants) -> Option<f64> {
+        let mut clone = self.clone();
+        for _ in 0..1000 {
+            clone.evolve(0.016, game_constants);
+            if clone.position.2 <= 0.0 {
+                let final_pos: V3D = (clone.position.0, clone.position.1, 0.0).into();
+                let target: V3D = clone.target.into();
+                return Some(final_pos.distance(target));
+            }
+        }
+        return None;
     }
 
     pub fn evolve(&mut self, dt: f64, game_constants: &GameConstants) {
@@ -545,5 +558,15 @@ mod test {
         assert!(verify_hits_target((0.0, 0.0), (5.0, 5.0)));
         assert!(verify_hits_target((0.0, 0.0), (-5.0, 0.0)));
         assert!(verify_hits_target((0.0, 0.0), (0.0, 3.0)));
+    }
+
+    #[test]
+    fn test_error_margin() {
+        let bullet = Bullet::from_target((0.0, 0.0).into(), (20.0, 20.0).into());
+        let error = bullet.error_margin(&crate::server_state::GameConstants {
+            wind_speed: (0.0, 0.0, 0.0),
+        });
+        println!("Error: {:?}", error);
+        // assert!(error.unwrap() < 1.0);
     }
 }

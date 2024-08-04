@@ -104,6 +104,15 @@ export class PlayerActions {
   onMouseMove(event: PointerEvent) {
     this.mouse.x = event.offsetX;
     this.mouse.y = event.offsetY;
+    const intersection = this.waterIntersection();
+    if (intersection) {
+      const { x, y } = intersection.point;
+      const margin = this.game.shoot_error_margin(x, y);
+      if (margin) {
+        this.shipsManager.aimCircle.position.set(x, y, -5);
+        this.shipsManager.aimCircle.scale.set(margin, margin, 1);
+      }
+    }
   }
 
   private pointerdown(event: PointerEvent) {

@@ -6,9 +6,11 @@ const FREQ_START = 0.05;
 const WATER_DETAIL = 400;
 export class Water {
   freq = FREQ_START;
+
   constructor(
     private material: THREE.ShaderMaterial,
-    private mesh: THREE.Mesh
+    private mesh: THREE.Mesh,
+    private intersectionPlane: THREE.Mesh
   ) {}
 
   private getDirections(): THREE.Vector2[] {
@@ -70,7 +72,7 @@ export class Water {
   }
 
   intersects(ray: THREE.Raycaster) {
-    return ray.intersectObject(this.mesh);
+    return ray.intersectObject(this.intersectionPlane);
   }
 
   addToScene(scene: THREE.Scene) {
@@ -133,8 +135,12 @@ export class Water {
     });
 
     const mesh = new THREE.Mesh(waterPlaneGeometry, waterShader);
+    const intersectionPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(WIDTH, WIDTH),
+      new THREE.MeshBasicMaterial({ visible: false })
+    );
 
-    return new Water(waterShader, mesh);
+    return new Water(waterShader, mesh, intersectionPlane);
   }
 
   setSunPosition(sunPosition: THREE.Vector3) {

@@ -40,6 +40,7 @@ export class ShipsManager {
   private arrowHelper = new THREE.ArrowHelper();
   selected$ = new Subject<THREE.InstancedMesh>();
   showArrow = false;
+  aimCircle;
 
   constructor(
     readonly game: GameWasmState,
@@ -61,6 +62,16 @@ export class ShipsManager {
     this.arrowHelper.setLength(10);
     this.scene.add(this.arrowHelper);
     this.outlines = this.boatMesh.clone();
+    const circle = new THREE.CircleGeometry(1, 32);
+    const circleMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffff00,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.5,
+    });
+    this.aimCircle = new THREE.Mesh(circle, circleMaterial);
+    this.aimCircle.position.set(0, 0, 0);
+    this.scene.add(this.aimCircle);
 
     this.loadModel();
   }
