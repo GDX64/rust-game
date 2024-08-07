@@ -1,26 +1,33 @@
 use crate::{
+    boids::{BoidLike, BoidsTeam},
+    bullet::Bullet,
     diffing::{hashmap_diff, Diff},
     game_map::{Tile, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
-    Boids::{BoidLike, BoidsTeam},
 };
-use cgmath::{InnerSpace, MetricSpace};
+use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const BULLET_SPEED: f64 = 200.0;
-const GRAVITY: f64 = 9.81;
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
-const WIND_FACTOR: f64 = 0.01;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct GameConstants {
     pub wind_speed: (f64, f64, f64),
+    pub err_per_m: f64,
+}
+
+impl GameConstants {
+    pub fn error_margin(&self, target: V2D, pos: V2D) -> Option<f64> {
+        let d = target - pos;
+        let err = d.magnitude() * self.err_per_m;
+        return Some(err);
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -128,63 +135,6 @@ impl BroadCastState {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub struct Bullet {
-    pub position: (f64, f64, f64),
-    pub speed: (f64, f64, f64),
-    pub player_id: u64,
-    pub bullet_id: u64,
-    pub target: (f64, f64, f64),
-}
-
-impl Bullet {
-    pub fn from_target(initial: V2D, target: V2D) -> Bullet {
-        let v0 = BULLET_SPEED;
-        let g = GRAVITY;
-        let initial: V3D = (initial.x, initial.y, 0.0).into();
-        let target: V3D = (target.x, target.y, 0.0).into();
-        let d_vector = target - initial;
-        let d = d_vector.magnitude();
-        let angle = f64::asin(d * g / (2.0 * v0 * v0));
-        let angle = if angle.is_nan() { 3.14 / 4.0 } else { angle };
-        let vxy = v0 * f64::cos(angle);
-        let vz = v0 * f64::sin(angle);
-        let vx = d_vector.normalize() * vxy;
-        let speed = (vx.x, vx.y, vz).into();
-        Bullet {
-            position: initial.into(),
-            speed,
-            player_id: 0,
-            bullet_id: 0,
-            target: target.into(),
-        }
-    }
-
-    pub fn error_margin(&self, game_constants: &GameConstants) -> Option<f64> {
-        let mut clone = self.clone();
-        for _ in 0..1000 {
-            clone.evolve(0.016, game_constants);
-            if clone.position.2 <= 0.0 {
-                let final_pos: V3D = (clone.position.0, clone.position.1, 0.0).into();
-                let target: V3D = clone.target.into();
-                return Some(final_pos.distance(target));
-            }
-        }
-        return None;
-    }
-
-    pub fn evolve(&mut self, dt: f64, game_constants: &GameConstants) {
-        let speed: V3D = self.speed.into();
-        let pos: V3D = self.position.into();
-        let speed = speed + dt * V3D::new(0.0, 0.0, -GRAVITY);
-        let pos = pos + speed * dt;
-        let wind_diff = V3D::from(game_constants.wind_speed) - speed;
-        let speed = speed + wind_diff * WIND_FACTOR * dt;
-        self.position = pos.into();
-        self.speed = speed.into();
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ClientMessage {
     Shoot {
@@ -289,6 +239,7 @@ pub struct ServerState {
     pub ship_collection: ShipCollection,
     pub current_time: f64,
     pub game_constants: GameConstants,
+    rng: fastrand::Rng,
     artifact_id: u64,
 }
 
@@ -307,7 +258,9 @@ impl ServerState {
             ship_collection: ShipCollection::new(),
             game_constants: GameConstants {
                 wind_speed: (0.0, 0.0, 0.0),
+                err_per_m: 0.01,
             },
+            rng: fastrand::Rng::new(),
         }
     }
 
@@ -356,12 +309,13 @@ impl ServerState {
         });
 
         self.bullets.retain(|_key, bullet| {
-            bullet.evolve(dt, &self.game_constants);
-            let pos: V3D = bullet.position.into();
+            bullet.evolve(dt);
 
-            if pos.z > self.game_map.height_of(pos.x, pos.y).max(0.0) {
+            if !bullet.is_finished() {
                 return true;
             };
+
+            let pos: V3D = bullet.target.into();
 
             for (id, ship) in self.ship_collection.iter() {
                 if ship.player_id == bullet.player_id {
@@ -490,15 +444,7 @@ impl ServerState {
                 player_id,
                 target,
             } => {
-                let bullet = self
-                    .ship_collection
-                    .get_mut(&ShipKey::new(ship_id, player_id))
-                    .and_then(|ship| ship.shoot_at(self.current_time, target));
-                if let Some(mut bullet) = bullet {
-                    bullet.bullet_id = self.next_artifact_id();
-                    self.bullets
-                        .insert((bullet.player_id, bullet.bullet_id), bullet);
-                }
+                self.handle_shoot(ship_id, player_id, target);
             }
             ClientMessage::GameConstants { constants } => {
                 self.game_constants = constants;
@@ -506,46 +452,20 @@ impl ServerState {
             ClientMessage::None => {}
         }
     }
-}
 
-#[cfg(test)]
-mod test {
-    use cgmath::InnerSpace;
-
-    use crate::{game_map::V3D, server_state::BLAST_RADIUS, Bullet};
-
-    fn verify_hits_target(initial: (f64, f64), target: (f64, f64)) -> bool {
-        let mut bullet = Bullet::from_target(initial.into(), target.into());
-        for _ in 0..100 {
-            bullet.evolve(
-                0.016,
-                &crate::server_state::GameConstants {
-                    wind_speed: (0.0, 0.0, 0.0),
-                },
-            );
-            let pos: V3D = bullet.position.into();
-            let target = V3D::from(bullet.target);
-            if (pos - target).magnitude() < BLAST_RADIUS {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    #[test]
-    fn test_shoot() {
-        assert!(verify_hits_target((0.0, 0.0), (5.0, 5.0)));
-        assert!(verify_hits_target((0.0, 0.0), (-5.0, 0.0)));
-        assert!(verify_hits_target((0.0, 0.0), (0.0, 3.0)));
-    }
-
-    #[test]
-    fn test_error_margin() {
-        let bullet = Bullet::from_target((0.0, 0.0).into(), (20.0, 20.0).into());
-        let error = bullet.error_margin(&crate::server_state::GameConstants {
-            wind_speed: (0.0, 0.0, 0.0),
-        });
-        println!("Error: {:?}", error);
-        // assert!(error.unwrap() < 1.0);
+    fn handle_shoot(&mut self, ship_id: u64, player_id: u64, target: (f64, f64)) -> Option<()> {
+        let ship = self
+            .ship_collection
+            .get_mut(&ShipKey::new(ship_id, player_id))?;
+        let pos: V2D = ship.position.into();
+        let target: V2D = target.into();
+        let error_mod = self.game_constants.error_margin(target, pos)?;
+        let error_direction: V2D = (self.rng.f64(), self.rng.f64()).into();
+        let target = error_direction.normalize() * error_mod + target;
+        let mut bullet = ship.shoot_at(self.current_time, target.into())?;
+        bullet.bullet_id = self.next_artifact_id();
+        self.bullets
+            .insert((bullet.player_id, bullet.bullet_id), bullet);
+        Some(())
     }
 }

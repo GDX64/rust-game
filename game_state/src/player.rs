@@ -2,7 +2,7 @@ use anyhow::Context;
 use cgmath::InnerSpace;
 use log::error;
 
-use crate::{game_map::V2D, Bullet, ClientMessage, ServerState, ShipKey, ShipState};
+use crate::{game_map::V2D, ClientMessage, ServerState, ShipKey, ShipState};
 use std::{
     collections::HashMap,
     sync::mpsc::{Receiver, Sender},
@@ -108,8 +108,9 @@ impl Player {
     pub fn shoot_error_margin(&self, target: V2D, game: &ServerState) -> Option<f64> {
         let mut ships = self.shooting_ships(game);
         let ship = ships.next()?;
-        let bullet = Bullet::from_target(ship.position.into(), target);
-        let error = bullet.error_margin(&game.game_constants);
+        let error = game
+            .game_constants
+            .error_margin(ship.position.into(), target);
         return error;
     }
 

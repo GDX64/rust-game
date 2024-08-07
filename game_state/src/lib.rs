@@ -14,7 +14,8 @@ mod player;
 mod world_gen;
 use game_map::V2D;
 use wasm_bindgen::prelude::*;
-mod Boids;
+mod boids;
+mod bullet;
 mod diffing;
 mod ws_channel;
 
@@ -101,10 +102,11 @@ impl GameWasmState {
         self.running_mode.tick(dt);
     }
 
-    pub fn change_wind(&mut self, x: f64, y: f64) {
+    pub fn change_error(&mut self, err: f64) {
         self.send_message(ClientMessage::GameConstants {
             constants: GameConstants {
-                wind_speed: (x, y, 0.0),
+                wind_speed: (0.0, 0.0, 0.0),
+                err_per_m: err,
             },
         });
     }
@@ -124,7 +126,13 @@ impl GameWasmState {
     }
 
     pub fn get_all_bullets(&self) -> JsValue {
-        let bullets = self.running_mode.server_state().get_bullets();
+        let bullets = self
+            .running_mode
+            .server_state()
+            .get_bullets()
+            .into_iter()
+            .map(|b| b.snapshot())
+            .collect::<Vec<_>>();
         serde_wasm_bindgen::to_value(&bullets).unwrap_or_default()
     }
 

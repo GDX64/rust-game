@@ -28,6 +28,7 @@ function defaultState() {
     redShift: false,
     windSpeed: 0,
     bloomEnabled: false,
+    shootError: 0.01,
   };
 }
 export class Render3D {
@@ -107,10 +108,9 @@ export class Render3D {
         this.gameState.start_local_server();
       }
     });
-    this.gameState.change_wind(0, 0);
-    this.gui.add(this.state, "windSpeed", 0, 100).onChange((val) => {
-      this.gameState.change_wind(val, 1.0);
-      this.water.changeWind(val, 0);
+    this.gameState.change_error(0);
+    this.gui.add(this.state, "shootError", 0, 0.1).onChange((val) => {
+      this.gameState.change_error(val);
     });
   }
 
