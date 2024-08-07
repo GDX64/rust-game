@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
+import { RenderOrder } from "./RenderOrder";
 
 const FREQ_START = 0.05;
 const WATER_DETAIL = 400;
@@ -115,8 +116,7 @@ export class Water {
       fragmentShader: fragShader,
       blending: THREE.NormalBlending,
       transparent: true,
-      depthTest: true,
-      opacity: 1.0,
+      depthWrite: false,
       uniforms: {
         time: { value: 1.0 },
         directions: {
@@ -128,6 +128,7 @@ export class Water {
         amplitude: { value: 2 },
         sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       },
+      premultipliedAlpha: false,
     };
 
     const waterShader = new THREE.ShaderMaterial({
@@ -135,6 +136,7 @@ export class Water {
     });
 
     const mesh = new THREE.Mesh(waterPlaneGeometry, waterShader);
+    mesh.renderOrder = RenderOrder.Water;
     const intersectionPlane = new THREE.Mesh(
       new THREE.PlaneGeometry(WIDTH, WIDTH),
       new THREE.MeshBasicMaterial({ visible: false })

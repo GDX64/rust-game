@@ -185,7 +185,6 @@ export class Explosion {
       },
       blending: THREE.NormalBlending,
       transparent: true,
-      depthTest: true,
     });
     const points = new THREE.Points(geometry, pointMaterial);
     return { points };

@@ -4,7 +4,10 @@ import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 
 export class PlayerActions {
-  readonly mouse = new THREE.Vector2(0, 0);
+  readonly mouse = new THREE.Vector2(
+    window.innerWidth / 2,
+    window.innerHeight / 2
+  );
   readonly rayCaster = new THREE.Raycaster();
 
   constructor(
@@ -109,7 +112,7 @@ export class PlayerActions {
       const { x, y } = intersection.point;
       const margin = this.game.shoot_error_margin(x, y);
       if (margin) {
-        this.shipsManager.aimCircle.position.set(x, y, -5);
+        this.shipsManager.aimCircle.position.set(x, y, 0);
         this.shipsManager.aimCircle.scale.set(margin, margin, 1);
       }
     }

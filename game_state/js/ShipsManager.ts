@@ -5,6 +5,7 @@ import boat from "./assets/boat.glb?url";
 import { ExplosionData, ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { Subject } from "rxjs";
+import { RenderOrder } from "./RenderOrder";
 
 type ShipData = {
   player_id: number;
@@ -63,14 +64,16 @@ export class ShipsManager {
     this.scene.add(this.arrowHelper);
     this.outlines = this.boatMesh.clone();
     const circle = new THREE.CircleGeometry(1, 32);
-    const circleMaterial = new THREE.MeshLambertMaterial({
+    const circleMaterial = new THREE.MeshPhongMaterial({
       color: 0xffff00,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.1,
+      depthWrite: false,
     });
     this.aimCircle = new THREE.Mesh(circle, circleMaterial);
     this.aimCircle.position.set(0, 0, 0);
+    this.aimCircle.renderOrder = RenderOrder.AIM;
     this.scene.add(this.aimCircle);
 
     this.loadModel();
