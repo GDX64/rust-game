@@ -84,15 +84,13 @@ impl GameServer {
             return;
         }
         let bot = Player::new(self.next_player_id());
-        self.game_state
-            .on_message(ClientMessage::CreatePlayer { id: bot.id });
+        self.client_message(ClientMessage::CreatePlayer { id: bot.id });
         self.bots.push(bot);
     }
 
     fn remove_bot(&mut self) {
         if let Some(bot) = self.bots.pop() {
-            self.game_state
-                .on_message(ClientMessage::RemovePlayer { id: bot.id });
+            self.client_message(ClientMessage::RemovePlayer { id: bot.id });
         }
     }
 
@@ -120,8 +118,7 @@ impl GameServer {
         let msg = GameMessage::from_bytes(&msg);
         match msg {
             GameMessage::ClientMessage(msg) => {
-                self.game_state.on_message(msg.clone());
-                self.broadcast_message(msg);
+                self.client_message(msg.clone());
             }
             GameMessage::AddBot => self.add_bot(),
             GameMessage::RemoveBot => self.remove_bot(),
@@ -143,7 +140,7 @@ impl GameServer {
         let msg = ClientMessage::CreatePlayer { id };
         let state = self.game_state.state_message();
         self.send_message_to_player(id, GameMessage::ClientMessage(state));
-        self.game_state.on_message(msg.clone());
+        self.client_message(msg.clone());
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
         let state = self.game_state.state_message();
@@ -159,7 +156,7 @@ impl GameServer {
             self.players.len()
         );
         let msg = ClientMessage::RemovePlayer { id };
-        self.game_state.on_message(msg);
+        self.client_message(msg);
     }
 
     fn handle_bots(&mut self) {
@@ -195,10 +192,15 @@ impl GameServer {
                     }
                 }
             }
-            while let Some(msg) = bot.next_message() {
-                self.game_state.on_message(msg);
-            }
         });
+        let bot_messages = self
+            .bots
+            .iter()
+            .flat_map(|bot| bot.collect_messages())
+            .collect::<Vec<_>>();
+        for msg in bot_messages {
+            self.client_message(msg);
+        }
     }
 
     pub fn tick(&mut self, time: f64) {
@@ -207,7 +209,11 @@ impl GameServer {
             return;
         }
         self.handle_bots();
-        self.game_state.on_message(ClientMessage::Tick(time));
-        self.broadcast_message(ClientMessage::Tick(time));
+        self.client_message(ClientMessage::Tick(time));
+    }
+
+    fn client_message(&mut self, msg: ClientMessage) {
+        self.game_state.on_message(msg.clone());
+        self.broadcast_message(msg);
     }
 }

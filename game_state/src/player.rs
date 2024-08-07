@@ -143,6 +143,10 @@ impl Player {
         self.actions_buffer.try_recv().ok()
     }
 
+    pub fn collect_messages(&self) -> Vec<ClientMessage> {
+        self.actions_buffer.try_iter().collect()
+    }
+
     pub fn number_of_ships(&self, state: &ServerState) -> usize {
         return self.player_ships(state).count();
     }
