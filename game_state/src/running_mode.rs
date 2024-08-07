@@ -1,7 +1,5 @@
-use core::time;
-
 use crate::ws_channel::WSChannel;
-use crate::{game_server, ClientMessage, GameMessage, ServerState};
+use crate::{game_server, GameMessage, ServerState};
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 use wasm_bindgen::prelude::*;
@@ -43,7 +41,7 @@ impl OnlineData {
         self.ws.send(msg.to_bytes());
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    pub fn tick(&mut self, _dt: f64) {
         loop {
             let msg = self.ws.receive();
             let msg = match msg {
@@ -58,7 +56,6 @@ impl OnlineData {
                 _ => {}
             }
         }
-        self.game_state.tick(dt);
     }
 }
 
@@ -111,7 +108,6 @@ impl RunningMode {
                         _ => {}
                     }
                 }
-                state.tick(dt);
             }
             RunningMode::Online(data) => {
                 data.tick(dt);

@@ -218,33 +218,9 @@ pub enum ClientMessage {
     GameConstants {
         constants: GameConstants,
     },
+    Tick(f64),
     None,
 }
-
-// mod line2D {
-//     struct Line2D {
-//         start: V2D,
-//         end: V2D,
-//     }
-
-//     impl Line2D {
-//         fn new(start: V2D, end: V2D) -> Self {
-//             Self { start, end }
-//         }
-
-//         fn distance_to_point(&self, point: &V2D) -> f64 {
-//             let l2 = (self.end - self.start).magnitude();
-//             if l2 == 0.0 {
-//                 return (point - self.start).magnitude();
-//             }
-//             let t = ((point - self.start).dot(self.end - self.start) / l2)
-//                 .max(0.0)
-//                 .min(1.0);
-//             let projection = self.start + (self.end - self.start) * t;
-//             (point - projection).magnitude()
-//         }
-//     }
-// }
 
 impl ClientMessage {
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
@@ -367,7 +343,7 @@ impl ServerState {
         }
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    fn tick(&mut self, dt: f64) {
         self.current_time += dt;
         let mut ships_hit: Vec<ShipKey> = vec![];
         let mut explosions = vec![];
@@ -462,6 +438,9 @@ impl ServerState {
 
     pub fn on_message(&mut self, msg: ClientMessage) {
         match msg {
+            ClientMessage::Tick(dt) => {
+                self.tick(dt);
+            }
             ClientMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
             }

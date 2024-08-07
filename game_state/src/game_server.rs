@@ -119,7 +119,10 @@ impl GameServer {
     pub fn on_message(&mut self, msg: Vec<u8>) {
         let msg = GameMessage::from_bytes(&msg);
         match msg {
-            GameMessage::ClientMessage(msg) => self.game_state.on_message(msg),
+            GameMessage::ClientMessage(msg) => {
+                self.game_state.on_message(msg.clone());
+                self.broadcast_message(msg);
+            }
             GameMessage::AddBot => self.add_bot(),
             GameMessage::RemoveBot => self.remove_bot(),
             GameMessage::AddBotShipAt(x, y) => {
@@ -143,6 +146,8 @@ impl GameServer {
         self.game_state.on_message(msg.clone());
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
+        let state = self.game_state.state_message();
+        self.send_message_to_player(id, GameMessage::ClientMessage(state));
         return id;
     }
 
@@ -202,7 +207,7 @@ impl GameServer {
             return;
         }
         self.handle_bots();
-        self.game_state.tick(time);
-        self.broadcast_message(self.game_state.state_message());
+        self.game_state.on_message(ClientMessage::Tick(time));
+        self.broadcast_message(ClientMessage::Tick(time));
     }
 }
