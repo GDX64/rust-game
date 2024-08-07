@@ -461,7 +461,7 @@ impl ServerState {
         let target: V2D = target.into();
         let error_mod = self.game_constants.error_margin(target, pos)?;
         let error_direction: V2D = (self.rng.f64() - 0.5, self.rng.f64() - 0.5).into();
-        let target = error_direction.normalize() * error_mod + target;
+        let target = error_direction.normalize() * error_mod * self.rng.f64() + target;
         let mut bullet = ship.shoot_at(self.current_time, target.into())?;
         bullet.bullet_id = self.next_artifact_id();
         self.bullets
