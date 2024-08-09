@@ -30,6 +30,9 @@ class LerpBox {
 }
 
 const MIN_Z = 10;
+const MAX_Z = 200;
+const MAX_MOVING_SPEED = 10;
+const MAX_ROTATION_SPEED = 0.03;
 export class CameraControl {
   private target = new LerpBox().duration(0.166);
   private position = new LerpBox().duration(0.166);
@@ -85,6 +88,7 @@ export class CameraControl {
     let multiplier = sign * 10;
     const currentPosTarget = this.position.to.clone();
     multiplier = Math.max(multiplier, MIN_Z - currentPosTarget.z);
+    multiplier = Math.min(multiplier, MAX_Z - currentPosTarget.z);
     console.log(currentPosTarget.z, multiplier);
     const delta = new THREE.Vector3(0, 0, multiplier);
     this.changeTarget(this.target.to.clone().add(delta));
@@ -104,7 +108,8 @@ export class CameraControl {
   }
 
   rotateAroundZ(sign: number) {
-    const amount = 0.05 * sign;
+    const movingSpeed = MAX_ROTATION_SPEED;
+    const amount = sign * movingSpeed;
     const position = this.position.to.clone();
     const target = this.target.to.clone();
     //rotate position around target
@@ -146,19 +151,27 @@ export class CameraControl {
     }
     if (this.keys["a"] || this.keys["d"]) {
       const sign = this.keys.a ? 1 : -1;
-      const projected = this.lookDirectionProjected();
-      const up = new THREE.Vector3(0, 0, 1);
-      const right = up.cross(projected);
-      const delta = right.normalize().multiplyScalar(sign * 10);
-      this.changeTarget(this.target.to.clone().add(delta));
-      this.changePosition(this.position.to.clone().add(delta));
+      this.moveSideways(sign);
       return;
     }
   }
 
+  moveSideways(sign: number) {
+    const projected = this.lookDirectionProjected();
+    const up = new THREE.Vector3(0, 0, 1);
+    const right = up.cross(projected);
+    let movingSpeed = MAX_MOVING_SPEED * (this.position.to.z / MAX_Z);
+    movingSpeed = Math.max(movingSpeed, MAX_MOVING_SPEED / 5);
+    const delta = right.normalize().multiplyScalar(sign * movingSpeed);
+    this.changeTarget(this.target.to.clone().add(delta));
+    this.changePosition(this.position.to.clone().add(delta));
+  }
+
   moveForward(sign: number) {
     const projected = this.lookDirectionProjected();
-    const delta = projected.normalize().multiplyScalar(sign * 10);
+    let movingSpeed = MAX_MOVING_SPEED * (this.position.to.z / MAX_Z);
+    movingSpeed = Math.max(movingSpeed, MAX_MOVING_SPEED / 5);
+    const delta = projected.normalize().multiplyScalar(sign * movingSpeed);
     this.changeTarget(this.target.to.clone().add(delta));
     this.changePosition(this.position.to.clone().add(delta));
   }

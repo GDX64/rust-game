@@ -4,10 +4,7 @@ import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 
 export class PlayerActions {
-  readonly mouse = new THREE.Vector2(
-    window.innerWidth / 2,
-    window.innerHeight / 2
-  );
+  readonly mouse;
   readonly rayCaster = new THREE.Raycaster();
 
   constructor(
@@ -15,7 +12,9 @@ export class PlayerActions {
     public shipsManager: ShipsManager,
     public camera: CameraControl,
     public water: Water
-  ) {}
+  ) {
+    this.mouse = { x: canvas.offsetWidth / 2, y: canvas.offsetHeight / 2 };
+  }
 
   get width() {
     return this.canvas.offsetWidth;
@@ -37,6 +36,7 @@ export class PlayerActions {
   }
 
   bindEvents() {
+    this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
     this.canvas.addEventListener("pointermove", this.onMouseMove.bind(this));
     this.canvas.addEventListener("contextmenu", (event) =>
@@ -44,6 +44,13 @@ export class PlayerActions {
     );
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
+  }
+
+  pointerleave(event: PointerEvent) {
+    this.canvas.style.cursor = "auto";
+    this.shipsManager.aimCircle.visible = false;
+    this.mouse.x = this.width / 2;
+    this.mouse.y = this.height / 2;
   }
 
   onKeyUp(event: KeyboardEvent) {
