@@ -73,7 +73,12 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
             let (player_send, mut player_receive) = channel(100);
             tokio::spawn(async move {
                 while let Some(msg) = player_receive.next().await {
-                    send.send(Message::Binary(msg)).await.unwrap();
+                    match send.send(Message::Binary(msg)).await {
+                        Ok(_) => {}
+                        Err(_) => {
+                            break;
+                        }
+                    }
                 }
             });
             let id = { state.get_game_server().await.new_connection(player_send) };

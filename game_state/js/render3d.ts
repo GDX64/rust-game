@@ -153,8 +153,6 @@ export class Render3D {
   private async startRemoteServer() {
     // const url = "https://game.glmachado.com/ws";
     const url = "http://localhost:5000/ws";
-    const ws = new WebSocket(url);
-    ws.binaryType = "arraybuffer";
     const onlineData = OnlineData.new(url);
     await onlineData.init();
     this.gameState.start_online(onlineData);

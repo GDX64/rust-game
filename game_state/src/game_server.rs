@@ -104,9 +104,14 @@ impl GameServer {
 
     fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
         if let Some(sender) = self.players.get_mut(&id) {
-            sender
-                .try_send(message.to_bytes())
-                .expect("Failed to send message to player");
+            match sender.try_send(message.to_bytes()) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Error sending message to player {}: {:?}", id, e);
+                    log::info!("Player {} will be removed", id);
+                    self.disconnect_player(id);
+                }
+            }
         }
     }
 
