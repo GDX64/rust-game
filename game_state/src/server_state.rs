@@ -415,7 +415,6 @@ impl ServerState {
             }
             ClientMessage::CreateShip { mut ship } => {
                 ship.id = self.next_artifact_id();
-                info!("Creating ship: {:?}", ship);
                 self.ship_collection
                     .insert(ShipKey::new(ship.id, ship.player_id), ship);
             }

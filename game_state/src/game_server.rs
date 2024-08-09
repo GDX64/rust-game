@@ -184,11 +184,6 @@ impl GameServer {
             });
 
             if bot.number_of_ships(&self.game_state) < 5 {
-                info!("Creating new ships for bot {}", bot.id);
-                info!(
-                    "ships {:?}",
-                    bot.player_ships(&self.game_state).collect::<Vec<_>>()
-                );
                 for _ in 0..5 {
                     let x = self.rand_gen.f64() * 1000.0 - 500.0;
                     let y = self.rand_gen.f64() * 1000.0 - 500.0;
