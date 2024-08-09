@@ -51,3 +51,12 @@ impl WSChannel {
         self.receiver.next().await
     }
 }
+
+impl Drop for WSChannel {
+    fn drop(&mut self) {
+        match self.ws.close() {
+            Ok(_) => (),
+            Err(e) => log::error!("Failed to close websocket: {:?}", e),
+        }
+    }
+}
