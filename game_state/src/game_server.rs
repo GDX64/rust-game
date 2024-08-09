@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 const MAX_BOTS: usize = 5;
+const SYNC_EVERY_N_FRAMES: u64 = 1000;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum GameMessage {
@@ -66,6 +67,7 @@ pub struct GameServer {
     player_id_counter: u64,
     bots: Vec<Player>,
     rand_gen: fastrand::Rng,
+    frames: u64,
 }
 
 impl GameServer {
@@ -76,6 +78,7 @@ impl GameServer {
             player_id_counter: 0,
             bots: vec![],
             rand_gen: fastrand::Rng::new(),
+            frames: 0,
         }
     }
 
@@ -208,8 +211,12 @@ impl GameServer {
             // no players, no need to tick
             return;
         }
+        self.frames += 1;
         self.handle_bots();
         self.client_message(ClientMessage::Tick(time));
+        if self.frames % SYNC_EVERY_N_FRAMES == 0 {
+            self.broadcast_message(self.game_state.state_message());
+        }
     }
 
     fn client_message(&mut self, msg: ClientMessage) {

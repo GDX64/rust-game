@@ -29,7 +29,7 @@ impl Apps {
 }
 
 type AppState = Apps;
-const TICK: f64 = 0.1;
+const TICK: f64 = 1.0 / 60.0;
 
 fn init_logger() {
     use env_logger::Env;

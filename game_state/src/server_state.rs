@@ -419,16 +419,13 @@ impl ServerState {
                     .insert(ShipKey::new(ship.id, ship.player_id), ship);
             }
             ClientMessage::MoveShip {
-                position,
-                speed,
                 id,
                 acceleration,
                 player_id,
+                ..
             } => {
                 if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
-                    ship.position = position;
                     ship.acceleration = acceleration;
-                    ship.speed = speed;
                 }
             }
             ClientMessage::Shoot {
