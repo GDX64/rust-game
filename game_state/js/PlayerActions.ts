@@ -55,6 +55,7 @@ export class PlayerActions {
 
   onKeyUp(event: KeyboardEvent) {
     this.canvas.style.cursor = "auto";
+    this.shipsManager.aimCircle.visible = false;
   }
 
   onKeyDown(event: KeyboardEvent) {
@@ -67,6 +68,7 @@ export class PlayerActions {
     }
     if (event.ctrlKey) {
       this.canvas.style.cursor = "crosshair";
+      this.shipsManager.aimCircle.visible = true;
     }
     if (event.key === "b") {
       const intersection = this.waterIntersection();

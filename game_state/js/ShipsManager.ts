@@ -74,6 +74,7 @@ export class ShipsManager {
     this.aimCircle = new THREE.Mesh(circle, circleMaterial);
     this.aimCircle.position.set(0, 0, 0);
     this.aimCircle.renderOrder = RenderOrder.AIM;
+    this.aimCircle.visible = false;
     this.scene.add(this.aimCircle);
 
     this.loadModel();
