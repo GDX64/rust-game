@@ -1,14 +1,14 @@
 use crate::{
     boids::{BoidLike, BoidsTeam},
     bullet::Bullet,
-    diffing::{hashmap_diff, Diff},
+    diffing::Diff,
     game_map::{Tile, WorldGrid, V2D, V3D},
     world_gen::{self, TileKind},
 };
 use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
@@ -102,10 +102,10 @@ impl ShipState {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadCastState {
-    players: HashMap<u64, PlayerState>,
-    ships: HashMap<ShipKey, ShipState>,
-    bullets: HashMap<(u64, u64), Bullet>,
-    explosions: HashMap<u64, Explosion>,
+    players: BTreeMap<u64, PlayerState>,
+    ships: BTreeMap<ShipKey, ShipState>,
+    bullets: BTreeMap<(u64, u64), Bullet>,
+    explosions: BTreeMap<u64, Explosion>,
     artifact_id: u64,
     current_time: f64,
 }
@@ -118,19 +118,12 @@ pub struct BroadcastStateDiff {
 impl BroadCastState {
     pub fn new() -> Self {
         Self {
-            players: HashMap::new(),
-            ships: HashMap::new(),
-            bullets: HashMap::new(),
-            explosions: HashMap::new(),
+            players: BTreeMap::new(),
+            ships: BTreeMap::new(),
+            bullets: BTreeMap::new(),
+            explosions: BTreeMap::new(),
             artifact_id: 0,
             current_time: 5.0,
-        }
-    }
-
-    pub fn diff(&self, other: &Self) -> BroadcastStateDiff {
-        let bullets_diff = hashmap_diff(&self.bullets, &other.bullets);
-        BroadcastStateDiff {
-            bullets: bullets_diff,
         }
     }
 }
@@ -196,7 +189,7 @@ impl From<String> for ClientMessage {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct ShipKey {
     pub id: u64,
     pub player_id: u64,
@@ -208,7 +201,7 @@ impl ShipKey {
     }
 }
 
-type ShipCollection = HashMap<ShipKey, ShipState>;
+type ShipCollection = BTreeMap<ShipKey, ShipState>;
 
 impl Tile for (f64, TileKind) {
     fn can_go(&self) -> bool {
@@ -231,11 +224,11 @@ pub struct Explosion {
 pub type GameMap = WorldGrid<(f64, TileKind)>;
 
 pub struct ServerState {
-    pub players: HashMap<u64, PlayerState>,
-    pub explosions: HashMap<u64, Explosion>,
+    pub players: BTreeMap<u64, PlayerState>,
+    pub explosions: BTreeMap<u64, Explosion>,
     pub game_map: GameMap,
     pub world_gen: world_gen::WorldGen,
-    pub bullets: HashMap<(u64, u64), Bullet>,
+    pub bullets: BTreeMap<(u64, u64), Bullet>,
     pub ship_collection: ShipCollection,
     pub current_time: f64,
     pub game_constants: GameConstants,
@@ -251,16 +244,16 @@ impl ServerState {
             current_time: 0.0,
             artifact_id: 0,
             world_gen,
-            explosions: HashMap::new(),
+            explosions: BTreeMap::new(),
             game_map,
-            players: HashMap::new(),
-            bullets: HashMap::new(),
+            players: BTreeMap::new(),
+            bullets: BTreeMap::new(),
             ship_collection: ShipCollection::new(),
             game_constants: GameConstants {
                 wind_speed: (0.0, 0.0, 0.0),
                 err_per_m: 0.01,
             },
-            rng: fastrand::Rng::new(),
+            rng: fastrand::Rng::with_seed(0),
         }
     }
 

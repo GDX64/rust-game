@@ -133,3 +133,22 @@ impl RunningMode {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn running_mode() {
+        let mut local = super::RunningMode::start_local();
+        local.send_game_message(crate::GameMessage::AddBot);
+        local.send_game_message(crate::GameMessage::AddBot);
+        for _ in 0..1000 {
+            local.tick(0.016)
+        }
+        match local {
+            super::RunningMode::Local { game, state, .. } => {
+                assert_eq!(game.game_state.ship_collection, state.ship_collection);
+            }
+            _ => panic!("Expected local mode"),
+        }
+    }
+}

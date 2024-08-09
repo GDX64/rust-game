@@ -29,7 +29,6 @@ pub fn start() {
 pub struct GameWasmState {
     running_mode: RunningMode,
     player: Player,
-    last_state: BroadCastState,
     current_time: f64,
 }
 
@@ -39,17 +38,8 @@ impl GameWasmState {
         Self {
             running_mode: RunningMode::start_local(),
             player: Player::new(0),
-            last_state: BroadCastState::new(),
             current_time: 0.0,
         }
-    }
-
-    pub fn get_state_diff(&mut self) -> String {
-        let current_state = self.running_mode.server_state().get_broadcast_state();
-        let diff = self.last_state.diff(&current_state);
-        self.last_state = current_state;
-        let result = serde_json::to_string(&diff).unwrap_or("{}".to_string());
-        result
     }
 
     pub fn action_shoot_at(&self, x: f64, y: f64) {
