@@ -171,10 +171,6 @@ impl GameWasmState {
         self.running_mode.server_state().game_map.dim
     }
 
-    pub fn world_gen(&mut self) -> world_gen::WorldGen {
-        return self.running_mode.server_state().world_gen.clone();
-    }
-
     pub fn get_land_grid_value(&self, x: f64, y: f64) -> Option<f64> {
         let result = self.running_mode.server_state().game_map.get(x, y)?.0;
         Some(result)

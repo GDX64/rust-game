@@ -8,7 +8,7 @@ use crate::{
 use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, rc::Rc};
 
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
@@ -16,10 +16,19 @@ const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameConstants {
     pub wind_speed: (f64, f64, f64),
     pub err_per_m: f64,
+}
+
+impl Default for GameConstants {
+    fn default() -> Self {
+        Self {
+            wind_speed: (0.0, 0.0, 0.0),
+            err_per_m: 0.01,
+        }
+    }
 }
 
 impl GameConstants {
@@ -30,7 +39,7 @@ impl GameConstants {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PlayerState {
     name: String,
     position: (f64, f64),
@@ -106,6 +115,7 @@ pub struct BroadCastState {
     ships: BTreeMap<ShipKey, ShipState>,
     bullets: BTreeMap<(u64, u64), Bullet>,
     explosions: BTreeMap<u64, Explosion>,
+    game_constants: GameConstants,
     artifact_id: u64,
     current_time: f64,
     rng_seed: u64,
@@ -126,6 +136,7 @@ impl BroadCastState {
             artifact_id: 0,
             current_time: 5.0,
             rng_seed: 0,
+            game_constants: GameConstants::default(),
         }
     }
 }
@@ -215,7 +226,7 @@ impl Tile for (f64, TileKind) {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Explosion {
     pub position: (f64, f64),
     pub id: u64,
@@ -225,11 +236,12 @@ pub struct Explosion {
 
 pub type GameMap = WorldGrid<(f64, TileKind)>;
 
+#[derive(Clone)]
 pub struct ServerState {
     pub players: BTreeMap<u64, PlayerState>,
     pub explosions: BTreeMap<u64, Explosion>,
-    pub game_map: GameMap,
-    pub world_gen: world_gen::WorldGen,
+    pub game_map: Rc<GameMap>,
+    pub world_gen: Rc<world_gen::WorldGen>,
     pub bullets: BTreeMap<(u64, u64), Bullet>,
     pub ship_collection: ShipCollection,
     pub current_time: f64,
@@ -240,14 +252,14 @@ pub struct ServerState {
 
 impl ServerState {
     pub fn new() -> Self {
-        let world_gen = world_gen::WorldGen::new(1);
-        let game_map = world_gen.generate_grid(4_000.0);
+        let world_gen = Rc::new(world_gen::WorldGen::new(1));
+        let game_map = Rc::new(world_gen.generate_grid(4_000.0));
         Self {
+            game_map,
+            world_gen,
             current_time: 0.0,
             artifact_id: 0,
-            world_gen,
             explosions: BTreeMap::new(),
-            game_map,
             players: BTreeMap::new(),
             bullets: BTreeMap::new(),
             ship_collection: ShipCollection::new(),
@@ -289,6 +301,7 @@ impl ServerState {
             artifact_id: self.artifact_id,
             current_time: self.current_time,
             rng_seed: self.rng.get_seed(),
+            game_constants: self.game_constants.clone(),
         }
     }
 
@@ -416,6 +429,7 @@ impl ServerState {
                 self.artifact_id = state.artifact_id;
                 self.current_time = state.current_time;
                 self.rng.seed(state.rng_seed);
+                self.game_constants = state.game_constants;
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {

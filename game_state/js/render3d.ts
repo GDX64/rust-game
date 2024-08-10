@@ -192,14 +192,14 @@ export class Render3D {
 
     this.outline = outline;
 
-    renderer.setAnimationLoop((time) => {
+    renderer.setAnimationLoop((_time) => {
+      const time = _time / 1000;
       this.playerActions.tick();
-      this.gameState.tick(time / 1000);
-      this.shipsManager.tick(time / 1000);
-      this.water.tick(time / 1000);
-      this.cameraControls.tick(time / 1000);
+      this.gameState.tick(time);
+      this.shipsManager.tick(time);
+      this.water.tick(time);
+      this.cameraControls.tick(time);
       composer.render();
-      // waterShader.uniforms.cameraPosition.value = camera.position;
     });
 
     this.shipsManager.selected$.subscribe((ship) => {
