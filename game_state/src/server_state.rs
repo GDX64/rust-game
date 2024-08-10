@@ -6,7 +6,6 @@ use crate::{
     world_gen::{self, TileKind},
 };
 use cgmath::InnerSpace;
-use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -129,7 +128,7 @@ impl BroadCastState {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum ClientMessage {
+pub enum StateMessage {
     Shoot {
         ship_id: u64,
         player_id: u64,
@@ -165,7 +164,7 @@ pub enum ClientMessage {
     None,
 }
 
-impl ClientMessage {
+impl StateMessage {
     pub fn from_json(json: &str) -> anyhow::Result<Self> {
         serde_json::from_str(json).map_err(|e| e.into())
     }
@@ -183,9 +182,9 @@ impl ClientMessage {
     }
 }
 
-impl From<String> for ClientMessage {
+impl From<String> for StateMessage {
     fn from(value: String) -> Self {
-        ClientMessage::from_json(&value).unwrap_or(ClientMessage::None)
+        StateMessage::from_json(&value).unwrap_or(StateMessage::None)
     }
 }
 
@@ -272,8 +271,8 @@ impl ServerState {
         }
     }
 
-    pub fn state_message(&self) -> ClientMessage {
-        ClientMessage::BroadCastState {
+    pub fn state_message(&self) -> StateMessage {
+        StateMessage::BroadCastState {
             state: self.get_broadcast_state(),
         }
     }
@@ -377,21 +376,21 @@ impl ServerState {
         self.bullets.values().collect()
     }
 
-    pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<ClientMessage> {
-        let msg: ClientMessage = serde_json::from_str(&msg)?;
+    pub fn on_string_message(&mut self, msg: String) -> anyhow::Result<StateMessage> {
+        let msg: StateMessage = serde_json::from_str(&msg)?;
         self.on_message(msg.clone());
         Ok(msg)
     }
 
-    pub fn on_message(&mut self, msg: ClientMessage) {
+    pub fn on_message(&mut self, msg: StateMessage) {
         match msg {
-            ClientMessage::Tick(dt) => {
+            StateMessage::Tick(dt) => {
                 self.tick(dt);
             }
-            ClientMessage::SetPlayerName { name, id } => {
+            StateMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
             }
-            ClientMessage::CreatePlayer { id } => {
+            StateMessage::CreatePlayer { id } => {
                 self.players.insert(
                     id,
                     PlayerState {
@@ -401,11 +400,11 @@ impl ServerState {
                     },
                 );
             }
-            ClientMessage::RemovePlayer { id } => {
+            StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);
                 self.ship_collection.retain(|_, ship| ship.player_id != id);
             }
-            ClientMessage::BroadCastState { state } => {
+            StateMessage::BroadCastState { state } => {
                 self.ship_collection = state.ships;
                 self.players = state.players;
                 self.bullets = state.bullets;
@@ -413,12 +412,12 @@ impl ServerState {
                 self.artifact_id = state.artifact_id;
                 self.current_time = state.current_time;
             }
-            ClientMessage::CreateShip { mut ship } => {
+            StateMessage::CreateShip { mut ship } => {
                 ship.id = self.next_artifact_id();
                 self.ship_collection
                     .insert(ShipKey::new(ship.id, ship.player_id), ship);
             }
-            ClientMessage::MoveShip {
+            StateMessage::MoveShip {
                 id,
                 acceleration,
                 player_id,
@@ -428,17 +427,17 @@ impl ServerState {
                     ship.acceleration = acceleration;
                 }
             }
-            ClientMessage::Shoot {
+            StateMessage::Shoot {
                 ship_id,
                 player_id,
                 target,
             } => {
                 self.handle_shoot(ship_id, player_id, target);
             }
-            ClientMessage::GameConstants { constants } => {
+            StateMessage::GameConstants { constants } => {
                 self.game_constants = constants;
             }
-            ClientMessage::None => {}
+            StateMessage::None => {}
         }
     }
 

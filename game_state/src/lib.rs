@@ -4,7 +4,7 @@ mod running_mode;
 use cgmath::Vector2;
 pub use game_server::*;
 use player::Player;
-use running_mode::{OnlineData, RunningMode};
+use running_mode::{OnlineClient, RunningMode};
 pub use server_state::*;
 mod game_map;
 mod game_noise;
@@ -77,7 +77,7 @@ impl GameWasmState {
         self.player = Player::new(self.running_mode.id());
     }
 
-    pub fn start_online(&mut self, on_data: OnlineData) {
+    pub fn start_online(&mut self, on_data: OnlineClient) {
         self.running_mode = RunningMode::Online(on_data);
         self.player = Player::new(self.running_mode.id());
     }
@@ -93,7 +93,7 @@ impl GameWasmState {
     }
 
     pub fn change_error(&mut self, err: f64) {
-        self.send_message(ClientMessage::GameConstants {
+        self.send_message(StateMessage::GameConstants {
             constants: GameConstants {
                 wind_speed: (0.0, 0.0, 0.0),
                 err_per_m: err,
@@ -126,9 +126,9 @@ impl GameWasmState {
         serde_wasm_bindgen::to_value(&bullets).unwrap_or_default()
     }
 
-    fn send_message(&mut self, msg: ClientMessage) {
+    fn send_message(&mut self, msg: StateMessage) {
         self.running_mode
-            .send_game_message(GameMessage::ClientMessage(msg));
+            .send_game_message(GameMessage::InputMessage(msg));
     }
 
     pub fn tile_size(&self) -> f64 {

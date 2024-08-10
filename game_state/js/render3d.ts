@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GameWasmState, OnlineData } from "../pkg/game_state";
+import { GameWasmState, OnlineClient } from "../pkg/game_state";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -151,15 +151,15 @@ export class Render3D {
   }
 
   private async startRemoteServer() {
-    const url = "https://game.glmachado.com/ws";
-    // const url = "http://localhost:5000/ws";
-    const onlineData = OnlineData.new(url);
+    // const url = "https://game.glmachado.com/ws";
+    const url = "http://localhost:5000/ws";
+    const onlineData = OnlineClient.new(url);
     await onlineData.init();
     this.gameState.start_online(onlineData);
   }
 
   async init() {
-    if (this.state.online) {
+    if (this.state.online && false) {
       await this.startRemoteServer();
     } else {
       this.gameState.start_local_server();

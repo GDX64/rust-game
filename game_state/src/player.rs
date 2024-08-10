@@ -2,7 +2,7 @@ use anyhow::Context;
 use cgmath::InnerSpace;
 use log::error;
 
-use crate::{game_map::V2D, ClientMessage, ServerState, ShipKey, ShipState};
+use crate::{game_map::V2D, StateMessage, ServerState, ShipKey, ShipState};
 use std::{
     collections::HashMap,
     sync::mpsc::{Receiver, Sender},
@@ -21,8 +21,8 @@ pub struct Player {
     pub id: u64,
     moving_ships: HashMap<u64, PlayerShip>,
     pub selected_ships: Vec<u64>,
-    actions: Sender<ClientMessage>,
-    actions_buffer: Receiver<ClientMessage>,
+    actions: Sender<StateMessage>,
+    actions_buffer: Receiver<StateMessage>,
 }
 
 impl Player {
@@ -81,7 +81,7 @@ impl Player {
     }
 
     pub fn shoot_at_with(&self, ship_id: u64, x: f64, y: f64) {
-        let msg = ClientMessage::Shoot {
+        let msg = StateMessage::Shoot {
             ship_id,
             player_id: self.id,
             target: (x, y),
@@ -122,7 +122,7 @@ impl Player {
     }
 
     pub fn create_ship(&mut self, x: f64, y: f64) {
-        let msg = ClientMessage::CreateShip {
+        let msg = StateMessage::CreateShip {
             ship: ShipState {
                 id: 0,
                 acceleration: (0.0, 0.0),
@@ -139,11 +139,11 @@ impl Player {
         };
     }
 
-    pub fn next_message(&self) -> Option<ClientMessage> {
+    pub fn next_message(&self) -> Option<StateMessage> {
         self.actions_buffer.try_recv().ok()
     }
 
-    pub fn collect_messages(&self) -> Vec<ClientMessage> {
+    pub fn collect_messages(&self) -> Vec<StateMessage> {
         self.actions_buffer.try_iter().collect()
     }
 
@@ -171,7 +171,7 @@ impl Player {
                         path.remove(0);
                         if path.is_empty() {
                             self.actions
-                                .send(ClientMessage::MoveShip {
+                                .send(StateMessage::MoveShip {
                                     player_id: self.id,
                                     id: ship.id,
                                     acceleration: (0.0, 0.0),
@@ -187,7 +187,7 @@ impl Player {
                     let acceleration = direction.normalize() * BOAT_ACC;
                     let speed: V2D = ship.speed.into();
                     self.actions
-                        .send(ClientMessage::MoveShip {
+                        .send(StateMessage::MoveShip {
                             player_id: self.id,
                             id: ship.id,
                             acceleration: acceleration.into(),

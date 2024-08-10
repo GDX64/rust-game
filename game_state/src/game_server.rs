@@ -1,4 +1,4 @@
-use crate::{player::Player, ClientMessage, ServerState};
+use crate::{player::Player, ServerState, StateMessage};
 use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -7,9 +7,10 @@ use std::collections::HashMap;
 const MAX_BOTS: usize = 5;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum GameMessage {
-    ClientMessage(ClientMessage),
+    FrameMessage(Vec<StateMessage>),
+    InputMessage(StateMessage),
     AddBot,
     AddBotShipAt(f64, f64),
     RemoveBot,
@@ -66,6 +67,7 @@ pub struct GameServer {
     players: HashMap<u64, PlayerSender>,
     player_id_counter: u64,
     bots: Vec<Player>,
+    frame_inputs: Vec<StateMessage>,
     rand_gen: fastrand::Rng,
     frames: u64,
 }
@@ -79,6 +81,7 @@ impl GameServer {
             bots: vec![],
             rand_gen: fastrand::Rng::new(),
             frames: 0,
+            frame_inputs: vec![],
         }
     }
 
@@ -87,13 +90,13 @@ impl GameServer {
             return;
         }
         let bot = Player::new(self.next_player_id());
-        self.client_message(ClientMessage::CreatePlayer { id: bot.id });
+        self.state_message(StateMessage::CreatePlayer { id: bot.id });
         self.bots.push(bot);
     }
 
     fn remove_bot(&mut self) {
         if let Some(bot) = self.bots.pop() {
-            self.client_message(ClientMessage::RemovePlayer { id: bot.id });
+            self.state_message(StateMessage::RemovePlayer { id: bot.id });
         }
     }
 
@@ -115,19 +118,20 @@ impl GameServer {
         }
     }
 
-    fn broadcast_message(&mut self, message: ClientMessage) {
+    fn broadcast(&mut self, message: GameMessage) {
         let player_ids: Vec<u64> = self.players.keys().cloned().collect();
         for id in player_ids {
-            self.send_message_to_player(id, GameMessage::ClientMessage(message.clone()));
+            self.send_message_to_player(id, message.clone());
         }
     }
 
     pub fn on_message(&mut self, msg: Vec<u8>) {
         let msg = GameMessage::from_bytes(&msg);
         match msg {
-            GameMessage::ClientMessage(msg) => {
-                self.client_message(msg.clone());
+            GameMessage::FrameMessage(_msg) => {
+                log::error!("Server should not receive FrameMessage");
             }
+            GameMessage::InputMessage(msg) => self.state_message(msg),
             GameMessage::AddBot => self.add_bot(),
             GameMessage::RemoveBot => self.remove_bot(),
             GameMessage::AddBotShipAt(x, y) => {
@@ -145,14 +149,15 @@ impl GameServer {
     pub fn new_connection(&mut self, sender: PlayerSender) -> u64 {
         let id = self.next_player_id();
         self.players.insert(id, sender);
-        let msg = ClientMessage::CreatePlayer { id };
         let state = self.game_state.state_message();
-        self.send_message_to_player(id, GameMessage::ClientMessage(state));
-        self.client_message(msg.clone());
+        self.send_message_to_player(id, GameMessage::FrameMessage(vec![state]));
+
+        let create_player_msg = StateMessage::CreatePlayer { id };
+        self.state_message(create_player_msg.clone());
+
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
-        let state = self.game_state.state_message();
-        self.send_message_to_player(id, GameMessage::ClientMessage(state));
+
         return id;
     }
 
@@ -163,8 +168,8 @@ impl GameServer {
             id,
             self.players.len()
         );
-        let msg = ClientMessage::RemovePlayer { id };
-        self.client_message(msg);
+        let msg = StateMessage::RemovePlayer { id };
+        self.state_message(msg);
     }
 
     fn handle_bots(&mut self) {
@@ -207,7 +212,7 @@ impl GameServer {
             .flat_map(|bot| bot.collect_messages())
             .collect::<Vec<_>>();
         for msg in bot_messages {
-            self.client_message(msg);
+            self.state_message(msg);
         }
     }
 
@@ -218,14 +223,24 @@ impl GameServer {
         }
         self.frames += 1;
         self.handle_bots();
-        self.client_message(ClientMessage::Tick(time));
+        self.state_message(StateMessage::Tick(time));
         if self.frames % SYNC_EVERY_N_FRAMES == 0 {
-            self.broadcast_message(self.game_state.state_message());
+            self.frame_inputs.push(self.game_state.state_message());
         }
+        self.flush_frame_inputs();
     }
 
-    fn client_message(&mut self, msg: ClientMessage) {
+    fn flush_frame_inputs(&mut self) {
+        if self.frame_inputs.is_empty() {
+            return;
+        }
+        let frame_message = GameMessage::FrameMessage(self.frame_inputs.clone());
+        self.broadcast(frame_message);
+        self.frame_inputs.clear();
+    }
+
+    fn state_message(&mut self, msg: StateMessage) {
         self.game_state.on_message(msg.clone());
-        self.broadcast_message(msg);
+        self.frame_inputs.push(msg);
     }
 }

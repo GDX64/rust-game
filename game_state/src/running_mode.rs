@@ -1,23 +1,25 @@
 use crate::ws_channel::WSChannel;
-use crate::{game_server, GameMessage, ServerState};
+use crate::{game_server, GameMessage, ServerState, StateMessage};
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct OnlineData {
+pub struct OnlineClient {
     ws: WSChannel,
     game_state: ServerState,
     id: u64,
+    frame_buffer: Vec<Vec<StateMessage>>,
 }
 
 #[wasm_bindgen]
-impl OnlineData {
-    pub fn new(url: &str) -> OnlineData {
-        OnlineData {
+impl OnlineClient {
+    pub fn new(url: &str) -> OnlineClient {
+        OnlineClient {
             ws: WSChannel::new(url),
             game_state: ServerState::new(),
             id: 0,
+            frame_buffer: vec![],
         }
     }
 
@@ -36,7 +38,7 @@ impl OnlineData {
     }
 }
 
-impl OnlineData {
+impl OnlineClient {
     pub fn send(&mut self, msg: GameMessage) {
         self.ws.send(msg.to_bytes());
     }
@@ -50,10 +52,16 @@ impl OnlineData {
             };
             let msg = GameMessage::from_bytes(&msg);
             match msg {
-                GameMessage::ClientMessage(msg) => {
-                    self.game_state.on_message(msg);
+                GameMessage::FrameMessage(msg) => {
+                    self.frame_buffer.push(msg);
                 }
                 _ => {}
+            }
+            if self.frame_buffer.len() > 2 {
+                let frame = self.frame_buffer.pop().unwrap();
+                frame
+                    .into_iter()
+                    .for_each(|msg| self.game_state.on_message(msg));
             }
         }
     }
@@ -66,7 +74,7 @@ pub enum RunningMode {
         state: ServerState,
         id: u64,
     },
-    Online(OnlineData),
+    Online(OnlineClient),
 }
 
 impl RunningMode {
@@ -100,10 +108,11 @@ impl RunningMode {
             } => {
                 game.tick(dt);
                 while let Ok(Some(msg)) = receiver.try_next() {
+                    info!("Received message {:?}", msg);
                     let game_message = GameMessage::from_bytes(&msg);
                     match game_message {
-                        GameMessage::ClientMessage(msg) => {
-                            state.on_message(msg);
+                        GameMessage::FrameMessage(msg) => {
+                            msg.into_iter().for_each(|msg| state.on_message(msg));
                         }
                         _ => {}
                     }
