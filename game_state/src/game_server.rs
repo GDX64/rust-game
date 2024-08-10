@@ -6,6 +6,7 @@ use std::collections::HashMap;
 
 const MAX_BOTS: usize = 5;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
+pub const TICK_TIME: f64 = 1.0 / 60.0;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum GameMessage {

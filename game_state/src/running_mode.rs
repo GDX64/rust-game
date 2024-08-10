@@ -1,5 +1,5 @@
 use crate::ws_channel::WSChannel;
-use crate::{game_server, GameMessage, ServerState, StateMessage};
+use crate::{game_server, GameMessage, ServerState, StateMessage, TICK_TIME};
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 use wasm_bindgen::prelude::*;
@@ -9,6 +9,7 @@ pub struct OnlineClient {
     ws: WSChannel,
     game_state: ServerState,
     id: u64,
+    frame_acc: f64,
     frame_buffer: Vec<Vec<StateMessage>>,
 }
 
@@ -19,6 +20,7 @@ impl OnlineClient {
             ws: WSChannel::new(url),
             game_state: ServerState::new(),
             id: 0,
+            frame_acc: 0.0,
             frame_buffer: vec![],
         }
     }
@@ -43,7 +45,7 @@ impl OnlineClient {
         self.ws.send(msg.to_bytes());
     }
 
-    pub fn tick(&mut self, _dt: f64) {
+    pub fn tick(&mut self, dt: f64) {
         loop {
             let msg = self.ws.receive();
             let msg = match msg {
@@ -58,14 +60,21 @@ impl OnlineClient {
                 _ => {}
             }
         }
-        loop {
-            if let Some(frame) = self.frame_buffer.pop() {
-                frame
-                    .into_iter()
-                    .for_each(|msg| self.game_state.on_message(msg));
-            }
-            if self.frame_buffer.len() < 1 {
-                break;
+
+        self.frame_acc += dt;
+        let completed_frames = (self.frame_acc / TICK_TIME).round();
+        self.frame_acc -= (completed_frames) * TICK_TIME;
+
+        for _ in 0..completed_frames as usize {
+            loop {
+                if let Some(frame) = self.frame_buffer.pop() {
+                    frame
+                        .into_iter()
+                        .for_each(|msg| self.game_state.on_message(msg));
+                }
+                if self.frame_buffer.len() < 10 {
+                    break;
+                }
             }
         }
     }
