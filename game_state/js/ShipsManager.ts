@@ -39,6 +39,7 @@ export class ShipsManager {
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
   private arrowHelper = new THREE.ArrowHelper();
+  selectionRectangle: THREE.Mesh;
   selected$ = new Subject<THREE.InstancedMesh>();
   showArrow = false;
   aimCircle;
@@ -63,6 +64,7 @@ export class ShipsManager {
     this.arrowHelper.setLength(10);
     this.scene.add(this.arrowHelper);
     this.outlines = this.boatMesh.clone();
+
     const circle = new THREE.CircleGeometry(1, 32);
     const circleMaterial = new THREE.MeshPhongMaterial({
       color: 0xffff00,
@@ -75,6 +77,23 @@ export class ShipsManager {
     this.aimCircle.position.set(0, 0, 0);
     this.aimCircle.renderOrder = RenderOrder.AIM;
     this.aimCircle.visible = false;
+
+    const selectionRect = new THREE.PlaneGeometry(1, 1);
+    const selectionRectMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      blending: THREE.NormalBlending,
+      transparent: true,
+      opacity: 0.1,
+      depthWrite: false,
+    });
+    this.selectionRectangle = new THREE.Mesh(
+      selectionRect,
+      selectionRectMaterial
+    );
+    this.selectionRectangle.renderOrder = RenderOrder.AIM;
+    this.selectionRectangle.visible = false;
+
+    this.scene.add(this.selectionRectangle);
     this.scene.add(this.aimCircle);
 
     this.loadModel();
@@ -248,6 +267,15 @@ export class ShipsManager {
     });
 
     this.selected$.next(this.outlines);
+  }
+
+  selectBoatsInRect(start: THREE.Vector2, end: THREE.Vector2) {
+    for (const ship of this.myShips()) {
+      const [x, y] = ship.position;
+      if (x > start.x && x < end.x && y > start.y && y < end.y) {
+        this.selectBoat(ship.id);
+      }
+    }
   }
 
   private playerColor(playerID: number) {

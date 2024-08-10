@@ -13,6 +13,7 @@ export class PlayerActions {
   readonly mouse;
   readonly rayCaster = new THREE.Raycaster();
   private state = States.IDLE;
+  private readonly selectionStart = { x: 0, y: 0 };
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -35,10 +36,10 @@ export class PlayerActions {
     return this.shipsManager.game;
   }
 
-  screenSpaceMouse() {
+  screenSpacePoint(point = this.mouse) {
     return new THREE.Vector2(
-      (this.mouse.x / this.width) * 2 - 1,
-      -(this.mouse.y / this.height) * 2 + 1
+      (point.x / this.width) * 2 - 1,
+      -(point.y / this.height) * 2 + 1
     );
   }
 
@@ -46,11 +47,39 @@ export class PlayerActions {
     this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
     this.canvas.addEventListener("pointermove", this.pointermove.bind(this));
+    this.canvas.addEventListener("pointerup", this.pointerup.bind(this));
     this.canvas.addEventListener("contextmenu", (event) =>
       event.preventDefault()
     );
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
+  }
+
+  pointerup(event: PointerEvent) {
+    this.mouse.x = event.offsetX;
+    this.mouse.y = event.offsetY;
+    const selection = this.currentSelection();
+    if (selection) {
+      this.shipsManager.selectBoatsInRect(selection.start, selection.end);
+      this.state = States.IDLE;
+    }
+  }
+
+  currentSelection() {
+    if (this.state !== States.SELECTING) {
+      return null;
+    }
+    const end = this.waterIntersection(this.mouse);
+    const start = this.waterIntersection(this.selectionStart);
+    if (start && end) {
+      const lowerX = Math.min(start.point.x, end.point.x);
+      const upperX = Math.max(start.point.x, end.point.x);
+      const lowerY = Math.min(start.point.y, end.point.y);
+      const upperY = Math.max(start.point.y, end.point.y);
+      const lowerPoint = new THREE.Vector2(lowerX, lowerY);
+      const upperPoint = new THREE.Vector2(upperX, upperY);
+      return { start: lowerPoint, end: upperPoint };
+    }
   }
 
   pointerleave(_event: PointerEvent) {
@@ -141,6 +170,20 @@ export class PlayerActions {
   pointermove(event: PointerEvent) {
     this.mouse.x = event.offsetX;
     this.mouse.y = event.offsetY;
+    const selection = this.currentSelection();
+    if (selection) {
+      this.shipsManager.selectionRectangle.visible = true;
+      const width = selection.end.x - selection.start.x;
+      const height = selection.end.y - selection.start.y;
+      this.shipsManager.selectionRectangle.scale.set(width, height, 1);
+      this.shipsManager.selectionRectangle.position.set(
+        selection.start.x + width / 2,
+        selection.start.y + height / 2,
+        0
+      );
+    } else {
+      this.shipsManager.selectionRectangle.visible = false;
+    }
   }
 
   private pointerdown(event: PointerEvent) {
@@ -169,6 +212,8 @@ export class PlayerActions {
           this.shipsManager.clearSelection();
         }
         this.state = States.SELECTING;
+        this.selectionStart.x = event.offsetX;
+        this.selectionStart.y = event.offsetY;
       } else {
         if (hasShift) {
           this.shipsManager.selectBoat(boat);
@@ -187,8 +232,11 @@ export class PlayerActions {
     return this.shipsManager.getBoatAt(x, y);
   }
 
-  private waterIntersection(): THREE.Intersection | null {
-    this.rayCaster.setFromCamera(this.screenSpaceMouse(), this.camera.camera);
+  private waterIntersection(point = this.mouse): THREE.Intersection | null {
+    this.rayCaster.setFromCamera(
+      this.screenSpacePoint(point),
+      this.camera.camera
+    );
     const intersects = this.water.intersects(this.rayCaster);
     return intersects[0] ?? null;
   }
