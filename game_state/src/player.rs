@@ -2,7 +2,7 @@ use anyhow::Context;
 use cgmath::InnerSpace;
 use log::error;
 
-use crate::{game_map::V2D, StateMessage, ServerState, ShipKey, ShipState};
+use crate::{game_map::V2D, ServerState, ShipKey, ShipState, StateMessage};
 use std::{
     collections::HashMap,
     sync::mpsc::{Receiver, Sender},
@@ -170,31 +170,26 @@ impl Player {
                     if direction.magnitude() < 1.0 {
                         path.remove(0);
                         if path.is_empty() {
-                            self.actions
-                                .send(StateMessage::MoveShip {
-                                    player_id: self.id,
-                                    id: ship.id,
-                                    acceleration: (0.0, 0.0),
-                                    speed: (0.0, 0.0),
-                                    position: ship.position,
-                                })
-                                .expect("Error sending message");
+                            if let Err(e) = self.actions.send(StateMessage::MoveShip {
+                                player_id: self.id,
+                                id: ship.id,
+                                acceleration: (0.0, 0.0),
+                            }) {
+                                log::error!("Error sending message: {:?}", e)
+                            }
                             break;
                         } else {
                             continue;
                         }
                     };
                     let acceleration = direction.normalize() * BOAT_ACC;
-                    let speed: V2D = ship.speed.into();
-                    self.actions
-                        .send(StateMessage::MoveShip {
-                            player_id: self.id,
-                            id: ship.id,
-                            acceleration: acceleration.into(),
-                            speed: speed.into(),
-                            position: ship.position.into(),
-                        })
-                        .expect("Error sending message");
+                    if let Err(e) = self.actions.send(StateMessage::MoveShip {
+                        player_id: self.id,
+                        id: ship.id,
+                        acceleration: acceleration.into(),
+                    }) {
+                        log::error!("Error sending message: {:?}", e)
+                    }
                     break;
                 } else {
                     break;

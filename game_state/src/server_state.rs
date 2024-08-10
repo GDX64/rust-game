@@ -156,8 +156,6 @@ pub enum StateMessage {
         ship: ShipState,
     },
     MoveShip {
-        position: (f64, f64),
-        speed: (f64, f64),
         acceleration: (f64, f64),
         id: u64,
         player_id: u64,

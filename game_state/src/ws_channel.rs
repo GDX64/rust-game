@@ -19,9 +19,12 @@ impl WSChannel {
             let data = event.data().dyn_into::<js_sys::ArrayBuffer>();
             if let Ok(data) = data {
                 let data = js_sys::Uint8Array::new(&data).to_vec();
-                channel_sender
-                    .try_send(data)
-                    .expect("Failed to send message on websocket internal channel");
+                match channel_sender.try_send(data) {
+                    Ok(_) => (),
+                    Err(e) => {
+                        log::error!("Failed to send message: {:?}", e)
+                    }
+                }
             }
         });
         let on_message = on_message.into_js_value();
@@ -32,12 +35,10 @@ impl WSChannel {
         }
     }
 
-    pub fn send(&mut self, msg: Vec<u8>) {
+    pub fn send(&mut self, msg: Vec<u8>) -> Option<()> {
         let msg = js_sys::Uint8Array::from(msg.as_slice());
         let msg = msg.buffer();
-        self.ws
-            .send_with_array_buffer(&msg)
-            .expect("Failed to send message on websocket");
+        self.ws.send_with_array_buffer(&msg).ok()
     }
 
     pub fn receive(&mut self) -> Option<Vec<u8>> {
