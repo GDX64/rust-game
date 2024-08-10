@@ -3,9 +3,16 @@ import { ShipsManager } from "./ShipsManager";
 import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 
+enum States {
+  IDLE,
+  SHOOTING,
+  SELECTING,
+}
+
 export class PlayerActions {
   readonly mouse;
   readonly rayCaster = new THREE.Raycaster();
+  private state = States.IDLE;
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -38,7 +45,7 @@ export class PlayerActions {
   bindEvents() {
     this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
-    this.canvas.addEventListener("pointermove", this.onMouseMove.bind(this));
+    this.canvas.addEventListener("pointermove", this.pointermove.bind(this));
     this.canvas.addEventListener("contextmenu", (event) =>
       event.preventDefault()
     );
@@ -46,16 +53,20 @@ export class PlayerActions {
     document.addEventListener("keyup", this.onKeyUp.bind(this));
   }
 
-  pointerleave(event: PointerEvent) {
+  pointerleave(_event: PointerEvent) {
     this.canvas.style.cursor = "auto";
     this.shipsManager.aimCircle.visible = false;
     this.mouse.x = this.width / 2;
     this.mouse.y = this.height / 2;
+    this.state = States.IDLE;
   }
 
   onKeyUp(event: KeyboardEvent) {
-    this.canvas.style.cursor = "auto";
-    this.shipsManager.aimCircle.visible = false;
+    if (event.key === "Control") {
+      this.canvas.style.cursor = "auto";
+      this.shipsManager.aimCircle.visible = false;
+      this.state = States.IDLE;
+    }
   }
 
   onKeyDown(event: KeyboardEvent) {
@@ -69,6 +80,7 @@ export class PlayerActions {
     if (event.ctrlKey) {
       this.canvas.style.cursor = "crosshair";
       this.shipsManager.aimCircle.visible = true;
+      this.state = States.SHOOTING;
     }
     if (event.key === "b") {
       const intersection = this.waterIntersection();
@@ -111,20 +123,24 @@ export class PlayerActions {
 
   tick() {
     this.handleMousePos();
-  }
-
-  onMouseMove(event: PointerEvent) {
-    this.mouse.x = event.offsetX;
-    this.mouse.y = event.offsetY;
-    const intersection = this.waterIntersection();
-    if (intersection) {
-      const { x, y } = intersection.point;
-      const margin = this.game.shoot_error_margin(x, y);
-      if (margin) {
-        this.shipsManager.aimCircle.position.set(x, y, 0);
-        this.shipsManager.aimCircle.scale.set(margin, margin, 1);
+    if (this.state === States.SHOOTING) {
+      const intersection = this.waterIntersection();
+      if (intersection) {
+        const { x, y } = intersection.point;
+        const margin = this.game.shoot_error_margin(x, y);
+        if (margin) {
+          this.shipsManager.aimCircle.position.set(x, y, 0);
+          this.shipsManager.aimCircle.scale.set(margin, margin, 1);
+        } else {
+          this.shipsManager.aimCircle.visible = false;
+        }
       }
     }
+  }
+
+  pointermove(event: PointerEvent) {
+    this.mouse.x = event.offsetX;
+    this.mouse.y = event.offsetY;
   }
 
   private pointerdown(event: PointerEvent) {
@@ -152,6 +168,7 @@ export class PlayerActions {
         } else {
           this.shipsManager.clearSelection();
         }
+        this.state = States.SELECTING;
       } else {
         if (hasShift) {
           this.shipsManager.selectBoat(boat);
