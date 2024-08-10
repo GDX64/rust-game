@@ -13,6 +13,11 @@ pub struct OnlineClient {
     frame_buffer: Vec<Vec<StateMessage>>,
 }
 
+pub trait Client {
+    fn send(&mut self, msg: GameMessage);
+    fn tick(&mut self, dt: f64);
+}
+
 #[wasm_bindgen]
 impl OnlineClient {
     pub fn new(url: &str) -> OnlineClient {
@@ -40,12 +45,12 @@ impl OnlineClient {
     }
 }
 
-impl OnlineClient {
-    pub fn send(&mut self, msg: GameMessage) {
+impl Client for OnlineClient {
+    fn send(&mut self, msg: GameMessage) {
         self.ws.send(msg.to_bytes());
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    fn tick(&mut self, dt: f64) {
         loop {
             let msg = self.ws.receive();
             let msg = match msg {
@@ -80,55 +85,68 @@ impl OnlineClient {
     }
 }
 
+pub struct LocalClient {
+    game: game_server::GameServer,
+    receiver: Receiver<Vec<u8>>,
+    state: ServerState,
+    id: u64,
+}
+
+impl LocalClient {
+    pub fn new() -> LocalClient {
+        let (sender, receiver) = channel(100);
+        let mut game = game_server::GameServer::new();
+        let player_id = game.new_connection(sender);
+        info!("Local server started");
+        LocalClient {
+            game,
+            receiver,
+            state: ServerState::new(),
+            id: player_id,
+        }
+    }
+}
+
+impl Client for LocalClient {
+    fn send(&mut self, msg: GameMessage) {
+        self.game.on_message(msg.to_bytes());
+    }
+
+    fn tick(&mut self, dt: f64) {
+        self.game.tick(dt);
+        while let Ok(Some(msg)) = self.receiver.try_next() {
+            let game_message = GameMessage::from_bytes(&msg);
+            match game_message {
+                GameMessage::FrameMessage(msg) => {
+                    msg.into_iter().for_each(|msg| self.state.on_message(msg));
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 pub enum RunningMode {
-    Local {
-        game: game_server::GameServer,
-        receiver: Receiver<Vec<u8>>,
-        state: ServerState,
-        id: u64,
-    },
+    Local(LocalClient),
     Online(OnlineClient),
 }
 
 impl RunningMode {
     pub fn server_state(&self) -> &ServerState {
         match self {
-            RunningMode::Local { ref state, .. } => state,
+            RunningMode::Local(data) => &data.state,
             RunningMode::Online(data) => &data.game_state,
         }
     }
 
     pub fn start_local() -> RunningMode {
-        let (sender, receiver) = channel(100);
-        let mut game = game_server::GameServer::new();
-        let player_id = game.new_connection(sender);
-        info!("Local server started");
-        return RunningMode::Local {
-            game,
-            receiver,
-            id: player_id,
-            state: ServerState::new(),
-        };
+        RunningMode::Local(LocalClient::new())
     }
 
     pub fn tick(&mut self, dt: f64) {
         match self {
-            RunningMode::Local {
-                receiver,
-                state,
-                game,
-                ..
-            } => {
-                game.tick(dt);
-                while let Ok(Some(msg)) = receiver.try_next() {
-                    let game_message = GameMessage::from_bytes(&msg);
-                    match game_message {
-                        GameMessage::FrameMessage(msg) => {
-                            msg.into_iter().for_each(|msg| state.on_message(msg));
-                        }
-                        _ => {}
-                    }
-                }
+            RunningMode::Local(client) => {
+                client.tick(dt);
             }
             RunningMode::Online(data) => {
                 data.tick(dt);
@@ -138,15 +156,15 @@ impl RunningMode {
 
     pub fn id(&self) -> u64 {
         match self {
-            RunningMode::Local { id, .. } => *id,
+            RunningMode::Local(data) => data.id,
             RunningMode::Online(data) => data.id,
         }
     }
 
     pub fn send_game_message(&mut self, msg: GameMessage) {
         match self {
-            RunningMode::Local { ref mut game, .. } => {
-                game.on_message(msg.to_bytes());
+            RunningMode::Local(ref mut data) => {
+                data.game.on_message(msg.to_bytes());
             }
             RunningMode::Online(data) => {
                 data.send(msg);
@@ -166,8 +184,11 @@ mod test {
             local.tick(0.016)
         }
         match local {
-            super::RunningMode::Local { game, state, .. } => {
-                assert_eq!(game.game_state.ship_collection, state.ship_collection);
+            super::RunningMode::Local(data) => {
+                assert_eq!(
+                    data.game.game_state.ship_collection,
+                    data.state.ship_collection
+                );
             }
             _ => panic!("Expected local mode"),
         }
