@@ -6,6 +6,7 @@ use crate::{
     world_gen::{self, TileKind},
 };
 use cgmath::InnerSpace;
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -411,6 +412,7 @@ impl ServerState {
                 self.explosions = state.explosions;
                 self.artifact_id = state.artifact_id;
                 self.current_time = state.current_time;
+                info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {
                 ship.id = self.next_artifact_id();

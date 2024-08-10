@@ -159,7 +159,7 @@ export class Render3D {
   }
 
   async init() {
-    if (this.state.online && false) {
+    if (this.state.online) {
       await this.startRemoteServer();
     } else {
       this.gameState.start_local_server();

@@ -11,6 +11,8 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, MutexGuard};
 use tower_http::services::ServeDir;
 
+const ARTIFIAL_DELAY: bool = false;
+
 #[derive(Clone)]
 struct Apps {
     game_server: Arc<Mutex<GameServer>>,
@@ -71,8 +73,14 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
         return async move {
             let (mut send, mut receive) = ws.split();
             let (player_send, mut player_receive) = channel(100);
+
+            let mut rng = fastrand::Rng::new();
+
             tokio::spawn(async move {
                 while let Some(msg) = player_receive.next().await {
+                    if ARTIFIAL_DELAY && rng.f64() > 0.95 {
+                        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+                    }
                     match send.send(Message::Binary(msg)).await {
                         Ok(_) => {}
                         Err(_) => {

@@ -53,19 +53,19 @@ impl OnlineClient {
             let msg = GameMessage::from_bytes(&msg);
             match msg {
                 GameMessage::FrameMessage(msg) => {
-                    self.frame_buffer.push(msg);
+                    self.frame_buffer.insert(0, msg);
                 }
                 _ => {}
             }
-            loop {
-                if let Some(frame) = self.frame_buffer.pop() {
-                    frame
-                        .into_iter()
-                        .for_each(|msg| self.game_state.on_message(msg));
-                }
-                if self.frame_buffer.len() < 2 {
-                    break;
-                }
+        }
+        loop {
+            if let Some(frame) = self.frame_buffer.pop() {
+                frame
+                    .into_iter()
+                    .for_each(|msg| self.game_state.on_message(msg));
+            }
+            if self.frame_buffer.len() < 1 {
+                break;
             }
         }
     }
