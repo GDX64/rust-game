@@ -57,11 +57,15 @@ impl OnlineClient {
                 }
                 _ => {}
             }
-            if self.frame_buffer.len() > 2 {
-                let frame = self.frame_buffer.pop().unwrap();
-                frame
-                    .into_iter()
-                    .for_each(|msg| self.game_state.on_message(msg));
+            loop {
+                if let Some(frame) = self.frame_buffer.pop() {
+                    frame
+                        .into_iter()
+                        .for_each(|msg| self.game_state.on_message(msg));
+                }
+                if self.frame_buffer.len() < 2 {
+                    break;
+                }
             }
         }
     }
@@ -108,7 +112,6 @@ impl RunningMode {
             } => {
                 game.tick(dt);
                 while let Ok(Some(msg)) = receiver.try_next() {
-                    info!("Received message {:?}", msg);
                     let game_message = GameMessage::from_bytes(&msg);
                     match game_message {
                         GameMessage::FrameMessage(msg) => {
