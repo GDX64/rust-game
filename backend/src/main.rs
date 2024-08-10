@@ -74,7 +74,7 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
             let (mut send, mut receive) = ws.split();
             let (player_send, mut player_receive) = channel(100);
 
-            let mut rng = fastrand::Rng::new();
+            let mut rng = fastrand::Rng::with_seed(0);
 
             tokio::spawn(async move {
                 while let Some(msg) = player_receive.next().await {

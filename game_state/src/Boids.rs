@@ -31,7 +31,7 @@ impl<B: BoidLike> BoidsTeam<B> {
     }
 
     pub fn update(&mut self) {
-        let mut rand_gen = fastrand::Rng::new();
+        let mut rand_gen = fastrand::Rng::with_seed(0);
         self.boids = self
             .boids
             .iter()

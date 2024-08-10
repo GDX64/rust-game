@@ -108,6 +108,7 @@ pub struct BroadCastState {
     explosions: BTreeMap<u64, Explosion>,
     artifact_id: u64,
     current_time: f64,
+    rng_seed: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -124,6 +125,7 @@ impl BroadCastState {
             explosions: BTreeMap::new(),
             artifact_id: 0,
             current_time: 5.0,
+            rng_seed: 0,
         }
     }
 }
@@ -286,6 +288,7 @@ impl ServerState {
             explosions: self.explosions.clone(),
             artifact_id: self.artifact_id,
             current_time: self.current_time,
+            rng_seed: self.rng.get_seed(),
         }
     }
 
@@ -412,6 +415,7 @@ impl ServerState {
                 self.explosions = state.explosions;
                 self.artifact_id = state.artifact_id;
                 self.current_time = state.current_time;
+                self.rng.seed(state.rng_seed);
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {
@@ -449,13 +453,27 @@ impl ServerState {
             .get_mut(&ShipKey::new(ship_id, player_id))?;
         let pos: V2D = ship.position.into();
         let target: V2D = target.into();
+
         let error_mod = self.game_constants.error_margin(target, pos)?;
         let error_direction: V2D = (self.rng.f64() - 0.5, self.rng.f64() - 0.5).into();
         let target = error_direction.normalize() * error_mod * self.rng.f64() + target;
+
         let mut bullet = ship.shoot_at(self.current_time, target.into())?;
         bullet.bullet_id = self.next_artifact_id();
         self.bullets
             .insert((bullet.player_id, bullet.bullet_id), bullet);
         Some(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_rng() {
+        let mut rng = fastrand::Rng::with_seed(0);
+        println!("RNG: {}", rng.f64());
+        println!("RNG: {}", rng.f64());
+        println!("RNG: {}", rng.f64());
+        println!("RNG: {:?}", rng.get_seed());
     }
 }
