@@ -255,7 +255,7 @@ export class Render3D {
       fog: false,
     });
     const sunMesh = new THREE.Mesh(sun, sunMaterial);
-    const sunPosition = new THREE.Vector3(500, 0, 200);
+    const sunPosition = new THREE.Vector3(4000, 0, 1500);
     sunMesh.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
     scene.add(sunMesh);
     const light = new THREE.DirectionalLight(0xffffff, 10);

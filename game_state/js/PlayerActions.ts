@@ -14,6 +14,7 @@ export class PlayerActions {
   readonly rayCaster = new THREE.Raycaster();
   private state = States.IDLE;
   private readonly selectionStart = { x: 0, y: 0 };
+  private cameraAxes = new THREE.AxesHelper(1000);
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -22,6 +23,10 @@ export class PlayerActions {
     public water: Water
   ) {
     this.mouse = { x: canvas.offsetWidth / 2, y: canvas.offsetHeight / 2 };
+
+    const axesHelper = new THREE.AxesHelper(1000);
+    this.shipsManager.scene.add(axesHelper);
+    this.shipsManager.scene.add(this.cameraAxes);
   }
 
   get width() {
@@ -60,7 +65,7 @@ export class PlayerActions {
     this.mouse.y = event.offsetY;
     const selection = this.currentSelection();
     if (selection) {
-      this.shipsManager.selectBoatsInRect(selection.start, selection.end);
+      // this.shipsManager.selectBoatsInRect(selection.start, selection.end);
       this.state = States.IDLE;
     }
   }
@@ -72,13 +77,11 @@ export class PlayerActions {
     const end = this.waterIntersection(this.mouse);
     const start = this.waterIntersection(this.selectionStart);
     if (start && end) {
-      const lowerX = Math.min(start.point.x, end.point.x);
-      const upperX = Math.max(start.point.x, end.point.x);
-      const lowerY = Math.min(start.point.y, end.point.y);
-      const upperY = Math.max(start.point.y, end.point.y);
-      const lowerPoint = new THREE.Vector2(lowerX, lowerY);
-      const upperPoint = new THREE.Vector2(upperX, upperY);
-      return { start: lowerPoint, end: upperPoint };
+      const basis = this.camera.basisMatrix();
+      const basisInverse = basis.clone().invert();
+      start.point.applyMatrix4(basisInverse);
+      end.point.applyMatrix4(basisInverse);
+      return { start: start.point, end: end.point, basis };
     }
   }
 
@@ -176,11 +179,24 @@ export class PlayerActions {
       const width = selection.end.x - selection.start.x;
       const height = selection.end.y - selection.start.y;
       this.shipsManager.selectionRectangle.scale.set(width, height, 1);
+      this.cameraAxes.position.set(-100, 0, 0);
+      const quaternion = new THREE.Quaternion();
+      selection.basis.decompose(
+        new THREE.Vector3(),
+        quaternion,
+        new THREE.Vector3()
+      );
+      this.cameraAxes.setRotationFromQuaternion(quaternion);
+      this.shipsManager.selectionRectangle.setRotationFromQuaternion(
+        quaternion
+      );
+      const startTransformed = selection.start.applyMatrix4(selection.basis);
       this.shipsManager.selectionRectangle.position.set(
-        selection.start.x + width / 2,
-        selection.start.y + height / 2,
+        startTransformed.x,
+        startTransformed.y,
         0
       );
+      console.log(width.toFixed(), height.toFixed());
     } else {
       this.shipsManager.selectionRectangle.visible = false;
     }

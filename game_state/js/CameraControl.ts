@@ -156,6 +156,19 @@ export class CameraControl {
     }
   }
 
+  basisMatrix() {
+    const projected = this.lookDirectionProjected().normalize();
+    //projected is going to be y axis
+    const y = projected;
+    const z = new THREE.Vector3(0, 0, 1);
+    const x = y.clone().cross(z);
+
+    const matrix = new THREE.Matrix4();
+    matrix.makeBasis(x, y, z);
+    console.log(projected);
+    return matrix;
+  }
+
   moveSideways(sign: number) {
     const projected = this.lookDirectionProjected();
     const up = new THREE.Vector3(0, 0, 1);

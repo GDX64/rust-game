@@ -46,7 +46,7 @@ export class ShipsManager {
 
   constructor(
     readonly game: GameWasmState,
-    private scene: THREE.Scene,
+    public scene: THREE.Scene,
     private water: Water
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
@@ -79,6 +79,7 @@ export class ShipsManager {
     this.aimCircle.visible = false;
 
     const selectionRect = new THREE.PlaneGeometry(1, 1);
+    selectionRect.translate(0.5, 0.5, 0);
     const selectionRectMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       blending: THREE.NormalBlending,
