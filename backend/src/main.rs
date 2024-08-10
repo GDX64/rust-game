@@ -6,9 +6,8 @@ use axum::{
 };
 use futures::{channel::mpsc::channel, SinkExt};
 use futures_util::StreamExt;
-use game_state::GameServer;
-use std::sync::Arc;
-use tokio::sync::{Mutex, MutexGuard};
+use game_state::{GameServer, TICK_TIME};
+use std::sync::{Arc, Mutex, MutexGuard};
 use tower_http::services::ServeDir;
 
 const ARTIFIAL_DELAY: bool = false;
@@ -25,13 +24,12 @@ impl Apps {
         }
     }
 
-    async fn get_game_server(&self) -> MutexGuard<GameServer> {
-        self.game_server.lock().await
+    fn get_game_server(&self) -> MutexGuard<GameServer> {
+        self.game_server.lock().unwrap()
     }
 }
 
 type AppState = Apps;
-const TICK: f64 = 1.0 / 60.0;
 
 fn init_logger() {
     use env_logger::Env;
@@ -51,10 +49,10 @@ async fn main() {
     let local_set = tokio::task::LocalSet::new();
     let tick_task = local_set.run_until(async {
         tokio::task::spawn_local(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK));
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK_TIME));
             loop {
                 interval.tick().await;
-                state.get_game_server().await.tick(TICK);
+                state.get_game_server().tick(TICK_TIME);
             }
         })
         .await
@@ -89,15 +87,15 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
                     }
                 }
             });
-            let id = { state.get_game_server().await.new_connection(player_send) };
+            let id = { state.get_game_server().new_connection(player_send) };
             loop {
                 let msg = receive.next().await;
                 match msg {
                     Some(Ok(Message::Binary(msg))) => {
-                        state.get_game_server().await.on_message(msg);
+                        state.get_game_server().on_message(msg);
                     }
                     _ => {
-                        state.get_game_server().await.disconnect_player(id);
+                        state.get_game_server().disconnect_player(id);
                         return;
                     }
                 }

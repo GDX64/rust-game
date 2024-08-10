@@ -8,7 +8,7 @@ use crate::{
 use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, rc::Rc};
+use std::{collections::BTreeMap, sync::Arc};
 
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
@@ -240,8 +240,8 @@ pub type GameMap = WorldGrid<(f64, TileKind)>;
 pub struct ServerState {
     pub players: BTreeMap<u64, PlayerState>,
     pub explosions: BTreeMap<u64, Explosion>,
-    pub game_map: Rc<GameMap>,
-    pub world_gen: Rc<world_gen::WorldGen>,
+    pub game_map: Arc<GameMap>,
+    pub world_gen: Arc<world_gen::WorldGen>,
     pub bullets: BTreeMap<(u64, u64), Bullet>,
     pub ship_collection: ShipCollection,
     pub current_time: f64,
@@ -252,8 +252,8 @@ pub struct ServerState {
 
 impl ServerState {
     pub fn new() -> Self {
-        let world_gen = Rc::new(world_gen::WorldGen::new(1));
-        let game_map = Rc::new(world_gen.generate_grid(4_000.0));
+        let world_gen = Arc::new(world_gen::WorldGen::new(1));
+        let game_map = Arc::new(world_gen.generate_grid(4_000.0));
         Self {
             game_map,
             world_gen,
