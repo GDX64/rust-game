@@ -6,8 +6,9 @@ import { ExplosionData, ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { Subject } from "rxjs";
 import { RenderOrder } from "./RenderOrder";
+import { HPBar } from "./HPBar";
 
-type ShipData = {
+export type ShipData = {
   player_id: number;
   id: number;
   position: [number, number];
@@ -44,6 +45,7 @@ export class ShipsManager {
   selected$ = new Subject<THREE.InstancedMesh>();
   showArrow = false;
   aimCircle;
+  hpBar = new HPBar();
 
   constructor(
     readonly game: GameWasmState,
@@ -97,6 +99,7 @@ export class ShipsManager {
 
     this.scene.add(this.selectionRectangle);
     this.scene.add(this.aimCircle);
+    this.hpBar.addToScene(scene);
 
     this.loadModel();
   }
@@ -231,11 +234,13 @@ export class ShipsManager {
       this.outlines.instanceColor.needsUpdate = true;
     }
 
+    this.hpBar.setInstancesCount(ships.length);
+
     const myID = this.game.my_id();
     let normalBoats = 0;
     let outlineBoats = 0;
-    for (let _i = 0; _i < ships.length; _i++) {
-      const ship = ships[_i];
+    for (let allShipsIndex = 0; allShipsIndex < ships.length; allShipsIndex++) {
+      const ship = ships[allShipsIndex];
       const isMine = ship.player_id === myID;
       let meshToUse;
       let i;
@@ -252,6 +257,8 @@ export class ShipsManager {
       meshToUse.setMatrixAt(i, matrix);
       const color = this.playerColor(ship.player_id);
       meshToUse.setColorAt(i, color);
+
+      this.hpBar.updateBar(allShipsIndex, matrix, ship.hp);
     }
     this.boatMesh.count = normalBoats;
     this.outlines.count = outlineBoats;

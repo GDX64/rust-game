@@ -346,9 +346,6 @@ impl ServerState {
             let pos: V3D = bullet.target.into();
 
             for (id, ship) in self.ship_collection.iter() {
-                if ship.player_id == bullet.player_id {
-                    continue;
-                }
                 let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
                 let distance = (ship_pos - pos).magnitude();
                 if distance < BLAST_RADIUS {
