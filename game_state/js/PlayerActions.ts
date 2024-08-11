@@ -14,7 +14,6 @@ export class PlayerActions {
   readonly rayCaster = new THREE.Raycaster();
   private state = States.IDLE;
   private readonly selectionStart = { x: 0, y: 0 };
-  private cameraAxes = new THREE.AxesHelper(1000);
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -26,7 +25,6 @@ export class PlayerActions {
 
     const axesHelper = new THREE.AxesHelper(1000);
     this.shipsManager.scene.add(axesHelper);
-    this.shipsManager.scene.add(this.cameraAxes);
   }
 
   get width() {
@@ -65,7 +63,30 @@ export class PlayerActions {
     this.mouse.y = event.offsetY;
     const selection = this.currentSelection();
     if (selection) {
-      // this.shipsManager.selectBoatsInRect(selection.start, selection.end);
+      const { start, end, basis } = selection;
+      //we need to convert every body to camera perspective
+      //so that we can compare it as if it was a normal rectangle
+      const invertedBasis = basis.clone().invert();
+      const startCamera = start.clone().applyMatrix4(invertedBasis);
+      const endCamera = end.clone().applyMatrix4(invertedBasis);
+      const startX = Math.min(startCamera.x, endCamera.x);
+      const startY = Math.min(startCamera.y, endCamera.y);
+      const endX = Math.max(startCamera.x, endCamera.x);
+      const endY = Math.max(startCamera.y, endCamera.y);
+      this.shipsManager.select((ship) => {
+        const shipPos = new THREE.Vector3(
+          ship.position[0],
+          ship.position[1],
+          0
+        );
+        shipPos.applyMatrix4(invertedBasis);
+        return (
+          shipPos.x > startX &&
+          shipPos.x < endX &&
+          shipPos.y > startY &&
+          shipPos.y < endY
+        );
+      });
       this.state = States.IDLE;
     }
   }
@@ -78,9 +99,6 @@ export class PlayerActions {
     const start = this.waterIntersection(this.selectionStart);
     if (start && end) {
       const basis = this.camera.basisMatrix();
-      const basisInverse = basis.clone().invert();
-      start.point.applyMatrix4(basisInverse);
-      end.point.applyMatrix4(basisInverse);
       return { start: start.point, end: end.point, basis };
     }
   }
@@ -175,27 +193,24 @@ export class PlayerActions {
     this.mouse.y = event.offsetY;
     const selection = this.currentSelection();
     if (selection) {
+      const { start, end, basis } = selection;
       this.shipsManager.selectionRectangle.visible = true;
-      const width = selection.end.x - selection.start.x;
-      const height = selection.end.y - selection.start.y;
+      const diff = end.clone().sub(start);
+      //When calculating width and height, we need to do it in the coordinates of the camera
+      diff.applyMatrix4(basis.clone().invert());
+      const width = diff.x;
+      const height = diff.y;
       this.shipsManager.selectionRectangle.scale.set(width, height, 1);
-      this.cameraAxes.position.set(-100, 0, 0);
       const quaternion = new THREE.Quaternion();
       selection.basis.decompose(
         new THREE.Vector3(),
         quaternion,
         new THREE.Vector3()
       );
-      this.cameraAxes.setRotationFromQuaternion(quaternion);
       this.shipsManager.selectionRectangle.setRotationFromQuaternion(
         quaternion
       );
-      const startTransformed = selection.start.applyMatrix4(selection.basis);
-      this.shipsManager.selectionRectangle.position.set(
-        startTransformed.x,
-        startTransformed.y,
-        0
-      );
+      this.shipsManager.selectionRectangle.position.set(start.x, start.y, 0);
       console.log(width.toFixed(), height.toFixed());
     } else {
       this.shipsManager.selectionRectangle.visible = false;

@@ -270,10 +270,9 @@ export class ShipsManager {
     this.selected$.next(this.outlines);
   }
 
-  selectBoatsInRect(start: THREE.Vector2, end: THREE.Vector2) {
+  select(fn: (ship: ShipData) => boolean) {
     for (const ship of this.myShips()) {
-      const [x, y] = ship.position;
-      if (x > start.x && x < end.x && y > start.y && y < end.y) {
+      if (fn(ship)) {
         this.selectBoat(ship.id);
       }
     }
