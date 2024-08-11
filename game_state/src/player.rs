@@ -23,6 +23,7 @@ pub struct Player {
     pub selected_ships: Vec<u64>,
     actions: Sender<StateMessage>,
     actions_buffer: Receiver<StateMessage>,
+    rng: fastrand::Rng,
 }
 
 impl Player {
@@ -34,6 +35,7 @@ impl Player {
             actions: sender,
             actions_buffer: receiver,
             selected_ships: Vec::new(),
+            rng: fastrand::Rng::with_seed(0),
         }
     }
 
@@ -95,6 +97,33 @@ impl Player {
         self.shooting_ships(game_state).take(1).for_each(|ship| {
             self.shoot_at_with(ship.id, target.x, target.y);
         });
+    }
+
+    fn rand_enemies<'a>(&mut self, game_state: &'a ServerState) -> Vec<&'a ShipState> {
+        let mut enemies = self.enemies(game_state).collect::<Vec<_>>();
+        self.rng.shuffle(&mut enemies);
+        enemies
+    }
+
+    fn enemies<'a>(&self, game_state: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
+        let id = self.id;
+        game_state
+            .ship_collection
+            .values()
+            .filter(move |ship| ship.player_id != id)
+    }
+
+    pub fn select_all(&mut self, game_state: &ServerState) {
+        self.selected_ships = self.player_ships(game_state).map(|ship| ship.id).collect();
+    }
+
+    pub fn auto_shoot(&mut self, game_state: &ServerState) {
+        let enemies = self.rand_enemies(game_state).into_iter();
+        self.shooting_ships(game_state)
+            .zip(enemies)
+            .for_each(|(ship, enemy)| {
+                self.shoot_at_with(ship.id, enemy.position.0, enemy.position.1);
+            });
     }
 
     fn shooting_ships<'a>(&'a self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {

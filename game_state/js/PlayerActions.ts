@@ -139,7 +139,7 @@ export class PlayerActions {
       this.game.add_bot_ship_at(x, y);
     }
     if (event.key === " ") {
-      this.targetSelected();
+      this.shipsManager.auto_shoot();
     }
   }
 

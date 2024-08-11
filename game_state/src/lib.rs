@@ -62,6 +62,10 @@ impl GameWasmState {
         serde_wasm_bindgen::to_value(ships).unwrap_or_default()
     }
 
+    pub fn auto_shoot(&mut self) {
+        self.player.auto_shoot(self.running_mode.server_state());
+    }
+
     pub fn get_all_explosions(&self) -> JsValue {
         let explosions = self
             .running_mode

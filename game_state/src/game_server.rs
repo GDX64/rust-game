@@ -177,27 +177,8 @@ impl GameServer {
     fn handle_bots(&mut self) {
         self.bots.iter_mut().for_each(|bot| {
             bot.tick(&self.game_state);
-
-            let mut enemies = self
-                .game_state
-                .ship_collection
-                .values()
-                .filter(|ship| ship.player_id != bot.id);
-
-            bot.player_ships(&self.game_state).for_each(|ship| {
-                if ship.last_shoot_time + 1.0 > self.game_state.current_time {
-                    return;
-                }
-                let cannon = ship.find_available_cannon(self.game_state.current_time);
-
-                if cannon.is_none() {
-                    return;
-                };
-                if let Some(enemy) = enemies.next() {
-                    bot.shoot_at_with(ship.id, enemy.position.0, enemy.position.1);
-                };
-            });
-
+            bot.select_all(&self.game_state);
+            bot.auto_shoot(&self.game_state);
             if bot.number_of_ships(&self.game_state) < 5 {
                 for _ in 0..5 {
                     let x = self.rand_gen.f64() * 1000.0 - 500.0;

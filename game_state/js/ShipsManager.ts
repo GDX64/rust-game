@@ -270,6 +270,10 @@ export class ShipsManager {
     this.selected$.next(this.outlines);
   }
 
+  auto_shoot() {
+    this.game.auto_shoot();
+  }
+
   select(fn: (ship: ShipData) => boolean) {
     for (const ship of this.myShips()) {
       if (fn(ship)) {
