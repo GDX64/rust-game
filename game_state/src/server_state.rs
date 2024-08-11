@@ -62,8 +62,8 @@ impl BoidLike for ShipState {
     fn update(&self, speed: V2D) -> Self {
         let mut ship = self.clone();
         let current_speed: V2D = ship.speed.into();
-        let new_speed = current_speed + speed * BOAT_SPEED / 20.0;
-        let new_speed = new_speed.normalize() * BOAT_SPEED;
+        let new_speed = current_speed + speed * BOAT_SPEED / 50.0;
+        let new_speed = new_speed * BOAT_SPEED;
         ship.speed = new_speed.into();
         ship
     }

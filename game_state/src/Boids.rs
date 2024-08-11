@@ -3,6 +3,7 @@ use cgmath::{InnerSpace, MetricSpace};
 use crate::game_map::V2D;
 
 const NEAR: f64 = 40.0;
+const TOO_CLOSE: f64 = 20.0;
 
 pub trait BoidLike: PartialEq + Clone {
     fn position(&self) -> V2D;
@@ -12,6 +13,10 @@ pub trait BoidLike: PartialEq + Clone {
     fn is_near(&self, other: &Self) -> bool {
         let distance = self.position().distance(other.position());
         distance < NEAR && self != other
+    }
+    fn is_too_close(&self, other: &Self) -> bool {
+        let distance = self.position().distance(other.position());
+        distance < TOO_CLOSE && self != other
     }
 }
 
@@ -36,24 +41,52 @@ impl<B: BoidLike> BoidsTeam<B> {
             .boids
             .iter()
             .map(|boid| {
-                let mut repulsion_speed = V2D::new(0.0, 0.0);
-                self.boids
-                    .iter()
-                    .filter(|other| other.is_near(boid))
-                    .for_each(|other| {
+                let mut repulsion = V2D::new(0.0, 0.0);
+                let mut sum_positions = V2D::new(0.0, 0.0);
+                let mut total_positions = 0;
+                let mut alignment_speed = V2D::new(0.0, 0.0);
+                self.boids.iter().for_each(|other| {
+                    if !boid.is_near(other) {
+                        return;
+                    }
+                    if boid.is_too_close(other) {
                         let d = (boid.position() - other.position()).normalize();
                         if d.x.is_nan() || d.y.is_nan() {
-                            repulsion_speed += V2D::new(rand_gen.f64(), rand_gen.f64()).normalize();
+                            repulsion += V2D::new(rand_gen.f64(), rand_gen.f64()).normalize();
                         } else {
-                            repulsion_speed += d;
+                            repulsion += d;
                         }
-                    });
-                if repulsion_speed.magnitude() > 0.0 {
-                    boid.update(repulsion_speed.normalize())
+                    } else {
+                        alignment_speed += other.velocity().normalize();
+                    }
+                    sum_positions += other.position();
+                    total_positions += 1;
+                });
+                let average_position = if total_positions > 0 {
+                    sum_positions / total_positions as f64
+                } else {
+                    V2D::new(0.0, 0.0)
+                };
+                let cohesion_speed = average_position - boid.position();
+
+                let result = safe_normalize(repulsion) * 10.0
+                    + safe_normalize(alignment_speed) * 1.0
+                    + safe_normalize(cohesion_speed) * 1.0;
+
+                if repulsion.magnitude() > 0.0 {
+                    boid.update(safe_normalize(result))
                 } else {
                     boid.clone()
                 }
             })
             .collect();
+    }
+}
+
+fn safe_normalize(v: V2D) -> V2D {
+    if v.x.is_nan() || v.y.is_nan() {
+        V2D::new(0.0, 0.0)
+    } else {
+        v.normalize()
     }
 }
