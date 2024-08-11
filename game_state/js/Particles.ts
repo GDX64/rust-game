@@ -10,7 +10,7 @@ export type ExplosionData = {
   player_id: number;
 };
 
-const PARTICLES = 2_000;
+const PARTICLES = 1_000;
 
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
@@ -77,7 +77,7 @@ export class Explosion {
 
   setParams({
     size = 1,
-    timeToLive = 2,
+    timeToLive = 3,
     position = new THREE.Vector3(),
     id = 0,
     color = new THREE.Color(0xffff00),
