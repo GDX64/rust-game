@@ -14,6 +14,7 @@ type ShipData = {
   speed: [number, number];
   acceleration: [number, number];
   orientation: [number, number];
+  hp: number;
 };
 
 type Bullet = {

@@ -153,14 +153,9 @@ impl Player {
     pub fn create_ship(&mut self, x: f64, y: f64) {
         let msg = StateMessage::CreateShip {
             ship: ShipState {
-                id: 0,
-                acceleration: (0.0, 0.0),
-                speed: (0.0, 0.0),
-                orientation: (1.0, 0.0),
                 player_id: self.id,
                 position: (x, y),
-                cannon_times: Default::default(),
-                last_shoot_time: 0.0,
+                ..Default::default()
             },
         };
         if let Err(err) = self.actions.send(msg).context(file!()) {

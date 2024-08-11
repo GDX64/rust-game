@@ -10,7 +10,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
 
-const BLAST_RADIUS: f64 = 20.0;
+const BLAST_RADIUS: f64 = 5.0;
 const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
@@ -56,6 +56,23 @@ pub struct ShipState {
     pub player_id: u64,
     pub cannon_times: [f64; 3],
     pub last_shoot_time: f64,
+    pub hp: f64,
+}
+
+impl Default for ShipState {
+    fn default() -> Self {
+        Self {
+            position: (0.0, 0.0),
+            speed: (0.0, 0.0),
+            orientation: (1.0, 0.0),
+            acceleration: (0.0, 0.0),
+            id: 0,
+            player_id: 0,
+            cannon_times: [0.0, 0.0, 0.0],
+            last_shoot_time: 0.0,
+            hp: 100.0,
+        }
+    }
 }
 
 impl BoidLike for ShipState {
@@ -366,7 +383,11 @@ impl ServerState {
             let position = position + speed * dt;
             ship.position = position.into();
             ship.speed = speed.into();
-            return !ships_hit.contains(id);
+            let was_hit = !ships_hit.contains(id);
+            if !was_hit {
+                ship.hp -= 30.0;
+            }
+            return ship.hp > 0.0;
         });
 
         //update boid style
