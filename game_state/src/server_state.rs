@@ -1,5 +1,5 @@
 use crate::{
-    boids::{BoidLike, BoidsTeam},
+    boidlike::{BoidLike, BoidsTeam},
     bullet::Bullet,
     diffing::Diff,
     game_map::{Tile, WorldGrid, V2D, V3D},
