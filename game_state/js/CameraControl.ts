@@ -95,7 +95,6 @@ export class CameraControl {
     const currentPosTarget = this.position.to.clone();
     multiplier = Math.max(multiplier, MIN_Z - currentPosTarget.z);
     multiplier = Math.min(multiplier, MAX_Z - currentPosTarget.z);
-    console.log(currentPosTarget.z, multiplier);
     const delta = new THREE.Vector3(0, 0, multiplier);
     this.changeTarget(this.target.to.clone().add(delta));
     this.changePosition(this.position.to.clone().add(delta));
@@ -107,7 +106,6 @@ export class CameraControl {
     const target = this.target.to.clone();
     //rotate position around target
     const direction = position.clone().sub(target);
-    console.log(amount);
     direction.multiplyScalar(amount);
     position.add(direction);
     this.changePosition(position);
@@ -171,7 +169,6 @@ export class CameraControl {
 
     const matrix = new THREE.Matrix4();
     matrix.makeBasis(x, y, z);
-    console.log(projected);
     return matrix;
   }
 

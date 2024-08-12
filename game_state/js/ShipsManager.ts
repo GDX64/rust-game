@@ -40,10 +40,8 @@ export class ShipsManager {
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
-  private arrowHelper = new THREE.ArrowHelper();
   selectionRectangle: THREE.Mesh;
   selected$ = new Subject<THREE.InstancedMesh>();
-  showArrow = false;
   aimCircle;
   hpBar = new HPBar();
 
@@ -63,9 +61,6 @@ export class ShipsManager {
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
-    this.arrowHelper.visible = this.showArrow;
-    this.arrowHelper.setLength(10);
-    this.scene.add(this.arrowHelper);
     this.outlines = this.boatMesh.clone();
 
     const circle = new THREE.CircleGeometry(1, 32);
@@ -307,10 +302,6 @@ export class ShipsManager {
       new THREE.Matrix4().makeRotationFromQuaternion(quaternion),
       matrix
     );
-    if (this.showArrow) {
-      this.arrowHelper.position.set(ship.position[0], ship.position[1], zPos);
-      this.arrowHelper.setDirection(normal);
-    }
     matrix.setPosition(ship.position[0], ship.position[1], zPos);
   }
 }

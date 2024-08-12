@@ -29,6 +29,7 @@ function defaultState() {
     windSpeed: 0,
     bloomEnabled: false,
     shootError: 0.01,
+    showAxes: false,
   };
 }
 export class Render3D {
@@ -205,6 +206,13 @@ export class Render3D {
     this.shipsManager.selected$.subscribe((ship) => {
       this.outline.selectedObjects = [ship];
       this.outline.selectedObjects;
+    });
+
+    const helpersFolder = this.gui.addFolder("Helpers");
+
+    this.playerActions.showHelper(this.state.showAxes);
+    helpersFolder.add(this.state, "showAxes").onChange((val) => {
+      this.playerActions.showHelper(val);
     });
   }
 

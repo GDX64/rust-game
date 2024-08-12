@@ -14,6 +14,7 @@ export class PlayerActions {
   readonly rayCaster = new THREE.Raycaster();
   private state = States.IDLE;
   private readonly selectionStart = { x: 0, y: 0 };
+  axesHelper: THREE.AxesHelper;
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -23,8 +24,12 @@ export class PlayerActions {
   ) {
     this.mouse = { x: canvas.offsetWidth / 2, y: canvas.offsetHeight / 2 };
 
-    const axesHelper = new THREE.AxesHelper(1000);
-    this.shipsManager.scene.add(axesHelper);
+    this.axesHelper = new THREE.AxesHelper(1000);
+    this.shipsManager.scene.add(this.axesHelper);
+  }
+
+  showHelper(val: boolean) {
+    this.axesHelper.visible = val;
   }
 
   get width() {
@@ -121,7 +126,6 @@ export class PlayerActions {
 
   onKeyDown(event: KeyboardEvent) {
     if (event.key === "c") {
-      console.log("Creating ship");
       const intersection = this.waterIntersection();
       if (!intersection) return;
       const { x, y } = intersection.point;
@@ -211,7 +215,6 @@ export class PlayerActions {
         quaternion
       );
       this.shipsManager.selectionRectangle.position.set(start.x, start.y, 0);
-      console.log(width.toFixed(), height.toFixed());
     } else {
       this.shipsManager.selectionRectangle.visible = false;
     }
