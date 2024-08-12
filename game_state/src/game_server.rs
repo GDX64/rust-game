@@ -1,4 +1,4 @@
-use crate::{player::Player, ServerState, StateMessage};
+use crate::{player::Player, ServerState, ShipState, StateMessage};
 use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -7,6 +7,7 @@ use std::collections::HashMap;
 const MAX_BOTS: usize = 5;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 pub const TICK_TIME: f64 = 1.0 / 60.0;
+const PLAYER_START_RANGE: f64 = 1000.0;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum GameMessage {
@@ -159,6 +160,21 @@ impl GameServer {
 
         let state = self.game_state.state_message();
         self.send_message_to_player(id, GameMessage::FrameMessage(vec![state]));
+
+        let origin = (-100.0, 0.0);
+
+        for j in 0..5 {
+            for i in 0..5 {
+                let x = (i * 20) as f64 + origin.0;
+                let y = j as f64 * 20.0 + origin.1;
+                if self.game_state.game_map.is_allowed_place(x, y) {
+                    let mut ship = ShipState::default();
+                    ship.position = (x, y);
+                    ship.player_id = id;
+                    self.add_to_frame(StateMessage::CreateShip { ship });
+                }
+            }
+        }
 
         return id;
     }
