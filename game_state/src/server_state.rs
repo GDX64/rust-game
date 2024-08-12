@@ -10,7 +10,8 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, sync::Arc};
 
-const BLAST_RADIUS: f64 = 5.0;
+const TOTAL_HIT: f64 = 30.0;
+const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
@@ -326,7 +327,6 @@ impl ServerState {
 
     fn tick(&mut self, dt: f64) {
         self.current_time += dt;
-        let mut ships_hit: Vec<ShipKey> = vec![];
         let mut explosions = vec![];
 
         self.explosions.retain(|_key, explosion| {
@@ -345,12 +345,10 @@ impl ServerState {
 
             let pos: V3D = bullet.target.into();
 
-            for (id, ship) in self.ship_collection.iter() {
+            for (_id, ship) in self.ship_collection.iter_mut() {
                 let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
                 let distance = (ship_pos - pos).magnitude();
-                if distance < BLAST_RADIUS {
-                    ships_hit.push(*id);
-                }
+                ship.hp -= calc_damage(distance);
             }
 
             explosions.push(((pos.x, pos.y), bullet.player_id));
@@ -368,7 +366,7 @@ impl ServerState {
             self.explosions.insert(explosion.id, explosion);
         });
 
-        self.ship_collection.retain(|id, ship| {
+        self.ship_collection.retain(|_id, ship| {
             let position: V2D = ship.position.into();
             let speed: V2D = ship.speed.into();
             let acc: V2D = ship.acceleration.into();
@@ -384,10 +382,6 @@ impl ServerState {
             let position = position + speed * dt;
             ship.position = position.into();
             ship.speed = speed.into();
-            let was_hit = !ships_hit.contains(id);
-            if !was_hit {
-                ship.hp -= 30.0;
-            }
             return ship.hp > 0.0;
         });
 
@@ -510,4 +504,12 @@ mod test {
         println!("RNG: {}", rng.f64());
         println!("RNG: {:?}", rng.get_seed());
     }
+}
+
+fn calc_damage(distance: f64) -> f64 {
+    if distance < BLAST_RADIUS {
+        let hit_factor = 1.0 - distance / BLAST_RADIUS;
+        return TOTAL_HIT * hit_factor * hit_factor;
+    }
+    return 0.0;
 }
