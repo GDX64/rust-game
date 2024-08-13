@@ -195,9 +195,7 @@ export class ShipsManager {
   }
 
   moveSelected(x: number, y: number) {
-    for (const ship of this.selectedShips()) {
-      this.game.action_move_ship(ship.id, x, y);
-    }
+    this.game.move_selected_ships(x, y);
   }
 
   tick(time: number) {

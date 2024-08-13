@@ -40,9 +40,14 @@ impl Player {
     }
 
     pub fn move_selected_ships(&mut self, game_state: &ServerState, x: f64, y: f64) {
-        for ship_id in self.selected_ships.clone() {
-            self.move_ship(game_state, ship_id, x, y);
-        }
+        let formation = unit_formation(self.selected_ships.len(), x, y);
+        self.selected_ships
+            .clone()
+            .iter()
+            .zip(formation)
+            .for_each(|(&ship_id, (x, y))| {
+                self.move_ship(game_state, ship_id, x, y);
+            });
     }
 
     pub fn clear_selected_ships(&mut self) {
@@ -222,5 +227,38 @@ impl Player {
         }
 
         self.moving_ships.retain(|_, ship| !ship.destroyed);
+    }
+}
+
+fn unit_formation(n: usize, x: f64, y: f64) -> Vec<(f64, f64)> {
+    let cell_size = 20.0;
+    let sqrt = (n as f64).sqrt();
+    let cols = sqrt;
+    let rows = (n as f64 / sqrt).ceil();
+
+    let max_x = (cols - 1.0) * cell_size;
+    let max_y = (rows - 1.0) * cell_size;
+
+    let x = x - max_x / 2.0;
+    let y = y - max_y / 2.0;
+
+    let sqrt = sqrt as usize;
+
+    let mut positions = Vec::with_capacity(n);
+    for i in 0..n {
+        let x = x + (i % sqrt) as f64 * cell_size;
+        let y = y + (i / sqrt) as f64 * cell_size;
+        positions.push((x, y));
+    }
+    positions
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_formation_even() {
+        let formation = super::unit_formation(4, 0.0, 0.0);
+        let expected = vec![(-10.0, -10.0), (10.0, -10.0), (-10.0, 10.0), (10.0, 10.0)];
+        assert_eq!(formation, expected);
     }
 }

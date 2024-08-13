@@ -435,6 +435,9 @@ impl ServerState {
             } => {
                 if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
                     ship.acceleration = acceleration;
+                    if acceleration.0 == 0.0 && acceleration.1 == 0.0 {
+                        ship.speed = (0.0, 0.0);
+                    }
                 }
             }
             StateMessage::Shoot {
