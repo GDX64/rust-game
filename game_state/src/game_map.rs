@@ -1,6 +1,10 @@
 use cgmath::{InnerSpace, Vector2, Vector3};
 use pathfinding::prelude::astar;
-use std::vec;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::{self, Debug, Formatter},
+    vec,
+};
 use wasm_bindgen::prelude::*;
 
 pub struct WorldGrid {
@@ -8,6 +12,7 @@ pub struct WorldGrid {
     pub tiles_dim: usize,
     pub tile_size: f64,
     pub data: Vec<Tile>,
+    pub islands: BTreeMap<usize, Island>,
 }
 
 impl Default for WorldGrid {
@@ -17,6 +22,7 @@ impl Default for WorldGrid {
             tiles_dim: 0,
             tile_size: 1.0,
             data: Vec::new(),
+            islands: BTreeMap::new(),
         }
     }
 }
@@ -34,24 +40,49 @@ impl Default for Tile {
         Self {
             kind: TileKind::Water,
             height: 0.0,
+            visited: false,
+            island_number: 0,
         }
     }
 }
 
 impl Tile {
     pub fn new(kind: TileKind, height: f64) -> Self {
-        Self { kind, height }
+        Self {
+            kind,
+            height,
+            visited: false,
+            island_number: 0,
+        }
     }
 
     pub fn grass(height: f64) -> Self {
         Self {
             kind: TileKind::Grass,
             height,
+            visited: false,
+            island_number: 0,
         }
     }
 
     pub fn kind(&self) -> TileKind {
         self.kind
+    }
+
+    pub fn mark_visited(&mut self) {
+        self.visited = true;
+    }
+
+    pub fn was_visited(&self) -> bool {
+        self.visited
+    }
+
+    pub fn is_water(&self) -> bool {
+        self.kind == TileKind::Water
+    }
+
+    pub fn is_land(&self) -> bool {
+        self.kind != TileKind::Water
     }
 
     pub fn can_go(&self) -> bool {
@@ -63,10 +94,45 @@ impl Tile {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+struct IslandTile {
+    x: i32,
+    y: i32,
+    height: f64,
+}
+
+impl IslandTile {
+    fn new(height: f64, x: i32, y: i32) -> Self {
+        Self { x, y, height }
+    }
+}
+
+impl Eq for IslandTile {}
+
+impl Ord for IslandTile {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.x, self.y).partial_cmp(&(other.x, other.y)).unwrap()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Island {
+    tiles: BTreeSet<IslandTile>,
+    number: usize,
+}
+
+impl Island {
+    fn new(tiles: BTreeSet<IslandTile>, number: usize) -> Self {
+        Self { tiles, number }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Tile {
     kind: TileKind,
     height: f64,
+    visited: bool,
+    island_number: usize,
 }
 
 pub struct TileUnit(usize);
@@ -105,7 +171,66 @@ impl WorldGrid {
             tiles_dim,
             tile_size,
             data: vec![default; tiles_dim * tiles_dim],
+            islands: BTreeMap::new(),
         }
+    }
+
+    fn flood_fill(&mut self, x: i32, y: i32, island: usize) -> BTreeSet<IslandTile> {
+        let mut stack = vec![(x, y)];
+        let mut set = BTreeSet::new();
+        while let Some((x, y)) = stack.pop() {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let index = y * (self.tiles_dim as i32) + x;
+            if let Some(tile) = self.data.get_mut(index as usize) {
+                if tile.is_land() && !tile.was_visited() {
+                    println!("x, y {}, {}", x, y);
+                    tile.mark_visited();
+                    tile.island_number = island;
+
+                    let island_tile = IslandTile::new(tile.height(), x, y);
+                    set.insert(island_tile);
+
+                    stack.push((x + 1, y));
+                    stack.push((x - 1, y));
+                    stack.push((x, y + 1));
+                    stack.push((x, y - 1));
+                }
+            }
+        }
+        return set;
+    }
+
+    pub fn find_islands(&mut self) {
+        let x = 0;
+        let y = 0;
+        let mut stack = vec![(x, y)];
+        let mut islands_number = 0;
+        let mut island_map = BTreeMap::new();
+        while let Some((x, y)) = stack.pop() {
+            if x < 0 || y < 0 {
+                continue;
+            }
+            let index = (y * (self.tiles_dim as i32) + x) as usize;
+            if let Some(tile) = self.data.get_mut(index) {
+                if tile.was_visited() {
+                    continue;
+                }
+                if tile.is_water() {
+                    tile.mark_visited();
+                    stack.push((x + 1, y));
+                    stack.push((x - 1, y));
+                    stack.push((x, y + 1));
+                    stack.push((x, y - 1));
+                } else {
+                    let set = self.flood_fill(x, y, islands_number);
+                    island_map.insert(islands_number, Island::new(set, islands_number));
+                    islands_number += 1;
+                }
+            }
+        }
+        self.islands = island_map
     }
 
     pub fn iter(&mut self) -> impl Iterator<Item = (f64, f64, &Tile)> {
@@ -125,11 +250,13 @@ impl WorldGrid {
         self.data.get_mut(index)
     }
 
-    pub fn set(&mut self, x: f64, y: f64, value: Tile) {
+    pub fn set(&mut self, x: f64, y: f64, value: Tile) -> Option<()> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
-        let index = (y * self.tiles_dim + x) as usize;
-        self.data[index] = value;
+        let index = y * self.tiles_dim + x;
+        let p = self.data.get_mut(index)?;
+        *p = value;
+        Some(())
     }
 
     pub fn is_allowed_place(&self, x: f64, y: f64) -> bool {
@@ -220,6 +347,25 @@ impl WorldGrid {
             })
             .collect();
         return Some(v);
+    }
+}
+
+impl Debug for WorldGrid {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let mut s = String::new();
+        for y in 0..self.tiles_dim {
+            for x in 0..self.tiles_dim {
+                let tile = self.get_tiles(x, y).unwrap();
+                let c = match tile.kind() {
+                    TileKind::Water => "W ",
+                    TileKind::Grass => "G ",
+                    TileKind::Forest => "F ",
+                };
+                s.push_str(c);
+            }
+            s.push_str("\n");
+        }
+        write!(f, "{}", s)
     }
 }
 
@@ -321,5 +467,19 @@ mod test {
         let grid = WorldGrid::new(80.0, Tile::default(), 10.0);
         let path = grid.find_path(Vector2::new(0.0, 0.0), Vector2::new(300.0, 30.0));
         assert_eq!(path, None);
+    }
+
+    #[test]
+    fn flood_fill() {
+        let mut grid = WorldGrid::new(4.0, Tile::default(), 1.0);
+
+        grid.set(0.0, 0.0, Tile::grass(1.0));
+        grid.set(0.0, 1.0, Tile::grass(1.0));
+        grid.set(1.0, 1.0, Tile::grass(1.0));
+        grid.set(1.0, 0.0, Tile::grass(1.0));
+        println!("{:?}", grid);
+
+        grid.find_islands();
+        println!("{:?}", grid.islands);
     }
 }
