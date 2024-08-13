@@ -155,10 +155,10 @@ impl GameServer {
         let state = self.game_state.state_message();
         self.send_message_to_player(id, GameMessage::FrameMessage(vec![state]));
 
-        let origin = (-100.0, 0.0);
+        let origin = (-200.0, 0.0);
 
-        for j in 0..5 {
-            for i in 0..5 {
+        for j in 0..10 {
+            for i in 0..10 {
                 let x = (i * 20) as f64 + origin.0;
                 let y = j as f64 * 20.0 + origin.1;
                 if self.game_state.game_map.is_allowed_place(x, y) {

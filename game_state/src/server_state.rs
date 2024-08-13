@@ -362,17 +362,17 @@ impl ServerState {
         });
 
         //update boid style
-        let all_ships = self.players.iter().flat_map(|(_, player)| {
-            let ships = self.ship_collection.values().filter(|ship| {
-                return ship.player_id == player.id;
-            });
-            let updated = BoidsTeam::update_boids_like(ships.cloned().collect());
-            return updated;
-        });
+        // let all_ships = self.players.iter().flat_map(|(_, player)| {
+        //     let ships = self.ship_collection.values().filter(|ship| {
+        //         return ship.player_id == player.id;
+        //     });
+        //     let updated = BoidsTeam::update_boids_like(ships.cloned().collect());
+        //     return updated;
+        // });
 
-        self.ship_collection = all_ships
-            .map(|ship| (ShipKey::new(ship.id, ship.player_id), ship))
-            .collect();
+        // self.ship_collection = all_ships
+        //     .map(|ship| (ShipKey::new(ship.id, ship.player_id), ship))
+        //     .collect();
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {

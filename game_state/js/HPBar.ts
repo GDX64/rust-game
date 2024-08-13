@@ -27,7 +27,7 @@ export class HPBar {
       vertexShader,
       colorWrite: true,
     });
-    const hpBar = new THREE.InstancedMesh(geometry, material, 500);
+    const hpBar = new THREE.InstancedMesh(geometry, material, 10_000);
     //I need to do this so that threejs initializes the instanceColors
     hpBar.setColorAt(0, GREEN);
     hpBar.frustumCulled = false;

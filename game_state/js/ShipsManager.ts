@@ -56,7 +56,7 @@ export class ShipsManager {
       shininess: 80,
       emissiveIntensity: 10,
     });
-    this.bulletModel = new THREE.InstancedMesh(geometry, material, 500);
+    this.bulletModel = new THREE.InstancedMesh(geometry, material, 10000);
     this.bulletModel.frustumCulled = false;
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
@@ -116,7 +116,11 @@ export class ShipsManager {
 
     mesh.geometry.scale(200, 200, 200);
     mesh.geometry.translate(0, -2, 3.5);
-    const instancedMesh = new THREE.InstancedMesh(mesh.geometry, material, 500);
+    const instancedMesh = new THREE.InstancedMesh(
+      mesh.geometry,
+      material,
+      10000
+    );
     // obj.scale.set(this.scale, this.scale, this.scale);
     // obj.rotation.set(Math.PI / 2, 0, 0);
     instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
