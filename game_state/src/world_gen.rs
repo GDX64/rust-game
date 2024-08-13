@@ -87,7 +87,7 @@ impl Default for WorldGenConfig {
             weight_low_land: 0.9,
             forest_threshold: 0.17,
             land_threshold: 0.0,
-            noise_scale: 0.0005,
+            noise_scale: 0.0010,
             tile_size: 20.0,
             height_scale: 500.0,
             view_info: ViewInfo::default(),
