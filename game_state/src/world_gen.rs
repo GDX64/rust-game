@@ -5,6 +5,7 @@ use crate::{
     interpolation::LinearInterpolation,
 };
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
+use log::info;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 #[derive(Clone)]
@@ -194,6 +195,8 @@ impl WorldGen {
             })
             .collect();
         grid.data = data;
+        grid.find_islands();
+        info!("Islands: {:?}", grid.islands.len());
         grid
     }
 }

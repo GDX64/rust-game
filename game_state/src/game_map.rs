@@ -116,7 +116,7 @@ impl Ord for IslandTile {
 }
 
 #[derive(Debug, Clone)]
-struct Island {
+pub struct Island {
     tiles: BTreeSet<IslandTile>,
     number: usize,
 }
@@ -203,8 +203,8 @@ impl WorldGrid {
     }
 
     pub fn find_islands(&mut self) {
-        let x = 0;
-        let y = 0;
+        let x = self.tile_unit(0.0) as i32;
+        let y = self.tile_unit(0.0) as i32;
         let mut stack = vec![(x, y)];
         let mut islands_number = 0;
         let mut island_map = BTreeMap::new();
