@@ -240,14 +240,14 @@ export class PlayerActions {
     } else {
       const boat = this.boatClicked();
       if (boat == null) {
+        this.state = States.SELECTING;
+        this.selectionStart.x = event.offsetX;
+        this.selectionStart.y = event.offsetY;
         if (hasShift) {
           return;
         } else {
           this.shipsManager.clearSelection();
         }
-        this.state = States.SELECTING;
-        this.selectionStart.x = event.offsetX;
-        this.selectionStart.y = event.offsetY;
       } else {
         if (hasShift) {
           this.shipsManager.selectBoat(boat);
