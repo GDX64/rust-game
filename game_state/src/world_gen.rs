@@ -1,5 +1,9 @@
 use super::game_noise::GameNoise;
-use crate::{game_map::WorldGrid, game_noise::NoiseConfig, interpolation::LinearInterpolation};
+use crate::{
+    game_map::{Tile, TileKind, WorldGrid},
+    game_noise::NoiseConfig,
+    interpolation::LinearInterpolation,
+};
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
@@ -103,14 +107,6 @@ impl WorldGenConfig {
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Copy, PartialEq)]
-pub enum TileKind {
-    Water,
-    Grass,
-    Forest,
-}
-
-#[wasm_bindgen]
 impl WorldGen {
     pub fn new(seed: u32) -> Self {
         Self {
@@ -153,7 +149,7 @@ impl WorldGen {
         for y in 0..pixels as i32 {
             for x in 0..pixels as i32 {
                 let point = self.matrix.transform_point(Point2::new(x as f64, y as f64));
-                tiles.push(self.get_terrain_at(point.x, point.y).1);
+                tiles.push(self.get_terrain_at(point.x, point.y).kind());
             }
         }
         tiles
@@ -172,7 +168,7 @@ impl WorldGen {
             * self.config.height_scale
     }
 
-    fn get_terrain_at(&self, x: f64, y: f64) -> (f64, TileKind) {
+    fn get_terrain_at(&self, x: f64, y: f64) -> Tile {
         let land_value = self.get_land_value(x, y);
         let terrain_kind = if land_value < self.config.land_threshold {
             TileKind::Water
@@ -184,13 +180,13 @@ impl WorldGen {
             }
         };
 
-        (land_value, terrain_kind)
+        Tile::new(terrain_kind, land_value)
     }
 }
 
 impl WorldGen {
-    pub fn generate_grid(&self, width: f64) -> WorldGrid<(f64, TileKind)> {
-        let mut grid = WorldGrid::new(width, (0.0, TileKind::Water), self.config.tile_size);
+    pub fn generate_grid(&self, width: f64) -> WorldGrid {
+        let mut grid = WorldGrid::new(width, Tile::default(), self.config.tile_size);
         let data = grid
             .iter()
             .map(|(x, y, _)| {

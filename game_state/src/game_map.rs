@@ -1,16 +1,16 @@
-use std::vec;
-
 use cgmath::{InnerSpace, Vector2, Vector3};
 use pathfinding::prelude::astar;
+use std::vec;
+use wasm_bindgen::prelude::*;
 
-pub struct WorldGrid<T> {
+pub struct WorldGrid {
     pub dim: f64,
     pub tiles_dim: usize,
     pub tile_size: f64,
-    pub data: Vec<T>,
+    pub data: Vec<Tile>,
 }
 
-impl<T> Default for WorldGrid<T> {
+impl Default for WorldGrid {
     fn default() -> Self {
         Self {
             dim: 0.0,
@@ -21,9 +21,52 @@ impl<T> Default for WorldGrid<T> {
     }
 }
 
-pub trait Tile: Clone + Copy {
-    fn can_go(&self) -> bool;
-    fn height(&self) -> f64;
+#[wasm_bindgen]
+#[derive(Clone, Copy, PartialEq)]
+pub enum TileKind {
+    Water,
+    Grass,
+    Forest,
+}
+
+impl Default for Tile {
+    fn default() -> Self {
+        Self {
+            kind: TileKind::Water,
+            height: 0.0,
+        }
+    }
+}
+
+impl Tile {
+    pub fn new(kind: TileKind, height: f64) -> Self {
+        Self { kind, height }
+    }
+
+    pub fn grass(height: f64) -> Self {
+        Self {
+            kind: TileKind::Grass,
+            height,
+        }
+    }
+
+    pub fn kind(&self) -> TileKind {
+        self.kind
+    }
+
+    pub fn can_go(&self) -> bool {
+        self.kind == TileKind::Water
+    }
+
+    pub fn height(&self) -> f64 {
+        self.height
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Tile {
+    kind: TileKind,
+    height: f64,
 }
 
 pub struct TileUnit(usize);
@@ -34,7 +77,7 @@ impl TileUnit {
     }
 }
 
-impl<T: Tile> WorldGrid<T> {
+impl WorldGrid {
     fn tile_unit(&self, val: f64) -> usize {
         TileUnit::div(val + self.dim / 2.0, self.tile_size).0
     }
@@ -43,18 +86,18 @@ impl<T: Tile> WorldGrid<T> {
         (unit as f64 * self.tile_size) - self.dim / 2.0
     }
 
-    pub fn get(&self, x: f64, y: f64) -> Option<&T> {
+    pub fn get(&self, x: f64, y: f64) -> Option<&Tile> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
         return self.get_tiles(x, y);
     }
 
-    fn get_tiles(&self, x: usize, y: usize) -> Option<&T> {
+    fn get_tiles(&self, x: usize, y: usize) -> Option<&Tile> {
         let index = (y * self.tiles_dim + x) as usize;
         self.data.get(index)
     }
 
-    pub fn new(dim: f64, default: T, tile_size: f64) -> Self {
+    pub fn new(dim: f64, default: Tile, tile_size: f64) -> Self {
         let tiles_dim = TileUnit::div(dim, tile_size).0;
 
         Self {
@@ -65,7 +108,7 @@ impl<T: Tile> WorldGrid<T> {
         }
     }
 
-    pub fn iter(&mut self) -> impl Iterator<Item = (f64, f64, &T)> {
+    pub fn iter(&mut self) -> impl Iterator<Item = (f64, f64, &Tile)> {
         self.data.iter().enumerate().map(|(index, value)| {
             let x = index % self.tiles_dim;
             let y = index / self.tiles_dim;
@@ -75,14 +118,14 @@ impl<T: Tile> WorldGrid<T> {
         })
     }
 
-    pub fn get_mut(&mut self, x: f64, y: f64) -> Option<&mut T> {
+    pub fn get_mut(&mut self, x: f64, y: f64) -> Option<&mut Tile> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
         let index = (y * self.tiles_dim + x) as usize;
         self.data.get_mut(index)
     }
 
-    pub fn set(&mut self, x: f64, y: f64, value: T) {
+    pub fn set(&mut self, x: f64, y: f64, value: Tile) {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
         let index = (y * self.tiles_dim + x) as usize;
@@ -243,27 +286,9 @@ const MAX_SEARCH: usize = 10_000;
 mod test {
     use super::*;
 
-    impl Tile for f64 {
-        fn can_go(&self) -> bool {
-            return true;
-        }
-        fn height(&self) -> f64 {
-            return *self;
-        }
-    }
-
-    impl Tile for bool {
-        fn can_go(&self) -> bool {
-            return *self;
-        }
-        fn height(&self) -> f64 {
-            return 0.0;
-        }
-    }
-
     #[test]
     fn test_grid_isomorphism() {
-        let grid = WorldGrid::new(40.0, 0.0, 10.0);
+        let grid = WorldGrid::new(40.0, Tile::default(), 10.0);
         assert_eq!(grid.data.len(), 16);
         assert_eq!(grid.tile_unit(0.0), 2);
         assert_eq!(grid.tile_unit(1.0), 2);
@@ -278,22 +303,22 @@ mod test {
 
     #[test]
     fn test_pathfinding_diagonal() {
-        let grid = WorldGrid::new(80.0, true, 10.0);
+        let grid = WorldGrid::new(80.0, Tile::default(), 10.0);
         let path = grid.find_path(Vector2::new(1.0, 0.0), Vector2::new(30.0, 30.0));
         assert_eq!(path.unwrap().len(), 4);
     }
 
     #[test]
     fn test_pathfinding_curve() {
-        let mut grid = WorldGrid::new(80.0, true, 10.0);
-        grid.set(20.0, 20.0, false);
+        let mut grid = WorldGrid::new(80.0, Tile::default(), 10.0);
+        grid.set(20.0, 20.0, Tile::grass(10.0));
         let path = grid.find_path(Vector2::new(0.0, 0.0), Vector2::new(30.0, 30.0));
         assert_eq!(path.unwrap().len(), 5);
     }
 
     #[test]
     fn test_pathfinding_impossible() {
-        let grid = WorldGrid::new(80.0, true, 10.0);
+        let grid = WorldGrid::new(80.0, Tile::default(), 10.0);
         let path = grid.find_path(Vector2::new(0.0, 0.0), Vector2::new(300.0, 30.0));
         assert_eq!(path, None);
     }

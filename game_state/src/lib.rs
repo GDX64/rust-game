@@ -171,7 +171,12 @@ impl GameWasmState {
     }
 
     pub fn get_land_grid_value(&self, x: f64, y: f64) -> Option<f64> {
-        let result = self.running_mode.server_state().game_map.get(x, y)?.0;
+        let result = self
+            .running_mode
+            .server_state()
+            .game_map
+            .get(x, y)?
+            .height();
         Some(result)
     }
 

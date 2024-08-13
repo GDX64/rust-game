@@ -1,9 +1,9 @@
 use crate::{
-    boidlike::{BoidLike, BoidsTeam},
+    boidlike::BoidLike,
     bullet::Bullet,
     diffing::Diff,
-    game_map::{Tile, WorldGrid, V2D, V3D},
-    world_gen::{self, TileKind},
+    game_map::{WorldGrid, V2D, V3D},
+    world_gen,
 };
 use cgmath::InnerSpace;
 use log::info;
@@ -212,16 +212,6 @@ impl ShipKey {
 
 type ShipCollection = BTreeMap<ShipKey, ShipState>;
 
-impl Tile for (f64, TileKind) {
-    fn can_go(&self) -> bool {
-        self.1 == TileKind::Water
-    }
-
-    fn height(&self) -> f64 {
-        self.0
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Explosion {
     pub position: (f64, f64),
@@ -230,7 +220,7 @@ pub struct Explosion {
     pub time_created: f64,
 }
 
-pub type GameMap = WorldGrid<(f64, TileKind)>;
+pub type GameMap = WorldGrid;
 
 #[derive(Clone)]
 pub struct ServerState {
