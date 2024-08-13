@@ -11,6 +11,7 @@ pub struct OnlineClient {
     id: u64,
     frame_acc: f64,
     frame_buffer: Vec<Vec<StateMessage>>,
+    send_buffer: Vec<GameMessage>,
 }
 
 pub trait Client {
@@ -27,43 +28,54 @@ impl OnlineClient {
             id: 0,
             frame_acc: 0.0,
             frame_buffer: vec![],
+            send_buffer: vec![],
         }
     }
 
     pub async fn init(&mut self) {
         while let Some(msg) = self.ws.next().await {
-            let msg = GameMessage::from_bytes(&msg);
-            match msg {
-                GameMessage::MyID(id) => {
-                    info!("My ID is: {}", id);
-                    self.id = id;
-                    return ();
+            let msg = GameMessage::from_arr_bytes(&msg);
+            for msg in msg.into_iter() {
+                match msg {
+                    GameMessage::MyID(id) => {
+                        info!("My ID is: {}", id);
+                        self.id = id;
+                        return ();
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
+    }
+
+    fn flush_send_buffer(&mut self) {
+        self.ws.send(GameMessage::serialize_arr(&self.send_buffer));
+        self.send_buffer.clear();
     }
 }
 
 impl Client for OnlineClient {
     fn send(&mut self, msg: GameMessage) {
-        self.ws.send(msg.to_bytes());
+        self.send_buffer.push(msg);
     }
 
     fn tick(&mut self, dt: f64) {
+        self.flush_send_buffer();
         loop {
             let msg = self.ws.receive();
             let msg = match msg {
                 Some(msg) => msg,
                 _ => break,
             };
-            let msg = GameMessage::from_bytes(&msg);
-            match msg {
-                GameMessage::FrameMessage(msg) => {
-                    self.frame_buffer.insert(0, msg);
+            let msg = GameMessage::from_arr_bytes(&msg);
+            msg.into_iter().for_each(|msg| {
+                match msg {
+                    GameMessage::FrameMessage(msg) => {
+                        self.frame_buffer.insert(0, msg);
+                    }
+                    _ => {}
                 }
-                _ => {}
-            }
+            });
         }
 
         self.frame_acc += dt;
@@ -109,18 +121,20 @@ impl LocalClient {
 
 impl Client for LocalClient {
     fn send(&mut self, msg: GameMessage) {
-        self.game.on_message(msg.to_bytes());
+        self.game.on_message(GameMessage::serialize_arr(&vec![msg]));
     }
 
     fn tick(&mut self, dt: f64) {
         self.game.tick(dt);
         while let Ok(Some(msg)) = self.receiver.try_next() {
-            let game_message = GameMessage::from_bytes(&msg);
-            match game_message {
-                GameMessage::FrameMessage(msg) => {
-                    msg.into_iter().for_each(|msg| self.state.on_message(msg));
+            let game_message = GameMessage::from_arr_bytes(&msg);
+            for msg in game_message.into_iter() {
+                match msg {
+                    GameMessage::FrameMessage(msg) => {
+                        msg.into_iter().for_each(|msg| self.state.on_message(msg));
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
     }
@@ -164,7 +178,7 @@ impl RunningMode {
     pub fn send_game_message(&mut self, msg: GameMessage) {
         match self {
             RunningMode::Local(ref mut data) => {
-                data.game.on_message(msg.to_bytes());
+                data.game.on_message(GameMessage::serialize_arr(&vec![msg]));
             }
             RunningMode::Online(data) => {
                 data.send(msg);

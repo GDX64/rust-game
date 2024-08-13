@@ -7,7 +7,6 @@ use std::collections::HashMap;
 const MAX_BOTS: usize = 5;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 pub const TICK_TIME: f64 = 1.0 / 60.0;
-const PLAYER_START_RANGE: f64 = 1000.0;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum GameMessage {
@@ -26,6 +25,14 @@ impl GameMessage {
         return msg;
     }
 
+    pub fn serialize_arr(arr: &Vec<GameMessage>) -> Vec<u8> {
+        bincode::serialize(arr).expect("Failed to serialize")
+    }
+
+    pub fn from_arr_bytes(bytes: &[u8]) -> Vec<GameMessage> {
+        bincode::deserialize(bytes).unwrap_or(vec![])
+    }
+
     pub fn to_string(&self) -> String {
         match serde_json::to_string(&self) {
             Ok(msg) => msg,
@@ -35,29 +42,13 @@ impl GameMessage {
             }
         }
     }
-
-    pub fn from_bytes(bytes: &[u8]) -> GameMessage {
-        bincode::deserialize(bytes).unwrap_or(GameMessage::None)
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        bincode::serialize(self).expect("Failed to serialize")
-    }
-}
-
-impl From<&[u8]> for GameMessage {
-    fn from(bytes: &[u8]) -> GameMessage {
-        GameMessage::from_bytes(bytes)
-    }
-}
-
-impl From<String> for GameMessage {
-    fn from(msg: String) -> GameMessage {
-        GameMessage::from_string(msg)
-    }
 }
 
 type PlayerSender = Sender<Vec<u8>>;
+struct PlayerBufferSenderPair {
+    buffer: Vec<GameMessage>,
+    sender: PlayerSender,
+}
 
 pub enum GameServerMessageResult {
     PlayerID(u64),
@@ -66,7 +57,7 @@ pub enum GameServerMessageResult {
 
 pub struct GameServer {
     pub game_state: ServerState,
-    players: HashMap<u64, PlayerSender>,
+    players: HashMap<u64, PlayerBufferSenderPair>,
     player_id_counter: u64,
     bots: Vec<Player>,
     frame_inputs: Vec<StateMessage>,
@@ -109,14 +100,7 @@ impl GameServer {
 
     fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
         if let Some(sender) = self.players.get_mut(&id) {
-            match sender.try_send(message.to_bytes()) {
-                Ok(_) => {}
-                Err(e) => {
-                    log::error!("Error sending message to player {}: {:?}", id, e);
-                    log::info!("Player {} will be removed", id);
-                    self.disconnect_player(id);
-                }
-            }
+            sender.buffer.push(message);
         }
     }
 
@@ -128,7 +112,13 @@ impl GameServer {
     }
 
     pub fn on_message(&mut self, msg: Vec<u8>) {
-        let msg = GameMessage::from_bytes(&msg);
+        let msg = GameMessage::from_arr_bytes(&msg);
+        for msg in msg {
+            self.handle_single_message(msg);
+        }
+    }
+
+    fn handle_single_message(&mut self, msg: GameMessage) {
         match msg {
             GameMessage::FrameMessage(_msg) => {
                 log::error!("Server should not receive FrameMessage");
@@ -145,12 +135,16 @@ impl GameServer {
             }
             GameMessage::MyID(_) => {}
             GameMessage::None => {}
-        }
+        };
     }
 
     pub fn new_connection(&mut self, sender: PlayerSender) -> u64 {
         let id = self.next_player_id();
-        self.players.insert(id, sender);
+        let pair = PlayerBufferSenderPair {
+            buffer: vec![],
+            sender,
+        };
+        self.players.insert(id, pair);
 
         let create_player_msg = StateMessage::CreatePlayer { id };
         self.add_to_frame(create_player_msg.clone());
@@ -230,6 +224,29 @@ impl GameServer {
             self.frame_inputs = vec![self.game_state.state_message()];
         }
         self.flush_frame_inputs();
+        self.flush_send_buffers();
+    }
+
+    fn flush_send_buffers(&mut self) {
+        let player_ids: Vec<u64> = self.players.keys().cloned().collect();
+        let mut player_errors = vec![];
+        for id in player_ids {
+            if let Some(player) = self.players.get_mut(&id) {
+                let messages = GameMessage::serialize_arr(&player.buffer);
+                match player.sender.try_send(messages) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("Error sending message to player {}: {:?}", id, e);
+                        log::info!("Player {} will be removed", id);
+                        player_errors.push(id);
+                    }
+                }
+                player.buffer.clear();
+            }
+        }
+        for id in player_errors {
+            self.disconnect_player(id);
+        }
     }
 
     fn flush_frame_inputs(&mut self) {
