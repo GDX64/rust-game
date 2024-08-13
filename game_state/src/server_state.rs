@@ -198,30 +198,6 @@ pub enum StateMessage {
     None,
 }
 
-impl StateMessage {
-    pub fn from_json(json: &str) -> anyhow::Result<Self> {
-        serde_json::from_str(json).map_err(|e| e.into())
-    }
-
-    pub fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap_or("".to_string())
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        bincode::serialize(self).expect("Failed to serialize")
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        bincode::deserialize(bytes).expect("Failed to deserialize")
-    }
-}
-
-impl From<String> for StateMessage {
-    fn from(value: String) -> Self {
-        StateMessage::from_json(&value).unwrap_or(StateMessage::None)
-    }
-}
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct ShipKey {
     pub id: u64,
