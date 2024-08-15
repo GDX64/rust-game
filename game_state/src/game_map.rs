@@ -175,7 +175,13 @@ impl WorldGrid {
         }
     }
 
-    fn flood_fill(&mut self, x: i32, y: i32, island: usize) -> BTreeSet<IslandTile> {
+    fn flood_fill_land(
+        &mut self,
+        x: i32,
+        y: i32,
+        island: usize,
+        water_set: &mut BTreeSet<(i32, i32)>,
+    ) -> BTreeSet<IslandTile> {
         let mut stack = vec![(x, y)];
         let mut set = BTreeSet::new();
         while let Some((x, y)) = stack.pop() {
@@ -184,9 +190,12 @@ impl WorldGrid {
             }
             let index = y * (self.tiles_dim as i32) + x;
             if let Some(tile) = self.data.get_mut(index as usize) {
-                if tile.is_land() && !tile.was_visited() {
-                    println!("x, y {}, {}", x, y);
+                if tile.was_visited() {
+                    continue;
+                }
+                if tile.is_land() {
                     tile.mark_visited();
+                    println!("x, y {}, {}", x, y);
                     tile.island_number = island;
 
                     let island_tile = IslandTile::new(tile.height(), x, y);
@@ -196,6 +205,8 @@ impl WorldGrid {
                     stack.push((x - 1, y));
                     stack.push((x, y + 1));
                     stack.push((x, y - 1));
+                } else {
+                    water_set.insert((x, y));
                 }
             }
         }
@@ -203,12 +214,14 @@ impl WorldGrid {
     }
 
     pub fn find_islands(&mut self) {
-        let x = self.tile_unit(0.0) as i32;
-        let y = self.tile_unit(0.0) as i32;
-        let mut stack = vec![(x, y)];
+        let x = 0i32;
+        let y = 0i32;
+        let mut water_stack = BTreeSet::new();
+        water_stack.insert((x, y));
         let mut islands_number = 0;
         let mut island_map = BTreeMap::new();
-        while let Some((x, y)) = stack.pop() {
+
+        while let Some((x, y)) = water_stack.pop_first() {
             if x < 0 || y < 0 {
                 continue;
             }
@@ -219,12 +232,12 @@ impl WorldGrid {
                 }
                 if tile.is_water() {
                     tile.mark_visited();
-                    stack.push((x + 1, y));
-                    stack.push((x - 1, y));
-                    stack.push((x, y + 1));
-                    stack.push((x, y - 1));
+                    water_stack.insert((x + 1, y));
+                    water_stack.insert((x - 1, y));
+                    water_stack.insert((x, y + 1));
+                    water_stack.insert((x, y - 1));
                 } else {
-                    let set = self.flood_fill(x, y, islands_number);
+                    let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
                     island_map.insert(islands_number, Island::new(set, islands_number));
                     islands_number += 1;
                 }
