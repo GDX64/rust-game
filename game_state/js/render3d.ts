@@ -176,7 +176,6 @@ export class Render3D {
     this.water.addToScene(scene);
 
     this.terrain.addToScene(scene);
-    this.terrain.updateMesh();
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,

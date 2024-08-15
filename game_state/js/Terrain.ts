@@ -1,16 +1,76 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 
+const PLANE_WIDTH = 1_000; //1km
+
 export class Terrain {
+  terrainGroup = new THREE.Group();
   constructor(
     private gameState: GameWasmState,
-    private readonly PLANE_WIDTH: number,
-    private readonly PLANE_SEGMENTS: number,
-    private readonly planeMesh: THREE.Mesh
-  ) {}
+    private chunks: TerrainChunk[]
+  ) {
+    this.terrainGroup.add(...chunks.map((c) => c.planeMesh));
+  }
 
   addToScene(scene: THREE.Scene) {
-    scene.add(this.planeMesh);
+    scene.add(this.terrainGroup);
+  }
+
+  static new(gameState: GameWasmState) {
+    const chunks: TerrainChunk[] = [];
+    const mapSize = gameState.map_size();
+    const chunksDimension = Math.ceil(mapSize / PLANE_WIDTH);
+    const startX = -mapSize / 2;
+    const startY = -mapSize / 2;
+    for (let i = 0; i < chunksDimension; i++) {
+      for (let j = 0; j < chunksDimension; j++) {
+        const position = new THREE.Vector3(
+          i * PLANE_WIDTH + startX,
+          j * PLANE_WIDTH + startY,
+          0
+        );
+        chunks.push(TerrainChunk.new(gameState, position));
+      }
+    }
+    return new Terrain(gameState, chunks);
+  }
+}
+
+class TerrainChunk {
+  constructor(
+    private gameState: GameWasmState,
+    private readonly segments: number,
+    public readonly planeMesh: THREE.Mesh
+  ) {}
+
+  static new(gameState: GameWasmState, position: THREE.Vector3) {
+    const segmentsPerKm = 50;
+    const segments = (PLANE_WIDTH / 1000) * segmentsPerKm;
+    const planeGeometry = new THREE.PlaneGeometry(
+      PLANE_WIDTH,
+      PLANE_WIDTH,
+      segments - 1,
+      segments - 1
+    );
+
+    // scene.fog = new THREE.Fog(0x999999, 0, 100);
+
+    const planeMaterial = new THREE.MeshLambertMaterial({
+      vertexColors: true,
+      flatShading: true,
+    });
+    const colorsBuffer = new Float32Array(segments * segments * 3);
+    planeGeometry.setAttribute(
+      "color",
+      new THREE.BufferAttribute(colorsBuffer, 3)
+    );
+
+    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+    plane.position.set(position.x, position.y, position.z);
+
+    const chunk = new TerrainChunk(gameState, segments, plane);
+    chunk.updateMesh();
+    return chunk;
   }
 
   updateMesh() {
@@ -21,14 +81,15 @@ export class Terrain {
     const grass = new THREE.Color("#1e4e1e");
     const rock = new THREE.Color("#382323");
     const oceanBottom = new THREE.Color("#0a2a3d");
-    for (let x = 0; x < this.PLANE_SEGMENTS; x += 1) {
-      for (let y = 0; y < this.PLANE_SEGMENTS; y += 1) {
-        const i = (y * this.PLANE_SEGMENTS + x) * 3;
-        const yProportion = y / this.PLANE_SEGMENTS;
-        let height = this.gameState.get_land_value(
-          (x / this.PLANE_SEGMENTS) * this.PLANE_WIDTH - this.PLANE_WIDTH / 2,
-          (0.5 - yProportion) * this.PLANE_WIDTH
-        );
+    for (let x = 0; x < this.segments; x += 1) {
+      for (let y = 0; y < this.segments; y += 1) {
+        const i = (y * this.segments + x) * 3;
+        const yProportion = y / this.segments;
+        let xWorld = (x / this.segments) * PLANE_WIDTH - PLANE_WIDTH / 2;
+        let yWorld = (0.5 - yProportion) * PLANE_WIDTH;
+        xWorld += this.planeMesh.position.x;
+        yWorld += this.planeMesh.position.y;
+        let height = this.gameState.get_land_value(xWorld, yWorld);
 
         arr[i + 2] = height;
         let thisColor;
@@ -49,33 +110,5 @@ export class Terrain {
     geometry.attributes.position.needsUpdate = true;
     geometry.attributes.color.needsUpdate = true;
     geometry.computeVertexNormals();
-  }
-
-  static new(gameState: GameWasmState) {
-    const PLANE_WIDTH = gameState.map_size();
-    const SEGMENTS_DENSITY = gameState.tile_size();
-    const PLANE_SEGMENTS = PLANE_WIDTH / SEGMENTS_DENSITY;
-    console.log(PLANE_SEGMENTS);
-    const planeGeometry = new THREE.PlaneGeometry(
-      PLANE_WIDTH,
-      PLANE_WIDTH,
-      PLANE_SEGMENTS - 1,
-      PLANE_SEGMENTS - 1
-    );
-
-    // scene.fog = new THREE.Fog(0x999999, 0, 100);
-
-    const planeMaterial = new THREE.MeshLambertMaterial({
-      vertexColors: true,
-    });
-    const colorsBuffer = new Float32Array(PLANE_SEGMENTS * PLANE_SEGMENTS * 3);
-    planeGeometry.setAttribute(
-      "color",
-      new THREE.BufferAttribute(colorsBuffer, 3)
-    );
-
-    const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-
-    return new Terrain(gameState, PLANE_WIDTH, PLANE_SEGMENTS, plane);
   }
 }
