@@ -1,7 +1,7 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 
-const PLANE_WIDTH = 1_000; //1km
+const PLANE_WIDTH = 8_000; //1km
 
 export class Terrain {
   terrainGroup = new THREE.Group();
@@ -20,15 +20,9 @@ export class Terrain {
     const chunks: TerrainChunk[] = [];
     const mapSize = gameState.map_size();
     const chunksDimension = Math.ceil(mapSize / PLANE_WIDTH);
-    const startX = -mapSize / 2;
-    const startY = -mapSize / 2;
     for (let i = 0; i < chunksDimension; i++) {
       for (let j = 0; j < chunksDimension; j++) {
-        const position = new THREE.Vector3(
-          i * PLANE_WIDTH + startX,
-          j * PLANE_WIDTH + startY,
-          0
-        );
+        const position = new THREE.Vector3(i * PLANE_WIDTH, j * PLANE_WIDTH, 0);
         chunks.push(TerrainChunk.new(gameState, position));
       }
     }
@@ -44,7 +38,7 @@ class TerrainChunk {
   ) {}
 
   static new(gameState: GameWasmState, position: THREE.Vector3) {
-    const segmentsPerKm = 50;
+    const segmentsPerKm = 200;
     const segments = (PLANE_WIDTH / 1000) * segmentsPerKm;
     const planeGeometry = new THREE.PlaneGeometry(
       PLANE_WIDTH,
@@ -57,7 +51,6 @@ class TerrainChunk {
 
     const planeMaterial = new THREE.MeshLambertMaterial({
       vertexColors: true,
-      flatShading: true,
     });
     const colorsBuffer = new Float32Array(segments * segments * 3);
     planeGeometry.setAttribute(
