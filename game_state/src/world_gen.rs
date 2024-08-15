@@ -92,7 +92,7 @@ impl Default for WorldGenConfig {
             weight_low_land: 0.9,
             forest_threshold: 0.17,
             land_threshold: 0.0,
-            noise_scale: 0.0010,
+            noise_scale: 0.001,
             tile_size: 20.0,
             height_scale: 500.0,
             view_info: ViewInfo::default(),
@@ -114,8 +114,9 @@ impl WorldGen {
             terrain_interpolation: LinearInterpolation::new(vec![
                 Point2::new(-1.0, -1.0),
                 Point2::new(0.10, 0.0),
-                Point2::new(0.40, 0.1),
-                Point2::new(1.0, 0.6),
+                Point2::new(0.5, 0.15),
+                Point2::new(0.7, 0.4),
+                Point2::new(1.0, 0.5),
             ]),
             low_land: GameNoise::new(Some(seed)),
             high_land: GameNoise::new(Some(seed)),
@@ -196,7 +197,6 @@ impl WorldGen {
             .collect();
         grid.data = data;
         grid.find_islands();
-        info!("Islands: {:?}", grid.islands.len());
         grid
     }
 }

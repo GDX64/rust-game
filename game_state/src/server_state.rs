@@ -239,7 +239,7 @@ pub struct ServerState {
 impl ServerState {
     pub fn new() -> Self {
         let world_gen = Arc::new(world_gen::WorldGen::new(1));
-        let game_map = Arc::new(world_gen.generate_grid(4_000.0));
+        let game_map = Arc::new(world_gen.generate_grid(8_000.0));
         Self {
             game_map,
             world_gen,
@@ -255,6 +255,10 @@ impl ServerState {
             },
             rng: fastrand::Rng::with_seed(0),
         }
+    }
+
+    pub fn island_at(&self, x: f64, y: f64) -> Option<u64> {
+        self.game_map.island_at(x, y)
     }
 
     pub fn next_artifact_id(&mut self) -> u64 {

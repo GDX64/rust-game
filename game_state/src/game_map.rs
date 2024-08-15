@@ -12,7 +12,7 @@ pub struct WorldGrid {
     pub tiles_dim: usize,
     pub tile_size: f64,
     pub data: Vec<Tile>,
-    pub islands: BTreeMap<usize, Island>,
+    pub islands: BTreeMap<u64, Island>,
 }
 
 impl Default for WorldGrid {
@@ -41,7 +41,7 @@ impl Default for Tile {
             kind: TileKind::Water,
             height: 0.0,
             visited: false,
-            island_number: 0,
+            island_number: None,
         }
     }
 }
@@ -52,7 +52,7 @@ impl Tile {
             kind,
             height,
             visited: false,
-            island_number: 0,
+            island_number: None,
         }
     }
 
@@ -61,7 +61,7 @@ impl Tile {
             kind: TileKind::Grass,
             height,
             visited: false,
-            island_number: 0,
+            island_number: None,
         }
     }
 
@@ -95,7 +95,7 @@ impl Tile {
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
-struct IslandTile {
+pub struct IslandTile {
     x: i32,
     y: i32,
     height: f64,
@@ -117,12 +117,12 @@ impl Ord for IslandTile {
 
 #[derive(Debug, Clone)]
 pub struct Island {
-    tiles: BTreeSet<IslandTile>,
-    number: usize,
+    pub tiles: BTreeSet<IslandTile>,
+    pub number: u64,
 }
 
 impl Island {
-    fn new(tiles: BTreeSet<IslandTile>, number: usize) -> Self {
+    fn new(tiles: BTreeSet<IslandTile>, number: u64) -> Self {
         Self { tiles, number }
     }
 }
@@ -132,7 +132,7 @@ pub struct Tile {
     kind: TileKind,
     height: f64,
     visited: bool,
-    island_number: usize,
+    island_number: Option<u64>,
 }
 
 pub struct TileUnit(usize);
@@ -179,7 +179,7 @@ impl WorldGrid {
         &mut self,
         x: i32,
         y: i32,
-        island: usize,
+        island: u64,
         water_set: &mut BTreeSet<(i32, i32)>,
     ) -> BTreeSet<IslandTile> {
         let mut stack = vec![(x, y)];
@@ -196,7 +196,7 @@ impl WorldGrid {
                 if tile.is_land() {
                     tile.mark_visited();
                     println!("x, y {}, {}", x, y);
-                    tile.island_number = island;
+                    tile.island_number = Some(island);
 
                     let island_tile = IslandTile::new(tile.height(), x, y);
                     set.insert(island_tile);
@@ -288,6 +288,15 @@ impl WorldGrid {
             return value.height();
         }
         return 0.0;
+    }
+
+    pub fn island_at(&self, x: f64, y: f64) -> Option<u64> {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        if let Some(value) = self.get_tiles(x, y) {
+            return value.island_number;
+        }
+        return None;
     }
 
     fn can_go_straight(&self, initial: &V2D, fin: &V2D) -> bool {

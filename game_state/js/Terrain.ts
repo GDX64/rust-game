@@ -36,7 +36,7 @@ export class Terrain {
           thisColor = oceanBottom;
         } else if (height < 10) {
           thisColor = sand;
-        } else if (height < 30) {
+        } else if (height < 40) {
           thisColor = grass;
         } else {
           thisColor = rock;
@@ -55,6 +55,7 @@ export class Terrain {
     const PLANE_WIDTH = gameState.map_size();
     const SEGMENTS_DENSITY = gameState.tile_size();
     const PLANE_SEGMENTS = PLANE_WIDTH / SEGMENTS_DENSITY;
+    console.log(PLANE_SEGMENTS);
     const planeGeometry = new THREE.PlaneGeometry(
       PLANE_WIDTH,
       PLANE_WIDTH,

@@ -247,6 +247,10 @@ export class PlayerActions {
           return;
         } else {
           this.shipsManager.clearSelection();
+          const island = this.game.island_at(x, y);
+          if (island != null) {
+            console.log(island);
+          }
         }
       } else {
         if (hasShift) {
