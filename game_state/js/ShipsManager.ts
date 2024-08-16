@@ -7,6 +7,7 @@ import { Water } from "./Water";
 import { Subject } from "rxjs";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
+import brazil from "./assets/brasil.png";
 
 export type ShipData = {
   player_id: number;
@@ -37,6 +38,7 @@ export class ShipsManager {
   );
   selected: number[] = [];
   outlines;
+  flagSprite;
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
@@ -95,6 +97,18 @@ export class ShipsManager {
     this.scene.add(this.selectionRectangle);
     this.scene.add(this.aimCircle);
     this.hpBar.addToScene(scene);
+
+    const textureLoader = new THREE.TextureLoader();
+    const flagTexture = textureLoader.load(brazil);
+    console.log(flagTexture);
+
+    this.flagSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ color: 0xffffff, map: flagTexture })
+    );
+
+    this.flagSprite.scale.set(50, 50, 50);
+
+    this.scene.add(this.flagSprite);
 
     this.loadModel();
   }

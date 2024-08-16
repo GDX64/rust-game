@@ -9,6 +9,11 @@ enum States {
   SELECTING,
 }
 
+type IslandData = {
+  id: number;
+  center: [number, number];
+};
+
 export class PlayerActions {
   readonly mouse;
   readonly rayCaster = new THREE.Raycaster();
@@ -247,9 +252,14 @@ export class PlayerActions {
           return;
         } else {
           this.shipsManager.clearSelection();
-          const island = this.game.island_at(x, y);
+          const island: IslandData | null = this.game.island_at(x, y);
           if (island != null) {
             console.log(island);
+            this.shipsManager.flagSprite.position.set(
+              island.center[0],
+              island.center[1],
+              100
+            );
           }
         }
       } else {

@@ -2,7 +2,7 @@ use crate::{
     boidlike::BoidLike,
     bullet::Bullet,
     diffing::Diff,
-    game_map::{WorldGrid, V2D, V3D},
+    game_map::{IslandData, WorldGrid, V2D, V3D},
     world_gen,
 };
 use cgmath::InnerSpace;
@@ -257,7 +257,7 @@ impl ServerState {
         }
     }
 
-    pub fn island_at(&self, x: f64, y: f64) -> Option<u64> {
+    pub fn island_at(&self, x: f64, y: f64) -> Option<IslandData> {
         self.game_map.island_at(x, y)
     }
 

@@ -180,8 +180,9 @@ impl GameWasmState {
         Some(result)
     }
 
-    pub fn island_at(&self, x: f64, y: f64) -> Option<u64> {
-        self.running_mode.server_state().island_at(x, y)
+    pub fn island_at(&self, x: f64, y: f64) -> JsValue {
+        let island = self.running_mode.server_state().island_at(x, y);
+        serde_wasm_bindgen::to_value(&island).unwrap_or_default()
     }
 
     pub fn get_land_value(&self, x: f64, y: f64) -> f64 {

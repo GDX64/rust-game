@@ -1,5 +1,6 @@
 use cgmath::{InnerSpace, Vector2, Vector3};
 use pathfinding::prelude::astar;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::{self, Debug, Formatter},
@@ -33,6 +34,12 @@ pub enum TileKind {
     Water,
     Grass,
     Forest,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct IslandData {
+    pub id: u64,
+    pub center: (f64, f64),
 }
 
 impl Default for Tile {
@@ -119,11 +126,32 @@ impl Ord for IslandTile {
 pub struct Island {
     pub tiles: BTreeSet<IslandTile>,
     pub number: u64,
+    pub center: V2D,
 }
 
 impl Island {
     fn new(tiles: BTreeSet<IslandTile>, number: u64) -> Self {
-        Self { tiles, number }
+        let mut x = 0.0;
+        let mut y = 0.0;
+        for tile in tiles.iter() {
+            x += tile.x as f64;
+            y += tile.y as f64;
+        }
+        x /= tiles.len() as f64;
+        y /= tiles.len() as f64;
+        let center = V2D::new(x, y);
+        Self {
+            tiles,
+            number,
+            center,
+        }
+    }
+
+    pub fn island_data(&self) -> IslandData {
+        IslandData {
+            id: self.number,
+            center: (self.center.x, self.center.y),
+        }
     }
 }
 
@@ -290,13 +318,12 @@ impl WorldGrid {
         return 0.0;
     }
 
-    pub fn island_at(&self, x: f64, y: f64) -> Option<u64> {
+    pub fn island_at(&self, x: f64, y: f64) -> Option<IslandData> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
-        if let Some(value) = self.get_tiles(x, y) {
-            return value.island_number;
-        }
-        return None;
+        let tile = self.get_tiles(x, y)?;
+        let island = self.islands.get(&tile.island_number?)?;
+        return Some(island.island_data());
     }
 
     fn can_go_straight(&self, initial: &V2D, fin: &V2D) -> bool {
