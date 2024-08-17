@@ -180,7 +180,12 @@ export class Render3D {
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
       canvas: this.canvas,
+      stencil: true,
     });
+
+    const fog = new THREE.Fog(0x999999, 0, 4000);
+    this.scene.fog = fog;
+
     renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
     this.gui.addColor(this.state, "skyColor").onChange(() => {
       renderer.setClearColor(new THREE.Color(this.state.skyColor), 1);
@@ -197,9 +202,10 @@ export class Render3D {
       this.playerActions.tick();
       this.gameState.tick(time);
       this.shipsManager.tick(time);
-      this.water.tick(time);
+      this.water.tick(time, this.camera);
       this.cameraControls.tick(time);
-      composer.render();
+      // composer.render();
+      renderer.render(scene, this.camera);
     });
 
     this.shipsManager.selected$.subscribe((ship) => {
@@ -216,7 +222,15 @@ export class Render3D {
   }
 
   private addPostProcessing(renderer: THREE.WebGLRenderer) {
-    const composer = new EffectComposer(renderer);
+    const renderTarget = new THREE.WebGLRenderTarget(
+      window.innerWidth,
+      window.innerHeight,
+      {
+        stencilBuffer: true,
+      }
+    );
+    const composer = new EffectComposer(renderer, renderTarget);
+    // composer.stencilBuffer = true;
     const renderPass = new RenderPass(this.scene, this.camera);
     const outline = new OutlinePass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),

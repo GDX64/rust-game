@@ -7,6 +7,7 @@ uniform vec3 water_color;
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
+varying float depth;
 
 void main() {
   vec3 normal = normalize(normal_v);
@@ -31,5 +32,8 @@ void main() {
   float intensity = 0.2 + 0.8 * diffusion_intensity + 1.0 * reflect_intensity;
 
   vec3 color = water_color * intensity + scatter_effect;
+  //add fog effect
+  color = mix(color, vec3(0.6, 0.6, 0.6), depth / 2000.0);
   gl_FragColor = vec4(color, 0.8);
+
 }

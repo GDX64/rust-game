@@ -6,6 +6,7 @@ uniform float amplitude;
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
+varying float depth;
 
 void wave(vec3 pos, out float wave, out vec3 normal) {
   float z_acc = 0.0;
@@ -25,11 +26,12 @@ void wave(vec3 pos, out float wave, out vec3 normal) {
 }
 
 void main() {
-  vec4 pos = vec4(position, 1.0);
+  vec4 pos = modelMatrix * vec4(position, 1.0);
   vec3 normal_calc;
   wave(pos.xyz, pos.z, normal_calc);
-  vViewPosition = (modelMatrix * pos).xyz;
-  gl_Position = projectionMatrix * modelViewMatrix * pos;
+  vViewPosition = pos.xyz;
+  gl_Position = projectionMatrix * viewMatrix * pos;
   normal_v = normal_calc;
+  depth = gl_Position.z;
   // normal_v = vec3(0.0, 0.0, 1.0);
 }
