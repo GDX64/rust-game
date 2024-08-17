@@ -113,16 +113,15 @@ export class Water {
       WATER_DETAIL
     );
 
-    const ds = makeDs(FREQ_START);
-
-    const waterShader = waterCustomShader(ds, false);
+    const waterShader = waterCustomShader(makeDs(FREQ_START), false);
 
     const completeWater = new THREE.Mesh(waterPlaneGeometry, waterShader);
     completeWater.renderOrder = RenderOrder.Water;
-    const simpleWaterShader = waterCustomShader(ds, true);
+
+    const simpleWaterShader = waterCustomShader(makeDs(0), true);
 
     const simplePlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 2, width * 2, 100, 100),
+      new THREE.PlaneGeometry(width * 2, width * 2, 1, 1),
       // waterPlaneGeometry,
       simpleWaterShader
     );

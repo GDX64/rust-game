@@ -10,7 +10,6 @@ import { ShipsManager } from "./ShipsManager";
 import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
-import { GammaCorrectionShader } from "three/addons/shaders/GammaCorrectionShader.js";
 import { PlayerActions } from "./PlayerActions";
 
 function defaultState() {
@@ -204,8 +203,8 @@ export class Render3D {
       this.shipsManager.tick(time);
       this.water.tick(time, this.camera);
       this.cameraControls.tick(time);
-      // composer.render();
-      renderer.render(scene, this.camera);
+      composer.render();
+      // renderer.render(scene, this.camera);
     });
 
     this.shipsManager.selected$.subscribe((ship) => {
@@ -237,11 +236,11 @@ export class Render3D {
       this.scene,
       this.camera
     );
-    const gammaCorrection = new ShaderPass(GammaCorrectionShader);
     renderer.setPixelRatio(window.devicePixelRatio);
     composer.addPass(renderPass);
-    composer.addPass(outline);
-    composer.addPass(gammaCorrection);
+    // const gammaCorrection = new ShaderPass(GammaCorrectionShader);
+    // composer.addPass(outline);
+    // composer.addPass(gammaCorrection);
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),

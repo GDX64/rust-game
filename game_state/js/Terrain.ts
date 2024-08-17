@@ -73,7 +73,7 @@ class TerrainChunk {
     const sand = new THREE.Color("#beb76f");
     const grass = new THREE.Color("#1e4e1e");
     const rock = new THREE.Color("#382323");
-    const oceanBottom = new THREE.Color("#0a2a3d");
+    const oceanBottom = new THREE.Color("#010b13");
     for (let x = 0; x < this.segments; x += 1) {
       for (let y = 0; y < this.segments; y += 1) {
         const i = (y * this.segments + x) * 3;
