@@ -207,11 +207,6 @@ export class Render3D {
       // renderer.render(scene, this.camera);
     });
 
-    this.shipsManager.selected$.subscribe((ship) => {
-      this.outline.selectedObjects = [ship];
-      this.outline.selectedObjects;
-    });
-
     const helpersFolder = this.gui.addFolder("Helpers");
 
     this.playerActions.showHelper(this.state.showAxes);

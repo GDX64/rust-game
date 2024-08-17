@@ -4,4 +4,5 @@ export enum RenderOrder {
   SIMPLE_WATER,
   PARTICLES,
   AIM,
+  OUTLINE,
 }

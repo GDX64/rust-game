@@ -4,7 +4,6 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import boat from "./assets/boat.glb?url";
 import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
-import { Subject } from "rxjs";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
 import brazil from "./assets/brasil.png";
@@ -33,7 +32,6 @@ export class ShipsManager {
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
   selectionRectangle: THREE.Mesh;
-  selected$ = new Subject<THREE.InstancedMesh>();
   aimCircle;
   hpBar = new HPBar();
 
@@ -53,7 +51,23 @@ export class ShipsManager {
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
     this.explosionManager = new ExplosionManager(scene);
-    this.outlines = this.boatMesh.clone();
+
+    const outlineGeometry = new THREE.CircleGeometry(6, 32);
+    const outlineMaterial = new THREE.MeshLambertMaterial({
+      color: "#ffff00",
+      blending: THREE.NormalBlending,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false,
+    });
+    this.outlines = new THREE.InstancedMesh(
+      outlineGeometry,
+      outlineMaterial,
+      10000
+    );
+    this.outlines.frustumCulled = false;
+    this.outlines.renderOrder = RenderOrder.OUTLINE;
 
     const circle = new THREE.CircleGeometry(1, 32);
     const circleMaterial = new THREE.MeshPhongMaterial({
@@ -108,7 +122,7 @@ export class ShipsManager {
 
     const sprites = islandData.map((island) => {
       const sprite = new THREE.Sprite(material);
-      sprite.scale.set(50, 50, 50);
+      sprite.scale.set(50, 35, 1);
       sprite.position.set(island.center[0], island.center[1], 150);
       return { sprite, island: island.id };
     });
@@ -147,7 +161,6 @@ export class ShipsManager {
     instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.boatMesh = instancedMesh;
     this.boatMesh.frustumCulled = false;
-    this.outlines = this.boatMesh.clone();
     this.scene.add(this.boatMesh);
     this.scene.add(this.outlines);
   }
@@ -255,31 +268,23 @@ export class ShipsManager {
     this.hpBar.setInstancesCount(ships.length);
 
     const myID = this.game.my_id();
-    let normalBoats = 0;
     let outlineBoats = 0;
-    for (let allShipsIndex = 0; allShipsIndex < ships.length; allShipsIndex++) {
-      const ship = ships[allShipsIndex];
+    for (let i = 0; i < ships.length; i++) {
+      const ship = ships[i];
       const isMine = ship.player_id === myID;
-      let meshToUse;
-      let i;
-      if (isMine && this.selected.includes(ship.id)) {
-        i = outlineBoats;
-        outlineBoats += 1;
-        meshToUse = this.outlines;
-      } else {
-        i = normalBoats;
-        normalBoats += 1;
-        meshToUse = this.boatMesh;
-      }
+      const meshToUse = this.boatMesh;
       this.calcBoatAngle(ship, matrix);
       meshToUse.setMatrixAt(i, matrix);
       const color = this.playerColor(ship.player_id);
       meshToUse.setColorAt(i, color);
-
-      this.hpBar.updateBar(allShipsIndex, matrix, ship.hp);
+      this.hpBar.updateBar(i, matrix, ship.hp);
+      if (isMine && this.selected.includes(ship.id)) {
+        this.outlines.setMatrixAt(outlineBoats, matrix);
+        outlineBoats++;
+      }
     }
-    this.boatMesh.count = normalBoats;
-    this.outlines.count = outlineBoats;
+    this.boatMesh.count = ships.length;
+    this.outlines.count = this.selected.length;
     this.ships = ships;
 
     //==== explosions
@@ -292,8 +297,6 @@ export class ShipsManager {
         this.playerColor(explosion.player_id)
       );
     });
-
-    this.selected$.next(this.outlines);
   }
 
   auto_shoot() {

@@ -36,44 +36,50 @@ export class Water {
   // }
 
   addControls(gui: dat.GUI) {
-    // const waterFolder = gui.addFolder("Water");
-    // waterFolder.add(this.material.uniforms.amplitude, "value", 0, 20);
-    // waterFolder.add(this, "freq", 0.01, 0.1).onChange(() => {
-    //   this.material.uniforms.directions.value = makeDs(this.freq);
-    // });
-    // waterFolder
-    //   .addColor(
-    //     {
-    //       scatter_color: this.material.uniforms.scatter_color.value.getHex(),
-    //     },
-    //     "scatter_color"
-    //   )
-    //   .onChange((color: string) => {
-    //     this.material.uniforms.scatter_color.value = new THREE.Color(color);
-    //   });
-    // waterFolder
-    //   .add(
-    //     {
-    //       scatter_factor: this.material.uniforms.scatter_factor.value,
-    //     },
-    //     "scatter_factor",
-    //     1,
-    //     10
-    //   )
-    //   .onChange((value: number) => {
-    //     this.material.uniforms.scatter_factor.value = value;
-    //   });
-    // waterFolder
-    //   .addColor(
-    //     {
-    //       water_color: this.material.uniforms.water_color.value.getHex(),
-    //     },
-    //     "water_color"
-    //   )
-    //   .onChange((color: string) => {
-    //     this.material.uniforms.water_color.value = new THREE.Color(color);
-    //     this.simpleMaterial.uniforms.water_color.value = new THREE.Color(color);
-    //   });
+    const waterFolder = gui.addFolder("Water");
+    waterFolder.add(this.material.uniforms.amplitude, "value", 0, 20);
+    waterFolder.add(this, "freq", 0.01, 0.1).onChange(() => {
+      const d = makeDs(this.freq);
+      this.material.uniforms.directions.value = d;
+      this.material.uniforms.directions.value = d;
+    });
+    waterFolder
+      .addColor(
+        {
+          scatter_color: this.material.uniforms.scatter_color.value.getHex(),
+        },
+        "scatter_color"
+      )
+      .onChange((color: string) => {
+        this.material.uniforms.scatter_color.value = new THREE.Color(color);
+        this.simpleMaterial.uniforms.scatter_color.value = new THREE.Color(
+          color
+        );
+      });
+    waterFolder
+      .add(
+        {
+          scatter_factor: this.material.uniforms.scatter_factor.value,
+        },
+        "scatter_factor",
+        1,
+        10
+      )
+      .onChange((value: number) => {
+        this.material.uniforms.scatter_factor.value = value;
+        this.simpleMaterial.uniforms.scatter_factor.value = value;
+      });
+    waterFolder
+      .addColor(
+        {
+          water_color: this.material.uniforms.water_color.value.getHex(),
+        },
+        "water_color"
+      )
+      .onChange((color: string) => {
+        this.material.uniforms.water_color.value = new THREE.Color(color);
+        this.simpleMaterial.uniforms.water_color.value = new THREE.Color(color);
+      });
   }
 
   intersects(ray: THREE.Raycaster) {
