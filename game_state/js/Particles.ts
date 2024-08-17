@@ -4,8 +4,9 @@ import vertexShader from "./shaders/explosion.vert.glsl?raw";
 import fragmentShader from "./shaders/explosion.frag.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 import { ExplosionData } from "./RustWorldTypes";
+import explosionImage from "./assets/explosion.png";
 
-const PARTICLES = 1_000;
+const PARTICLES = 120;
 
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
@@ -130,7 +131,7 @@ export class Explosion {
       0.1,
       1000
     );
-    camera.position.set(50, 0, 50);
+    camera.position.set(0, 0, 100);
     const scene = new THREE.Scene();
     const renderer = new THREE.WebGLRenderer();
 
@@ -141,7 +142,7 @@ export class Explosion {
     document.addEventListener("click", () => {
       explosionManager.explodeAt(
         new THREE.Vector3(0, 0, 0),
-        Math.random() * 10000,
+        Math.random() * 1000,
         new THREE.Color(Math.random() * 0xffffff)
       );
     });
@@ -149,13 +150,13 @@ export class Explosion {
     const light = new THREE.DirectionalLight(0xffffff, 100);
     light.position.set(50, 50, 50);
     scene.add(light);
-    renderer.setClearColor(0xffffaa, 1);
+    renderer.setClearColor(0x000000, 1);
     renderer.setSize(window.innerWidth, window.innerHeight);
 
     renderer.setAnimationLoop((time) => {
       renderer.render(scene, camera);
       orbit.update();
-      explosionManager.tick(time);
+      explosionManager.tick(time / 1000);
     });
   }
 
@@ -169,17 +170,19 @@ export class Explosion {
       new THREE.BufferAttribute(new Float32Array(vertices), 3)
     );
     // geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    const texture = new THREE.TextureLoader().load(explosionImage);
     const pointMaterial = new THREE.ShaderMaterial({
-      // map: texture,
       fragmentShader,
       vertexShader,
       uniforms: {
+        diffuseTexture: { value: texture },
         time: { value: 0 },
         progress: { value: 0 },
         color: { value: new THREE.Color(0xffff00) },
       },
-      blending: THREE.NormalBlending,
+      blending: THREE.AdditiveBlending,
       transparent: true,
+      depthTest: false,
     });
     const points = new THREE.Points(geometry, pointMaterial);
     return { points };
