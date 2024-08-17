@@ -3,12 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import vertexShader from "./shaders/explosion.vert.glsl?raw";
 import fragmentShader from "./shaders/explosion.frag.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
-
-export type ExplosionData = {
-  position: [number, number];
-  id: number;
-  player_id: number;
-};
+import { ExplosionData } from "./RustWorldTypes";
 
 const PARTICLES = 1_000;
 

@@ -1,7 +1,7 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 
-const PLANE_WIDTH = 8_000; //1km
+const PLANE_WIDTH = 5_000; //1km
 
 export class Terrain {
   terrainGroup = new THREE.Group();

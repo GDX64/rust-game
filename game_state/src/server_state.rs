@@ -138,6 +138,7 @@ pub struct BroadCastState {
     bullets: BTreeMap<(u64, u64), Bullet>,
     explosions: BTreeMap<u64, Explosion>,
     game_constants: GameConstants,
+    island_owner: BTreeMap<u64, u64>,
     artifact_id: u64,
     current_time: f64,
     rng_seed: u64,
@@ -155,6 +156,7 @@ impl BroadCastState {
             ships: BTreeMap::new(),
             bullets: BTreeMap::new(),
             explosions: BTreeMap::new(),
+            island_owner: BTreeMap::new(),
             artifact_id: 0,
             current_time: 5.0,
             rng_seed: 0,
@@ -229,6 +231,7 @@ pub struct ServerState {
     pub game_map: Arc<GameMap>,
     pub world_gen: Arc<world_gen::WorldGen>,
     pub bullets: BTreeMap<(u64, u64), Bullet>,
+    pub island_owners: BTreeMap<u64, u64>,
     pub ship_collection: ShipCollection,
     pub current_time: f64,
     pub game_constants: GameConstants,
@@ -239,7 +242,7 @@ pub struct ServerState {
 impl ServerState {
     pub fn new() -> Self {
         let world_gen = Arc::new(world_gen::WorldGen::new(1));
-        let game_map = Arc::new(world_gen.generate_grid(8_000.0));
+        let game_map = Arc::new(world_gen.generate_grid(5_000.0));
         Self {
             game_map,
             world_gen,
@@ -248,6 +251,7 @@ impl ServerState {
             explosions: BTreeMap::new(),
             players: BTreeMap::new(),
             bullets: BTreeMap::new(),
+            island_owners: BTreeMap::new(),
             ship_collection: ShipCollection::new(),
             game_constants: GameConstants {
                 wind_speed: (0.0, 0.0, 0.0),
@@ -255,6 +259,10 @@ impl ServerState {
             },
             rng: fastrand::Rng::with_seed(0),
         }
+    }
+
+    pub fn all_islands(&self) -> Vec<IslandData> {
+        self.game_map.all_island_data()
     }
 
     pub fn island_at(&self, x: f64, y: f64) -> Option<IslandData> {
@@ -292,6 +300,7 @@ impl ServerState {
             current_time: self.current_time,
             rng_seed: self.rng.get_seed(),
             game_constants: self.game_constants.clone(),
+            island_owner: self.island_owners.clone(),
         }
     }
 
@@ -414,6 +423,7 @@ impl ServerState {
                 self.current_time = state.current_time;
                 self.rng.seed(state.rng_seed);
                 self.game_constants = state.game_constants;
+                self.island_owners = state.island_owner;
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {

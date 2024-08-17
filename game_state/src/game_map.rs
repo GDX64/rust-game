@@ -8,6 +8,8 @@ use std::{
 };
 use wasm_bindgen::prelude::*;
 
+const MIN_ISLAND_SIZE: usize = 50;
+
 pub struct WorldGrid {
     pub dim: f64,
     pub tiles_dim: usize,
@@ -125,7 +127,7 @@ impl Ord for IslandTile {
 #[derive(Debug, Clone)]
 pub struct Island {
     pub tiles: BTreeSet<IslandTile>,
-    pub number: u64,
+    pub id: u64,
     pub center: V2D,
 }
 
@@ -142,14 +144,14 @@ impl Island {
         let center = V2D::new(x, y);
         Self {
             tiles,
-            number,
+            id: number,
             center,
         }
     }
 
     pub fn island_data(&self) -> IslandData {
         IslandData {
-            id: self.number,
+            id: self.id,
             center: (self.center.x, self.center.y),
         }
     }
@@ -266,8 +268,10 @@ impl WorldGrid {
                     water_stack.insert((x, y - 1));
                 } else {
                     let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
-                    island_map.insert(islands_number, Island::new(set, islands_number));
-                    islands_number += 1;
+                    if set.len() > MIN_ISLAND_SIZE {
+                        island_map.insert(islands_number, Island::new(set, islands_number));
+                        islands_number += 1;
+                    }
                 }
             }
         }
@@ -318,12 +322,26 @@ impl WorldGrid {
         return 0.0;
     }
 
+    pub fn all_island_data(&self) -> Vec<IslandData> {
+        self.islands
+            .values()
+            .filter_map(|x| self.island_data(x.id))
+            .collect()
+    }
+
+    pub fn island_data(&self, id: u64) -> Option<IslandData> {
+        let mut island_data = self.islands.get(&id)?.island_data();
+        island_data.center.0 = self.from_tile_unit(island_data.center.0 as usize);
+        island_data.center.1 = self.from_tile_unit(island_data.center.1 as usize);
+        return Some(island_data);
+    }
+
     pub fn island_at(&self, x: f64, y: f64) -> Option<IslandData> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
         let tile = self.get_tiles(x, y)?;
         let island = self.islands.get(&tile.island_number?)?;
-        return Some(island.island_data());
+        self.island_data(island.id)
     }
 
     fn can_go_straight(&self, initial: &V2D, fin: &V2D) -> bool {

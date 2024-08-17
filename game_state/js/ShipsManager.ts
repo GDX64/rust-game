@@ -2,29 +2,19 @@ import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import boat from "./assets/boat.glb?url";
-import { ExplosionData, ExplosionManager } from "./Particles";
+import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { Subject } from "rxjs";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
 import brazil from "./assets/brasil.png";
-
-export type ShipData = {
-  player_id: number;
-  id: number;
-  position: [number, number];
-  speed: [number, number];
-  acceleration: [number, number];
-  orientation: [number, number];
-  hp: number;
-};
-
-type Bullet = {
-  position: [number, number, number];
-  speed: [number, number, number];
-  id: number;
-  player_id: number;
-};
+import {
+  Bullet,
+  ExplosionData,
+  IslandData,
+  IslandOwners,
+  ShipData,
+} from "./RustWorldTypes";
 
 const SHIP_SIZE = 10;
 
@@ -38,7 +28,7 @@ export class ShipsManager {
   );
   selected: number[] = [];
   outlines;
-  flagSprite;
+  flagSprites = new Map<bigint, THREE.Sprite>();
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
@@ -98,19 +88,36 @@ export class ShipsManager {
     this.scene.add(this.aimCircle);
     this.hpBar.addToScene(scene);
 
-    const textureLoader = new THREE.TextureLoader();
-    const flagTexture = textureLoader.load(brazil);
-    console.log(flagTexture);
-
-    this.flagSprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({ color: 0xffffff, map: flagTexture })
-    );
-
-    this.flagSprite.scale.set(50, 50, 50);
-
-    this.scene.add(this.flagSprite);
+    const { spriteGroup, owners, spriteMap } = this.makeFlags();
+    this.flagSprites = spriteMap;
+    this.scene.add(spriteGroup);
 
     this.loadModel();
+  }
+
+  makeFlags() {
+    const owners: IslandOwners = this.game.island_owners();
+    const islandData: IslandData[] = this.game.all_island_data();
+
+    const textureLoader = new THREE.TextureLoader();
+    const flagTexture = textureLoader.load(brazil);
+    const material = new THREE.SpriteMaterial({
+      color: 0xffffff,
+      map: flagTexture,
+    });
+
+    const sprites = islandData.map((island) => {
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(50, 50, 50);
+      sprite.position.set(island.center[0], island.center[1], 150);
+      return { sprite, island: island.id };
+    });
+    const spriteGroup = new THREE.Group();
+    spriteGroup.add(...sprites.map(({ sprite }) => sprite));
+    const spriteMap = new Map(
+      sprites.map(({ island, sprite }) => [island, sprite])
+    );
+    return { spriteMap, spriteGroup, owners };
   }
 
   async loadModel() {

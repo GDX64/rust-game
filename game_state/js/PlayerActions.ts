@@ -2,17 +2,13 @@ import * as THREE from "three";
 import { ShipsManager } from "./ShipsManager";
 import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
+import { IslandData } from "./RustWorldTypes";
 
 enum States {
   IDLE,
   SHOOTING,
   SELECTING,
 }
-
-type IslandData = {
-  id: number;
-  center: [number, number];
-};
 
 export class PlayerActions {
   readonly mouse;
@@ -255,11 +251,6 @@ export class PlayerActions {
           const island: IslandData | null = this.game.island_at(x, y);
           if (island != null) {
             console.log(island);
-            this.shipsManager.flagSprite.position.set(
-              island.center[0],
-              island.center[1],
-              100
-            );
           }
         }
       } else {

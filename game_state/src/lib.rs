@@ -180,6 +180,16 @@ impl GameWasmState {
         Some(result)
     }
 
+    pub fn all_island_data(&self) -> JsValue {
+        let islands = self.running_mode.server_state().all_islands();
+        serde_wasm_bindgen::to_value(&islands).unwrap_or_default()
+    }
+
+    pub fn island_owners(&self) -> JsValue {
+        let owners = &self.running_mode.server_state().island_owners;
+        serde_wasm_bindgen::to_value(&owners).unwrap_or_default()
+    }
+
     pub fn island_at(&self, x: f64, y: f64) -> JsValue {
         let island = self.running_mode.server_state().island_at(x, y);
         serde_wasm_bindgen::to_value(&island).unwrap_or_default()
