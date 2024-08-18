@@ -42,6 +42,7 @@ pub enum TileKind {
 pub struct IslandData {
     pub id: u64,
     pub center: (f64, f64),
+    pub light_house: Option<(f64, f64)>,
 }
 
 impl Default for Tile {
@@ -129,9 +130,24 @@ pub struct Island {
     pub tiles: BTreeSet<IslandTile>,
     pub id: u64,
     pub center: V2D,
+    pub light_house: Option<V2D>,
 }
 
 impl Island {
+    fn bounding_box(&self) -> (i32, i32, i32, i32) {
+        let mut min_x = i32::MAX;
+        let mut min_y = i32::MAX;
+        let mut max_x = i32::MIN;
+        let mut max_y = i32::MIN;
+        for tile in self.tiles.iter() {
+            min_x = min_x.min(tile.x);
+            min_y = min_y.min(tile.y);
+            max_x = max_x.max(tile.x);
+            max_y = max_y.max(tile.y);
+        }
+        (min_x, min_y, max_x, max_y)
+    }
+
     fn new(tiles: BTreeSet<IslandTile>, number: u64) -> Self {
         let mut x = 0.0;
         let mut y = 0.0;
@@ -146,6 +162,7 @@ impl Island {
             tiles,
             id: number,
             center,
+            light_house: None,
         }
     }
 
@@ -153,6 +170,7 @@ impl Island {
         IslandData {
             id: self.id,
             center: (self.center.x, self.center.y),
+            light_house: self.light_house.map(|x| (x.x, x.y)),
         }
     }
 }
@@ -269,13 +287,66 @@ impl WorldGrid {
                 } else {
                     let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
                     if set.len() > MIN_ISLAND_SIZE {
-                        island_map.insert(islands_number, Island::new(set, islands_number));
+                        let mut island = Island::new(set, islands_number);
+                        let light_house = self.find_lighthouse_place(&island);
+                        island.light_house = light_house;
+                        island_map.insert(islands_number, island);
                         islands_number += 1;
                     }
                 }
             }
         }
         self.islands = island_map
+    }
+
+    fn is_surounded_by(&self, x: usize, y: usize, kind: TileKind) -> bool {
+        let mut neightbours = vec![];
+        if x > 0 {
+            neightbours.push((x - 1, y));
+        }
+        if y > 0 {
+            neightbours.push((x, y - 1));
+        }
+        if x < self.tiles_dim - 1 {
+            neightbours.push((x + 1, y));
+        }
+        if y < self.tiles_dim - 1 {
+            neightbours.push((x, y + 1));
+        }
+        for (x, y) in neightbours {
+            let index = y * self.tiles_dim + x;
+            if let Some(tile) = self.data.get(index) {
+                if tile.kind() != kind {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    fn find_lighthouse_place(&self, island: &Island) -> Option<V2D> {
+        let mut best = None;
+        let mut best_distance = f64::INFINITY;
+        let (min_x, min_y, max_x, max_y) = island.bounding_box();
+        for y in min_y..max_y {
+            for x in min_x..max_x {
+                let index = y * (self.tiles_dim as i32) + x;
+                let tile = if let Some(tile) = self.data.get(index as usize) {
+                    tile
+                } else {
+                    continue;
+                };
+                if tile.is_water() && self.is_surounded_by(x as usize, y as usize, TileKind::Water)
+                {
+                    let distance = (island.center - V2D::new(x as f64, y as f64)).magnitude();
+                    if distance < best_distance {
+                        best_distance = distance;
+                        best = Some(V2D::new(x as f64, y as f64));
+                    }
+                }
+            }
+        }
+        best
     }
 
     pub fn iter(&mut self) -> impl Iterator<Item = (f64, f64, &Tile)> {
@@ -333,6 +404,12 @@ impl WorldGrid {
         let mut island_data = self.islands.get(&id)?.island_data();
         island_data.center.0 = self.from_tile_unit(island_data.center.0 as usize);
         island_data.center.1 = self.from_tile_unit(island_data.center.1 as usize);
+        island_data.light_house = island_data.light_house.map(|x| {
+            (
+                self.from_tile_unit(x.0 as usize),
+                self.from_tile_unit(x.1 as usize),
+            )
+        });
         return Some(island_data);
     }
 

@@ -27,6 +27,7 @@ export type ExplosionData = {
 export type IslandData = {
   id: bigint;
   center: [number, number];
+  light_house: [number, number];
 };
 
 export type IslandOwners = Map<bigint, bigint>;
