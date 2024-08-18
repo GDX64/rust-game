@@ -1,5 +1,4 @@
 use crate::{
-    boidlike::BoidLike,
     bullet::Bullet,
     diffing::Diff,
     game_map::{IslandData, WorldGrid, V2D, V3D},
@@ -8,7 +7,9 @@ use crate::{
 use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, sync::Arc};
+use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::{borrow::BorrowMut, collections::BTreeMap, sync::Arc};
+use wasm_bindgen::prelude::*;
 
 const TOTAL_HIT: f64 = 30.0;
 const BLAST_RADIUS: f64 = 20.0;
@@ -76,26 +77,19 @@ impl Default for ShipState {
     }
 }
 
-impl BoidLike for ShipState {
-    fn update(&self, speed: V2D) -> Self {
-        let mut ship = self.clone();
-        let current_speed: V2D = ship.speed.into();
-        let new_speed = current_speed + speed * BOAT_SPEED / 20.0;
-        let new_speed = new_speed * BOAT_SPEED;
-        let new_speed = new_speed.normalize() * BOAT_SPEED;
-        if new_speed.x.is_nan() || new_speed.y.is_nan() {
-            return ship;
-        }
-        ship.speed = new_speed.into();
-        return ship;
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ArtifactGen {
+    current_id: u64,
+}
+
+impl ArtifactGen {
+    pub fn new() -> Self {
+        Self { current_id: 0 }
     }
 
-    fn position(&self) -> V2D {
-        self.position.into()
-    }
-
-    fn velocity(&self) -> V2D {
-        self.speed.into()
+    pub fn next(&mut self) -> u64 {
+        self.current_id += 1;
+        self.current_id
     }
 }
 
@@ -139,7 +133,7 @@ pub struct BroadCastState {
     explosions: BTreeMap<u64, Explosion>,
     game_constants: GameConstants,
     island_owner: BTreeMap<u64, u64>,
-    artifact_id: u64,
+    artifact_gen: ArtifactGen,
     current_time: f64,
     rng_seed: u64,
 }
@@ -157,7 +151,7 @@ impl BroadCastState {
             bullets: BTreeMap::new(),
             explosions: BTreeMap::new(),
             island_owner: BTreeMap::new(),
-            artifact_id: 0,
+            artifact_gen: ArtifactGen::new(),
             current_time: 5.0,
             rng_seed: 0,
             game_constants: GameConstants::default(),
@@ -212,6 +206,14 @@ impl ShipKey {
     }
 }
 
+#[wasm_bindgen]
+#[derive(Debug, Clone, Serialize_repr, Deserialize_repr, PartialEq)]
+#[repr(u8)]
+pub enum ExplosionKind {
+    Bullet,
+    Ship,
+}
+
 type ShipCollection = BTreeMap<ShipKey, ShipState>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -220,6 +222,7 @@ pub struct Explosion {
     pub id: u64,
     pub player_id: u64,
     pub time_created: f64,
+    pub kind: ExplosionKind,
 }
 
 pub type GameMap = WorldGrid;
@@ -236,7 +239,7 @@ pub struct ServerState {
     pub current_time: f64,
     pub game_constants: GameConstants,
     rng: fastrand::Rng,
-    artifact_id: u64,
+    artifact_gen: ArtifactGen,
 }
 
 impl ServerState {
@@ -247,7 +250,7 @@ impl ServerState {
             game_map,
             world_gen,
             current_time: 0.0,
-            artifact_id: 0,
+            artifact_gen: ArtifactGen::new(),
             explosions: BTreeMap::new(),
             players: BTreeMap::new(),
             bullets: BTreeMap::new(),
@@ -270,8 +273,7 @@ impl ServerState {
     }
 
     pub fn next_artifact_id(&mut self) -> u64 {
-        self.artifact_id += 1;
-        self.artifact_id
+        self.artifact_gen.next()
     }
 
     pub fn get_ship(&self, id: u64, player_id: u64) -> Option<&ShipState> {
@@ -296,7 +298,7 @@ impl ServerState {
             ships: self.ship_collection.clone(),
             bullets: self.bullets.clone(),
             explosions: self.explosions.clone(),
-            artifact_id: self.artifact_id,
+            artifact_gen: self.artifact_gen.clone(),
             current_time: self.current_time,
             rng_seed: self.rng.get_seed(),
             game_constants: self.game_constants.clone(),
@@ -315,6 +317,8 @@ impl ServerState {
             return true;
         });
 
+        let artifact_gen = self.artifact_gen.borrow_mut();
+
         self.bullets.retain(|_key, bullet| {
             bullet.evolve(dt);
 
@@ -330,19 +334,17 @@ impl ServerState {
                 ship.hp -= calc_damage(distance);
             }
 
-            explosions.push(((pos.x, pos.y), bullet.player_id));
+            let explosion = Explosion {
+                position: (pos.x, pos.y),
+                id: artifact_gen.next(),
+                time_created: self.current_time,
+                player_id: bullet.player_id,
+                kind: ExplosionKind::Bullet,
+            };
+
+            explosions.push(explosion);
 
             return false;
-        });
-
-        explosions.into_iter().for_each(|(pos, player_id)| {
-            let explosion = Explosion {
-                position: pos,
-                id: self.next_artifact_id(),
-                time_created: self.current_time,
-                player_id,
-            };
-            self.explosions.insert(explosion.id, explosion);
         });
 
         self.ship_collection.retain(|_id, ship| {
@@ -361,21 +363,26 @@ impl ServerState {
             let position = position + speed * dt;
             ship.position = position.into();
             ship.speed = speed.into();
-            return ship.hp > 0.0;
+            if ship.hp > 0.0 {
+                return true;
+            }
+
+            let explosion = Explosion {
+                position: ship.position,
+                id: self.artifact_gen.next(),
+                time_created: self.current_time,
+                player_id: ship.player_id,
+                kind: ExplosionKind::Ship,
+            };
+
+            explosions.push(explosion);
+
+            return false;
         });
 
-        //update boid style
-        // let all_ships = self.players.iter().flat_map(|(_, player)| {
-        //     let ships = self.ship_collection.values().filter(|ship| {
-        //         return ship.player_id == player.id;
-        //     });
-        //     let updated = BoidsTeam::update_boids_like(ships.cloned().collect());
-        //     return updated;
-        // });
-
-        // self.ship_collection = all_ships
-        //     .map(|ship| (ShipKey::new(ship.id, ship.player_id), ship))
-        //     .collect();
+        for explosion in explosions {
+            self.explosions.insert(explosion.id, explosion);
+        }
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {
@@ -419,7 +426,7 @@ impl ServerState {
                 self.players = state.players;
                 self.bullets = state.bullets;
                 self.explosions = state.explosions;
-                self.artifact_id = state.artifact_id;
+                self.artifact_gen = state.artifact_gen;
                 self.current_time = state.current_time;
                 self.rng.seed(state.rng_seed);
                 self.game_constants = state.game_constants;

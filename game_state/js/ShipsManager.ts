@@ -284,7 +284,7 @@ export class ShipsManager {
       }
     }
     this.boatMesh.count = ships.length;
-    this.outlines.count = this.selected.length;
+    this.outlines.count = outlineBoats;
     this.ships = ships;
 
     //==== explosions

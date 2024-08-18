@@ -5,8 +5,9 @@ import fragmentShader from "./shaders/explosion.frag.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 import { ExplosionData } from "./RustWorldTypes";
 import explosionImage from "./assets/explosion.png";
+import { ExplosionKind } from "../pkg/game_state";
 
-const PARTICLES = 120;
+const PARTICLES = 50;
 
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
@@ -19,26 +20,24 @@ export class ExplosionManager {
   }
 
   explodeData(data: ExplosionData, color: THREE.Color) {
-    this.explodeAt(
-      new THREE.Vector3(data.position[0], data.position[1], 0),
-      data.id,
-      color
-    );
-  }
-
-  explodeAt(position: THREE.Vector3, id: number, color: THREE.Color) {
-    if (this.explosions.has(id)) {
+    const position = new THREE.Vector3(data.position[0], data.position[1], 0);
+    if (this.explosions.has(data.id)) {
       return;
     }
+
+    const velocity = data.kind === ExplosionKind.Bullet ? 7 : 30;
+    const size = data.kind === ExplosionKind.Bullet ? 0.7 : 3;
+
     const explosion = this.explosionPool.pop() ?? new Explosion();
     explosion.setParams({
-      size: 1,
+      size,
+      velocity,
       position,
-      id,
+      id: data.id,
       color,
     });
     explosion.addToScene(this.group);
-    this.explosions.set(id, explosion);
+    this.explosions.set(data.id, explosion);
   }
 
   tick(time: number) {
@@ -57,7 +56,7 @@ export class ExplosionManager {
 
 export class Explosion {
   isFinished = false;
-  private v = 30;
+  private v = 15;
   points: THREE.Points<THREE.BufferGeometry, THREE.ShaderMaterial>;
   private particlesPosition: THREE.Vector3[] = [];
   private timeToLive = 0;
@@ -77,6 +76,7 @@ export class Explosion {
     position = new THREE.Vector3(),
     id = 0,
     color = new THREE.Color(0xffff00),
+    velocity = this.v,
   } = {}) {
     this.points.position.set(position.x, position.y, position.z);
     this.particlesPosition.forEach((particle) => {
@@ -85,8 +85,10 @@ export class Explosion {
     this.id = id;
     this.isFinished = false;
     this.t = 0;
-    this.points.material.uniforms.color.value = color;
+    this.v = velocity;
     this.timeToLive = timeToLive;
+    this.points.material.uniforms.color.value = color;
+    this.points.material.uniforms.pointMultiplier.value = size;
     this.randomizeSpeed();
     this.tick(0);
   }
@@ -140,11 +142,11 @@ export class Explosion {
 
     const explosionManager = new ExplosionManager(scene);
     document.addEventListener("click", () => {
-      explosionManager.explodeAt(
-        new THREE.Vector3(0, 0, 0),
-        Math.random() * 1000,
-        new THREE.Color(Math.random() * 0xffffff)
-      );
+      // explosionManager.explodeAt(
+      //   new THREE.Vector3(0, 0, 0),
+      //   Math.random() * 1000,
+      //   new THREE.Color(Math.random() * 0xffffff)
+      // );
     });
 
     const light = new THREE.DirectionalLight(0xffffff, 100);
@@ -179,6 +181,7 @@ export class Explosion {
         time: { value: 0 },
         progress: { value: 0 },
         color: { value: new THREE.Color(0xffff00) },
+        pointMultiplier: { value: 1 },
       },
       blending: THREE.AdditiveBlending,
       transparent: true,

@@ -1,3 +1,5 @@
+import { ExplosionKind } from "../pkg/game_state";
+
 export type ShipData = {
   player_id: number;
   id: number;
@@ -19,6 +21,7 @@ export type ExplosionData = {
   position: [number, number];
   id: number;
   player_id: number;
+  kind: ExplosionKind;
 };
 
 export type IslandData = {
