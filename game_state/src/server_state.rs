@@ -61,6 +61,12 @@ pub struct ShipState {
     pub hp: f64,
 }
 
+impl ShipState {
+    fn key(&self) -> ShipKey {
+        ShipKey::new(self.id, self.player_id)
+    }
+}
+
 impl Default for ShipState {
     fn default() -> Self {
         Self {
@@ -132,7 +138,7 @@ pub struct BroadCastState {
     bullets: BTreeMap<(u64, u64), Bullet>,
     explosions: BTreeMap<u64, Explosion>,
     game_constants: GameConstants,
-    island_owner: BTreeMap<u64, u64>,
+    island_dynamic: BTreeMap<u64, IslandDynamicData>,
     artifact_gen: ArtifactGen,
     current_time: f64,
     rng_seed: u64,
@@ -150,7 +156,7 @@ impl BroadCastState {
             ships: BTreeMap::new(),
             bullets: BTreeMap::new(),
             explosions: BTreeMap::new(),
-            island_owner: BTreeMap::new(),
+            island_dynamic: BTreeMap::new(),
             artifact_gen: ArtifactGen::new(),
             current_time: 5.0,
             rng_seed: 0,
@@ -228,6 +234,12 @@ pub struct Explosion {
 
 pub type GameMap = WorldGrid;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IslandDynamicData {
+    owner: Option<u64>,
+    take_progress: f64,
+}
+
 #[derive(Clone)]
 pub struct ServerState {
     pub players: BTreeMap<u64, PlayerState>,
@@ -235,7 +247,7 @@ pub struct ServerState {
     pub game_map: Arc<GameMap>,
     pub world_gen: Arc<world_gen::WorldGen>,
     pub bullets: BTreeMap<(u64, u64), Bullet>,
-    pub island_owners: BTreeMap<u64, u64>,
+    pub island_dynamic: BTreeMap<u64, IslandDynamicData>,
     pub ship_collection: ShipCollection,
     pub current_time: f64,
     pub game_constants: GameConstants,
@@ -247,7 +259,7 @@ impl ServerState {
     pub fn new() -> Self {
         let world_gen = Arc::new(world_gen::WorldGen::new(1));
         let game_map = Arc::new(world_gen.generate_grid(5_000.0));
-        Self {
+        let mut me = Self {
             game_map,
             world_gen,
             current_time: 0.0,
@@ -255,13 +267,27 @@ impl ServerState {
             explosions: BTreeMap::new(),
             players: BTreeMap::new(),
             bullets: BTreeMap::new(),
-            island_owners: BTreeMap::new(),
+            island_dynamic: BTreeMap::new(),
             ship_collection: ShipCollection::new(),
             game_constants: GameConstants {
                 wind_speed: (0.0, 0.0, 0.0),
                 err_per_m: 0.01,
             },
             rng: fastrand::Rng::with_seed(0),
+        };
+        me.fill_island_dynamic();
+        return me;
+    }
+
+    fn fill_island_dynamic(&mut self) {
+        for island in self.game_map.all_island_data() {
+            self.island_dynamic.insert(
+                island.id,
+                IslandDynamicData {
+                    owner: None,
+                    take_progress: 0.0,
+                },
+            );
         }
     }
 
@@ -303,8 +329,22 @@ impl ServerState {
             current_time: self.current_time,
             rng_seed: self.rng.get_seed(),
             game_constants: self.game_constants.clone(),
-            island_owner: self.island_owners.clone(),
+            island_dynamic: self.island_dynamic.clone(),
         }
+    }
+
+    fn is_ship_near_lighthouse(&self, ship: &ShipState, island_data: &[IslandData]) -> Option<u64> {
+        let tile_size = self.game_map.tile_size;
+        for island in island_data.iter() {
+            let lt_pos: V2D = island.light_house.into();
+            let ship_pos: V2D = ship.position.into();
+            let distance = (lt_pos - ship_pos).magnitude();
+            if distance < tile_size * 2.0 {
+                info!("Ship {} is near lighthouse {}", ship.id, island.id);
+                return Some(island.id);
+            }
+        }
+        return None;
     }
 
     fn tick(&mut self, dt: f64) {
@@ -384,6 +424,20 @@ impl ServerState {
         for explosion in explosions {
             self.explosions.insert(explosion.id, explosion);
         }
+
+        self.tick_handle_island_takes();
+    }
+
+    fn tick_handle_island_takes(&mut self) {
+        let all_island_data = self.game_map.all_island_data();
+        let all_island_data = all_island_data.as_slice();
+        for ship in self.ship_collection.values() {
+            if let Some(island) = self.is_ship_near_lighthouse(ship, all_island_data) {
+                if let Some(island) = self.island_dynamic.get_mut(&island) {
+                    island.owner = Some(ship.player_id);
+                }
+            }
+        }
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {
@@ -431,7 +485,7 @@ impl ServerState {
                 self.current_time = state.current_time;
                 self.rng.seed(state.rng_seed);
                 self.game_constants = state.game_constants;
-                self.island_owners = state.island_owner;
+                self.island_dynamic = state.island_dynamic;
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {

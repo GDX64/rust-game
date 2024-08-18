@@ -30,4 +30,10 @@ export type IslandData = {
   light_house: [number, number];
 };
 
-export type IslandOwners = Map<bigint, bigint>;
+export type IslandOwners = Map<
+  bigint,
+  {
+    take_progress: number;
+    owner?: bigint;
+  }
+>;

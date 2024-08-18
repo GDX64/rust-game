@@ -186,7 +186,7 @@ impl GameWasmState {
     }
 
     pub fn island_owners(&self) -> JsValue {
-        let owners = &self.running_mode.server_state().island_owners;
+        let owners = &self.running_mode.server_state().island_dynamic;
         serde_wasm_bindgen::to_value(&owners).unwrap_or_default()
     }
 

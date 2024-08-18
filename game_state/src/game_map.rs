@@ -42,7 +42,7 @@ pub enum TileKind {
 pub struct IslandData {
     pub id: u64,
     pub center: (f64, f64),
-    pub light_house: Option<(f64, f64)>,
+    pub light_house: (f64, f64),
 }
 
 impl Default for Tile {
@@ -130,7 +130,7 @@ pub struct Island {
     pub tiles: BTreeSet<IslandTile>,
     pub id: u64,
     pub center: V2D,
-    pub light_house: Option<V2D>,
+    pub light_house: V2D,
 }
 
 impl Island {
@@ -162,7 +162,7 @@ impl Island {
             tiles,
             id: number,
             center,
-            light_house: None,
+            light_house: (0.0, 0.0).into(),
         }
     }
 
@@ -170,7 +170,7 @@ impl Island {
         IslandData {
             id: self.id,
             center: (self.center.x, self.center.y),
-            light_house: self.light_house.map(|x| (x.x, x.y)),
+            light_house: (self.light_house.x, self.light_house.y),
         }
     }
 }
@@ -289,9 +289,11 @@ impl WorldGrid {
                     if set.len() > MIN_ISLAND_SIZE {
                         let mut island = Island::new(set, islands_number);
                         let light_house = self.find_lighthouse_place(&island);
-                        island.light_house = light_house;
-                        island_map.insert(islands_number, island);
-                        islands_number += 1;
+                        if let Some(light_house) = light_house {
+                            island.light_house = light_house;
+                            island_map.insert(islands_number, island);
+                            islands_number += 1;
+                        }
                     }
                 }
             }
@@ -404,12 +406,11 @@ impl WorldGrid {
         let mut island_data = self.islands.get(&id)?.island_data();
         island_data.center.0 = self.from_tile_unit(island_data.center.0 as usize);
         island_data.center.1 = self.from_tile_unit(island_data.center.1 as usize);
-        island_data.light_house = island_data.light_house.map(|x| {
-            (
-                self.from_tile_unit(x.0 as usize),
-                self.from_tile_unit(x.1 as usize),
-            )
-        });
+        let (x, y) = island_data.light_house;
+        island_data.light_house = (
+            self.from_tile_unit(x as usize),
+            self.from_tile_unit(y as usize),
+        );
         return Some(island_data);
     }
 
