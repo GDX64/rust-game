@@ -6,14 +6,9 @@ import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
-import brazil from "./assets/brasil.png";
-import {
-  Bullet,
-  ExplosionData,
-  IslandData,
-  IslandOwners,
-  ShipData,
-} from "./RustWorldTypes";
+import { Bullet, ExplosionData, ShipData } from "./RustWorldTypes";
+import { playerColor } from "./PlayerStuff";
+import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
 
@@ -27,13 +22,13 @@ export class ShipsManager {
   );
   selected: number[] = [];
   outlines;
-  flagSprites = new Map<bigint, THREE.Sprite>();
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
   selectionRectangle: THREE.Mesh;
   aimCircle;
   hpBar = new HPBar();
+  islandsManager: IslandsManager;
 
   constructor(
     readonly game: GameWasmState,
@@ -46,6 +41,7 @@ export class ShipsManager {
       shininess: 80,
       emissiveIntensity: 10,
     });
+    this.islandsManager = new IslandsManager(game, scene);
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 10000);
     this.bulletModel.frustumCulled = false;
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -102,36 +98,7 @@ export class ShipsManager {
     this.scene.add(this.aimCircle);
     this.hpBar.addToScene(scene);
 
-    const { spriteGroup, owners, spriteMap } = this.makeFlags();
-    this.flagSprites = spriteMap;
-    this.scene.add(spriteGroup);
-
     this.loadModel();
-  }
-
-  makeFlags() {
-    const owners: IslandOwners = this.game.island_owners();
-    const islandData: IslandData[] = this.game.all_island_data();
-
-    const textureLoader = new THREE.TextureLoader();
-    const flagTexture = textureLoader.load(brazil);
-    const material = new THREE.SpriteMaterial({
-      color: 0xffffff,
-      map: flagTexture,
-    });
-
-    const sprites = islandData.map((island) => {
-      const sprite = new THREE.Sprite(material);
-      sprite.scale.set(50, 35, 1);
-      sprite.position.set(island.center[0], island.center[1], 150);
-      return { sprite, island: island.id };
-    });
-    const spriteGroup = new THREE.Group();
-    spriteGroup.add(...sprites.map(({ sprite }) => sprite));
-    const spriteMap = new Map(
-      sprites.map(({ island, sprite }) => [island, sprite])
-    );
-    return { spriteMap, spriteGroup, owners };
   }
 
   async loadModel() {
@@ -236,6 +203,7 @@ export class ShipsManager {
     if (!this.boatMesh) {
       return;
     }
+    this.islandsManager.tick();
     const ships: ShipData[] = this.game.get_all_ships();
     const bullets: Bullet[] = this.game.get_all_bullets();
     this.selected = this.game.get_selected_ships();
@@ -252,7 +220,7 @@ export class ShipsManager {
         bullets[i].position[1],
         bullets[i].position[2]
       );
-      this.bulletModel.setColorAt(i, this.playerColor(bullets[i].player_id));
+      this.bulletModel.setColorAt(i, playerColor(bullets[i].player_id));
       this.bulletModel.setMatrixAt(i, matrix);
     }
 
@@ -275,7 +243,7 @@ export class ShipsManager {
       const meshToUse = this.boatMesh;
       this.calcBoatAngle(ship, matrix);
       meshToUse.setMatrixAt(i, matrix);
-      const color = this.playerColor(ship.player_id);
+      const color = playerColor(ship.player_id);
       meshToUse.setColorAt(i, color);
       this.hpBar.updateBar(i, matrix, ship.hp);
       if (isMine && this.selected.includes(ship.id)) {
@@ -294,7 +262,7 @@ export class ShipsManager {
     explosions.forEach((explosion) => {
       this.explosionManager.explodeData(
         explosion,
-        this.playerColor(explosion.player_id)
+        playerColor(explosion.player_id)
       );
     });
   }
@@ -309,10 +277,6 @@ export class ShipsManager {
         this.selectBoat(ship.id);
       }
     }
-  }
-
-  private playerColor(playerID: number) {
-    return playerArray[playerID % playerArray.length];
   }
 
   private calcBoatAngle(ship: ShipData, matrix: THREE.Matrix4) {
@@ -331,11 +295,3 @@ export class ShipsManager {
     matrix.setPosition(ship.position[0], ship.position[1], zPos);
   }
 }
-
-const P1 = new THREE.Color("#1b69cf");
-const P2 = new THREE.Color("#e43131");
-const P3 = new THREE.Color("#35d435");
-const P4 = new THREE.Color("#d8d840");
-const P5 = new THREE.Color("#d643d6");
-const P6 = new THREE.Color("#43d8d8");
-const playerArray = [P1, P2, P3, P4, P5, P6];
