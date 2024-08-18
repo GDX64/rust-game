@@ -212,6 +212,7 @@ impl ShipKey {
 pub enum ExplosionKind {
     Bullet,
     Ship,
+    Shot,
 }
 
 type ShipCollection = BTreeMap<ShipKey, ShipState>;
@@ -477,9 +478,22 @@ impl ServerState {
         let target = error_direction.normalize() * error_mod * self.rng.f64() + target;
 
         let mut bullet = ship.shoot_at(self.current_time, target.into())?;
-        bullet.bullet_id = self.next_artifact_id();
+
+        bullet.bullet_id = self.artifact_gen.next();
+
         self.bullets
             .insert((bullet.player_id, bullet.bullet_id), bullet);
+
+        let bullet_pos = bullet.current_pos();
+        let explosion = Explosion {
+            position: (bullet_pos.x, bullet_pos.y),
+            id: self.artifact_gen.next(),
+            time_created: self.current_time,
+            player_id: player_id,
+            kind: ExplosionKind::Shot,
+        };
+
+        self.explosions.insert(explosion.id, explosion);
         Some(())
     }
 }

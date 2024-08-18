@@ -66,7 +66,7 @@ impl Bullet {
         self.eval(self.end_time())
     }
 
-    fn current_pos(&self) -> V3D {
+    pub fn current_pos(&self) -> V3D {
         self.eval(self.time)
     }
 

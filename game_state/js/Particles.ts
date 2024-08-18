@@ -24,9 +24,18 @@ export class ExplosionManager {
     if (this.explosions.has(data.id)) {
       return;
     }
-
-    const velocity = data.kind === ExplosionKind.Bullet ? 7 : 30;
-    const size = data.kind === ExplosionKind.Bullet ? 0.7 : 3;
+    let velocity;
+    let size;
+    if (data.kind === ExplosionKind.Bullet) {
+      velocity = 7;
+      size = 0.7;
+    } else if (data.kind === ExplosionKind.Ship) {
+      velocity = 30;
+      size = 3;
+    } else {
+      velocity = 3;
+      size = 0.3;
+    }
 
     const explosion = this.explosionPool.pop() ?? new Explosion();
     explosion.setParams({
