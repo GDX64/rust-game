@@ -15,6 +15,7 @@ mod world_gen;
 use game_map::V2D;
 use wasm_bindgen::prelude::*;
 mod boidlike;
+mod bot_player;
 mod bullet;
 mod diffing;
 mod ws_channel;

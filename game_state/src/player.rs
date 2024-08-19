@@ -23,7 +23,7 @@ pub struct Player {
     pub selected_ships: Vec<u64>,
     actions: Sender<StateMessage>,
     actions_buffer: Receiver<StateMessage>,
-    rng: fastrand::Rng,
+    pub rng: fastrand::Rng,
 }
 
 impl Player {
@@ -37,6 +37,14 @@ impl Player {
             selected_ships: Vec::new(),
             rng: fastrand::Rng::with_seed(0),
         }
+    }
+
+    pub fn my_ships<'a>(&self, game_state: &'a ServerState) -> Vec<&'a ShipState> {
+        game_state
+            .ship_collection
+            .values()
+            .filter(|ship| ship.player_id == self.id)
+            .collect()
     }
 
     pub fn move_selected_ships(&mut self, game_state: &ServerState, x: f64, y: f64) {

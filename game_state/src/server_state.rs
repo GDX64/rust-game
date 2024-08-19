@@ -238,10 +238,10 @@ pub type GameMap = WorldGrid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IslandDynamicData {
-    owner: Option<u64>,
-    take_progress: f64,
-    production_progress: f64,
-    id: u64,
+    pub owner: Option<u64>,
+    pub take_progress: f64,
+    pub production_progress: f64,
+    pub id: u64,
 }
 
 #[derive(Clone)]

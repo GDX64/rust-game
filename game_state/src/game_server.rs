@@ -1,4 +1,4 @@
-use crate::{player::Player, ServerState, ShipState, StateMessage};
+use crate::{bot_player::BotPlayer, player::Player, ServerState, ShipState, StateMessage};
 use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ pub struct GameServer {
     pub game_state: ServerState,
     players: HashMap<u64, PlayerBufferSenderPair>,
     player_id_counter: u64,
-    bots: Vec<Player>,
+    bots: Vec<BotPlayer>,
     frame_inputs: Vec<StateMessage>,
     rand_gen: fastrand::Rng,
     frames: u64,
@@ -82,14 +82,14 @@ impl GameServer {
         if self.bots.len() > MAX_BOTS {
             return;
         }
-        let bot = Player::new(self.next_player_id());
-        self.add_to_frame(StateMessage::CreatePlayer { id: bot.id });
+        let bot = BotPlayer::new(self.next_player_id());
+        self.add_to_frame(StateMessage::CreatePlayer { id: bot.player.id });
         self.bots.push(bot);
     }
 
     fn remove_bot(&mut self) {
         if let Some(bot) = self.bots.pop() {
-            self.add_to_frame(StateMessage::RemovePlayer { id: bot.id });
+            self.add_to_frame(StateMessage::RemovePlayer { id: bot.player.id });
         }
     }
 
@@ -128,7 +128,7 @@ impl GameServer {
             GameMessage::RemoveBot => self.remove_bot(),
             GameMessage::AddBotShipAt(x, y) => {
                 if let Some(bot) = self.bots.last_mut() {
-                    bot.create_ship(x, y);
+                    bot.player.create_ship(x, y);
                 } else {
                     self.add_bot();
                 }
@@ -176,22 +176,13 @@ impl GameServer {
     }
 
     fn handle_bots(&mut self) {
-        self.bots.iter_mut().for_each(|bot| {
-            bot.tick(&self.game_state);
-            bot.select_all(&self.game_state);
-            bot.auto_shoot(&self.game_state);
-            if bot.number_of_ships(&self.game_state) < 5 {
-                for _ in 0..5 {
-                    let x = self.rand_gen.f64() * 1000.0 - 500.0;
-                    let y = self.rand_gen.f64() * 1000.0 - 500.0;
-                    bot.create_ship(x, y)
-                }
-            }
-        });
+        self.bots
+            .iter_mut()
+            .for_each(|bot| bot.tick(TICK_TIME, &self.game_state));
         let bot_messages = self
             .bots
             .iter()
-            .flat_map(|bot| bot.collect_messages())
+            .flat_map(|bot| bot.player.collect_messages())
             .collect::<Vec<_>>();
         for msg in bot_messages {
             self.add_to_frame(msg);
