@@ -18,6 +18,7 @@ const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
 const SHIP_PRODUCTION_TIME: f64 = 10.0;
+const MAX_PLAYER_SHIPS: usize = 120;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameConstants {
@@ -525,6 +526,14 @@ impl ServerState {
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {
+                let player_ships = self
+                    .ship_collection
+                    .values()
+                    .filter(|s| s.player_id == ship.player_id)
+                    .count();
+                if player_ships >= MAX_PLAYER_SHIPS {
+                    return;
+                }
                 ship.id = self.next_artifact_id();
                 if let Some(place) =
                     self.game_map
