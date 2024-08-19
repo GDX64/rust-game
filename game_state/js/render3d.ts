@@ -54,7 +54,8 @@ export class Render3D {
   readonly shipsManager = new ShipsManager(
     this.gameState,
     this.scene,
-    this.water
+    this.water,
+    this.camera
   );
 
   outline = new OutlinePass(new THREE.Vector2(), this.scene, this.camera);
@@ -164,6 +165,8 @@ export class Render3D {
     } else {
       this.gameState.start_local_server();
     }
+    this.gameState.change_error(this.state.shootError);
+
     setInterval(() => this.saveState(), 1_000);
     document.body.appendChild(this.canvas);
     this.playerActions.bindEvents();

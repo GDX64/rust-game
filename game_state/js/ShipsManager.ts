@@ -14,6 +14,7 @@ const SHIP_SIZE = 10;
 
 const up = new THREE.Vector3(0, 0, 1);
 
+const TOO_FAR = 2_000;
 export class ShipsManager {
   boatMesh: THREE.InstancedMesh = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1),
@@ -33,7 +34,8 @@ export class ShipsManager {
   constructor(
     readonly game: GameWasmState,
     public scene: THREE.Scene,
-    private water: Water
+    private water: Water,
+    private camera: THREE.Camera
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
     const material = new THREE.MeshPhongMaterial({
@@ -233,33 +235,56 @@ export class ShipsManager {
       this.outlines.instanceColor.needsUpdate = true;
     }
 
-    this.hpBar.setInstancesCount(ships.length);
-
     const myID = this.game.my_id();
     let outlineBoats = 0;
+    let boatsDrawn = 0;
+
+    const cameraPosition = this.camera.position;
+
     for (let i = 0; i < ships.length; i++) {
       const ship = ships[i];
+
+      const distanceToCamera =
+        (ship.position[0] - cameraPosition.x) ** 2 +
+        (ship.position[1] - cameraPosition.y) ** 2;
+      const isTooFar = distanceToCamera > TOO_FAR ** 2;
+
+      if (isTooFar) {
+        continue;
+      }
+
+      const drawIndex = boatsDrawn;
+
       const isMine = ship.player_id === myID;
       const meshToUse = this.boatMesh;
       this.calcBoatAngle(ship, matrix);
-      meshToUse.setMatrixAt(i, matrix);
+      meshToUse.setMatrixAt(drawIndex, matrix);
       const color = playerColor(ship.player_id);
-      meshToUse.setColorAt(i, color);
-      this.hpBar.updateBar(i, matrix, ship.hp);
+      meshToUse.setColorAt(drawIndex, color);
+      this.hpBar.updateBar(drawIndex, matrix, ship.hp);
       if (isMine && this.selected.includes(ship.id)) {
         this.outlines.setMatrixAt(outlineBoats, matrix);
         outlineBoats++;
       }
+      boatsDrawn++;
     }
-    this.boatMesh.count = ships.length;
+    this.boatMesh.count = boatsDrawn;
     this.outlines.count = outlineBoats;
     this.ships = ships;
+    this.hpBar.setInstancesCount(boatsDrawn);
 
     //==== explosions
 
     const explosions: ExplosionData[] = this.game.get_all_explosions();
     this.explosionManager.tick(time);
     explosions.forEach((explosion) => {
+      const explosionDistanceToCamera =
+        (explosion.position[0] - cameraPosition.x) ** 2 +
+        (explosion.position[1] - cameraPosition.y) ** 2;
+      if (explosionDistanceToCamera > TOO_FAR ** 2) {
+        return;
+      }
+
       this.explosionManager.explodeData(
         explosion,
         playerColor(explosion.player_id)

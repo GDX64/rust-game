@@ -107,7 +107,7 @@ impl Player {
     }
 
     pub fn shoot_at(&self, target: &V2D, game_state: &ServerState) {
-        self.shooting_ships(game_state).take(1).for_each(|ship| {
+        self.shooting_ships(game_state).take(5).for_each(|ship| {
             self.shoot_at_with(ship.id, target.x, target.y);
         });
     }
