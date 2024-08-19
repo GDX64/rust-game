@@ -648,7 +648,7 @@ mod grid_line {
     }
 }
 
-const MAX_SEARCH: usize = 10_000;
+const MAX_SEARCH: usize = 1_000;
 
 #[cfg(test)]
 mod test {
