@@ -17,6 +17,7 @@ const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
+const SHIP_PRODUCTION_TIME: f64 = 10.0;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameConstants {
@@ -238,6 +239,8 @@ pub type GameMap = WorldGrid;
 pub struct IslandDynamicData {
     owner: Option<u64>,
     take_progress: f64,
+    production_progress: f64,
+    id: u64,
 }
 
 #[derive(Clone)]
@@ -286,6 +289,8 @@ impl ServerState {
                 IslandDynamicData {
                     owner: None,
                     take_progress: 0.0,
+                    production_progress: 0.0,
+                    id: island.id,
                 },
             );
         }
@@ -340,7 +345,6 @@ impl ServerState {
             let ship_pos: V2D = ship.position.into();
             let distance = (lt_pos - ship_pos).magnitude();
             if distance < tile_size * 2.0 {
-                info!("Ship {} is near lighthouse {}", ship.id, island.id);
                 return Some(island.id);
             }
         }
@@ -426,6 +430,7 @@ impl ServerState {
         }
 
         self.tick_handle_island_takes();
+        self.tick_handle_ship_production(dt);
     }
 
     fn tick_handle_island_takes(&mut self) {
@@ -438,6 +443,28 @@ impl ServerState {
                 }
             }
         }
+    }
+
+    fn tick_handle_ship_production(&mut self, dt: f64) {
+        let progress_delta = dt / SHIP_PRODUCTION_TIME;
+        let mut ships_to_create = vec![];
+        for island in self.island_dynamic.values_mut() {
+            if let Some(owner) = island.owner {
+                island.production_progress += progress_delta;
+                if island.production_progress > 1.0 {
+                    if let Some(island_data) = self.game_map.islands.get(&island.id) {
+                        island.production_progress = 0.0;
+                        let mut ship = ShipState::default();
+                        ship.player_id = owner;
+                        ship.position = island_data.center.into();
+                        ships_to_create.push(ship);
+                    }
+                }
+            }
+        }
+        ships_to_create.into_iter().for_each(|ship| {
+            self.on_message(StateMessage::CreateShip { ship: ship });
+        });
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {
@@ -490,8 +517,14 @@ impl ServerState {
             }
             StateMessage::CreateShip { mut ship } => {
                 ship.id = self.next_artifact_id();
-                self.ship_collection
-                    .insert(ShipKey::new(ship.id, ship.player_id), ship);
+                if let Some(place) = self
+                    .game_map
+                    .spiral_search(ship.position.0, ship.position.1)
+                {
+                    ship.position = place;
+                    self.ship_collection
+                        .insert(ShipKey::new(ship.id, ship.player_id), ship);
+                }
             }
             StateMessage::MoveShip {
                 id,

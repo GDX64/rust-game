@@ -36,6 +36,7 @@ pub enum TileKind {
     Water,
     Grass,
     Forest,
+    Lighthouse,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -288,9 +289,15 @@ impl WorldGrid {
                     let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
                     if set.len() > MIN_ISLAND_SIZE {
                         let mut island = Island::new(set, islands_number);
+                        let x = self.from_tile_unit(island.center.x as usize);
+                        let y = self.from_tile_unit(island.center.y as usize);
+                        island.center = V2D::new(x, y);
                         let light_house = self.find_lighthouse_place(&island);
                         if let Some(light_house) = light_house {
                             island.light_house = light_house;
+                            if let Some(tile) = self.get_mut(light_house.x, light_house.y) {
+                                *tile = Tile::new(TileKind::Lighthouse, 0.0);
+                            }
                             island_map.insert(islands_number, island);
                             islands_number += 1;
                         }
@@ -299,6 +306,76 @@ impl WorldGrid {
             }
         }
         self.islands = island_map
+    }
+
+    pub fn spiral_search(&self, x: f64, y: f64) -> Option<(f64, f64)> {
+        let mut x = self.tile_unit(x) as i32;
+        let mut y = self.tile_unit(y) as i32;
+        //search in a spiral from the x y point
+        let x_begin = x;
+        let y_begin = y;
+
+        enum GoinTo {
+            Right,
+            Down,
+            Left,
+            Up,
+        }
+
+        let mut state = GoinTo::Right;
+        let mut level = 0;
+        let max_level = 20;
+        loop {
+            if level > max_level {
+                break;
+            }
+            if let Some(tile) = self.get_tiles(x as usize, y as usize) {
+                if tile.is_water() {
+                    return Some((
+                        self.from_tile_unit(x as usize),
+                        self.from_tile_unit(y as usize),
+                    ));
+                }
+            }
+            let dx = (x - x_begin).abs();
+            let dy = (y - y_begin).abs();
+            match state {
+                GoinTo::Right => {
+                    if dx == level + 1 {
+                        state = GoinTo::Down;
+                        level += 1;
+                        y += 1;
+                    } else {
+                        x += 1;
+                    }
+                }
+                GoinTo::Down => {
+                    if dy == level {
+                        state = GoinTo::Left;
+                        x -= 1;
+                    } else {
+                        y += 1;
+                    }
+                }
+                GoinTo::Left => {
+                    if dx == level {
+                        state = GoinTo::Up;
+                        y -= 1;
+                    } else {
+                        x -= 1;
+                    }
+                }
+                GoinTo::Up => {
+                    if dy == level {
+                        state = GoinTo::Right;
+                        x += 1;
+                    } else {
+                        y -= 1;
+                    }
+                }
+            }
+        }
+        return None;
     }
 
     fn is_surounded_by(&self, x: usize, y: usize, kind: TileKind) -> bool {
@@ -340,10 +417,12 @@ impl WorldGrid {
                 };
                 if tile.is_water() && self.is_surounded_by(x as usize, y as usize, TileKind::Water)
                 {
-                    let distance = (island.center - V2D::new(x as f64, y as f64)).magnitude();
+                    let x = self.from_tile_unit(x as usize);
+                    let y = self.from_tile_unit(y as usize);
+                    let distance = (island.center - V2D::new(x, y)).magnitude();
                     if distance < best_distance {
                         best_distance = distance;
-                        best = Some(V2D::new(x as f64, y as f64));
+                        best = Some(V2D::new(x, y));
                     }
                 }
             }
@@ -403,15 +482,7 @@ impl WorldGrid {
     }
 
     pub fn island_data(&self, id: u64) -> Option<IslandData> {
-        let mut island_data = self.islands.get(&id)?.island_data();
-        island_data.center.0 = self.from_tile_unit(island_data.center.0 as usize);
-        island_data.center.1 = self.from_tile_unit(island_data.center.1 as usize);
-        let (x, y) = island_data.light_house;
-        island_data.light_house = (
-            self.from_tile_unit(x as usize),
-            self.from_tile_unit(y as usize),
-        );
-        return Some(island_data);
+        return Some(self.islands.get(&id)?.island_data());
     }
 
     pub fn island_at(&self, x: f64, y: f64) -> Option<IslandData> {
@@ -505,6 +576,7 @@ impl Debug for WorldGrid {
                     TileKind::Water => "W ",
                     TileKind::Grass => "G ",
                     TileKind::Forest => "F ",
+                    TileKind::Lighthouse => "L ",
                 };
                 s.push_str(c);
             }
@@ -626,5 +698,17 @@ mod test {
 
         grid.find_islands();
         println!("{:?}", grid.islands);
+    }
+
+    #[test]
+    fn spiral_search() {
+        let mut grid = WorldGrid::new(10.0, Tile::default(), 1.0);
+
+        for _ in 0..25 {
+            if let Some((x, y)) = grid.spiral_search(1.0, 1.0) {
+                grid.set(x, y, Tile::grass(1.0));
+            }
+        }
+        println!("{:?}", grid);
     }
 }
