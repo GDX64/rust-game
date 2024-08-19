@@ -456,7 +456,7 @@ impl ServerState {
                         island.production_progress = 0.0;
                         let mut ship = ShipState::default();
                         ship.player_id = owner;
-                        ship.position = island_data.center.into();
+                        ship.position = island_data.light_house.into();
                         ships_to_create.push(ship);
                     }
                 }
@@ -479,6 +479,15 @@ impl ServerState {
         let msg: StateMessage = serde_json::from_str(&msg)?;
         self.on_message(msg.clone());
         Ok(msg)
+    }
+
+    fn is_ship_here(&self, x: f64, y: f64) -> bool {
+        self.ship_collection.values().any(|ship| {
+            let pos = ship.position;
+            let dx = pos.0 - x;
+            let dy = pos.1 - y;
+            dx * dx + dy * dy < SHIP_SIZE * SHIP_SIZE
+        })
     }
 
     pub fn on_message(&mut self, msg: StateMessage) {
@@ -517,9 +526,14 @@ impl ServerState {
             }
             StateMessage::CreateShip { mut ship } => {
                 ship.id = self.next_artifact_id();
-                if let Some(place) = self
-                    .game_map
-                    .spiral_search(ship.position.0, ship.position.1)
+                if let Some(place) =
+                    self.game_map
+                        .spiral_search(ship.position.0, ship.position.1, |x, y, tile| {
+                            if tile.is_water() {
+                                return !self.is_ship_here(x, y);
+                            }
+                            return false;
+                        })
                 {
                     ship.position = place;
                     self.ship_collection

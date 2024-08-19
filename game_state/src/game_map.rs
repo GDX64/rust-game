@@ -308,7 +308,12 @@ impl WorldGrid {
         self.islands = island_map
     }
 
-    pub fn spiral_search(&self, x: f64, y: f64) -> Option<(f64, f64)> {
+    pub fn spiral_search(
+        &self,
+        x: f64,
+        y: f64,
+        is_ok: impl Fn(f64, f64, &Tile) -> bool,
+    ) -> Option<(f64, f64)> {
         let mut x = self.tile_unit(x) as i32;
         let mut y = self.tile_unit(y) as i32;
         //search in a spiral from the x y point
@@ -330,11 +335,11 @@ impl WorldGrid {
                 break;
             }
             if let Some(tile) = self.get_tiles(x as usize, y as usize) {
-                if tile.is_water() {
-                    return Some((
-                        self.from_tile_unit(x as usize),
-                        self.from_tile_unit(y as usize),
-                    ));
+                let x = self.from_tile_unit(x as usize);
+                let y = self.from_tile_unit(y as usize);
+
+                if is_ok(x, y, tile) {
+                    return Some((x, y));
                 }
             }
             let dx = (x - x_begin).abs();
@@ -705,7 +710,7 @@ mod test {
         let mut grid = WorldGrid::new(10.0, Tile::default(), 1.0);
 
         for _ in 0..25 {
-            if let Some((x, y)) = grid.spiral_search(1.0, 1.0) {
+            if let Some((x, y)) = grid.spiral_search(1.0, 1.0, |_, _, tile| tile.is_water()) {
                 grid.set(x, y, Tile::grass(1.0));
             }
         }
