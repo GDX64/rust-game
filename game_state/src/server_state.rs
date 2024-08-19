@@ -122,7 +122,7 @@ impl ShipState {
         let bullet = Bullet {
             bullet_id: 0,
             player_id: self.player_id,
-            ..Bullet::from_target(cannon_pos.into(), target.into())
+            ..Bullet::maybe_from_target(cannon_pos.into(), target.into())?
         };
         self.last_shoot_time = current_time;
         return Some(bullet);

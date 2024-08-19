@@ -5,6 +5,7 @@ use crate::game_map::{V2D, V3D};
 
 const BULLET_SPEED: f64 = 200.0;
 const GRAVITY: f64 = 9.81;
+const MAX_SHOOT_ANGLE: f64 = 3.14 / 10.0;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
@@ -24,7 +25,7 @@ pub struct BulletSnapShot {
 }
 
 impl Bullet {
-    pub fn from_target(initial: V2D, target: V2D) -> Bullet {
+    pub fn maybe_from_target(initial: V2D, target: V2D) -> Option<Bullet> {
         let v0 = BULLET_SPEED;
         let g = GRAVITY;
         let initial: V3D = (initial.x, initial.y, 0.0).into();
@@ -32,7 +33,11 @@ impl Bullet {
         let d_vector = target - initial;
         let d = d_vector.magnitude();
         let angle = f64::asin(d * g / (2.0 * v0 * v0));
-        let angle = if angle.is_nan() { 3.14 / 4.0 } else { angle };
+        let angle = if angle.is_nan() || angle > MAX_SHOOT_ANGLE {
+            return None;
+        } else {
+            angle
+        };
         let vxy = v0 * f64::cos(angle);
         let vx = d_vector.normalize() * vxy;
 
@@ -44,14 +49,14 @@ impl Bullet {
 
         let speed = (vx.x, vx.y, vz).into();
 
-        return Bullet {
+        return Some(Bullet {
             position: initial.into(),
             speed,
             player_id: 0,
             bullet_id: 0,
             target: target.into(),
             time: 0.0,
-        };
+        });
     }
 
     pub fn snapshot(&self) -> BulletSnapShot {
@@ -99,7 +104,7 @@ mod test {
     const BLAST_RADIUS: f64 = 1.0;
 
     fn verify_hits_target(initial: (f64, f64), target: (f64, f64)) -> bool {
-        let bullet = Bullet::from_target(initial.into(), target.into());
+        let bullet = Bullet::maybe_from_target(initial.into(), target.into()).unwrap();
         let hit = bullet.final_pos();
         println!("{:?}", hit);
         return hit.distance((target.0, target.1, 0.0).into()) < BLAST_RADIUS;

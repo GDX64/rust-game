@@ -27,7 +27,7 @@ function defaultState() {
     redShift: false,
     windSpeed: 0,
     bloomEnabled: false,
-    shootError: 0.01,
+    shootError: 0.1,
     showAxes: false,
   };
 }
