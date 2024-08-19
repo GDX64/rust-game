@@ -512,6 +512,11 @@ impl ServerState {
             StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);
                 self.ship_collection.retain(|_, ship| ship.player_id != id);
+                self.island_dynamic.iter_mut().for_each(|(_, island)| {
+                    if island.owner == Some(id) {
+                        island.owner = None;
+                    }
+                });
             }
             StateMessage::BroadCastState { state } => {
                 self.ship_collection = state.ships;
