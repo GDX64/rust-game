@@ -107,9 +107,12 @@ impl Player {
     }
 
     pub fn shoot_at(&self, target: &V2D, game_state: &ServerState) {
-        self.shooting_ships(game_state).take(5).for_each(|ship| {
-            self.shoot_at_with(ship.id, target.x, target.y);
-        });
+        let selected_number = self.selected_ships.len() / 2;
+        self.shooting_ships(game_state)
+            .take(selected_number)
+            .for_each(|ship| {
+                self.shoot_at_with(ship.id, target.x, target.y);
+            });
     }
 
     fn rand_enemies<'a>(&mut self, game_state: &'a ServerState) -> Vec<&'a ShipState> {
