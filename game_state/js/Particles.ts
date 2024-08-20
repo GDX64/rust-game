@@ -98,6 +98,8 @@ export class Explosion {
     this.timeToLive = timeToLive;
     this.points.material.uniforms.color.value = color;
     this.points.material.uniforms.pointMultiplier.value = size;
+    this.points.material.uniforms.maxDistance.value =
+      this.v * Math.sqrt(timeToLive);
     this.randomizeSpeed();
     this.tick(0);
   }
@@ -191,8 +193,12 @@ export class Explosion {
         progress: { value: 0 },
         color: { value: new THREE.Color(0xffff00) },
         pointMultiplier: { value: 1 },
+        maxDistance: { value: 0 },
       },
-      blending: THREE.AdditiveBlending,
+      blending: THREE.CustomBlending,
+      blendEquation: THREE.AddEquation,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
       transparent: true,
       depthTest: true,
       depthWrite: false,
