@@ -26,6 +26,7 @@ export class ExplosionManager {
     }
     let velocity;
     let size;
+    let timeToLive = 3;
     if (data.kind === ExplosionKind.Bullet) {
       velocity = 7;
       size = 0.7;
@@ -35,6 +36,7 @@ export class ExplosionManager {
     } else {
       velocity = 3;
       size = 0.3;
+      timeToLive = 2;
     }
 
     const explosion = this.explosionPool.pop() ?? new Explosion();
@@ -44,6 +46,7 @@ export class ExplosionManager {
       position,
       id: data.id,
       color,
+      timeToLive,
     });
     explosion.addToScene(this.group);
     this.explosions.set(data.id, explosion);

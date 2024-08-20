@@ -15,7 +15,7 @@ void main() {
   float smoke = smoothstep(0.25, 0.3, vDistanceProgress);
   smoke = max(smoothstep(0.3, 0.5, progress), smoke);
   float opacity = 1.0 - progress;
-  opacity = pow(opacity, 2.0);
+  opacity = pow(opacity, 3.0);
   vec3 final_color = texture_color.xyz * texture_color.a * opacity * (1.0 - smoke);
 
   //pra ser aditivo, o alpha tem que ser 0
