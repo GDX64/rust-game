@@ -62,6 +62,7 @@ export class PlayerActions {
     );
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
+    document.addEventListener("kepress", (event) => event.preventDefault());
   }
 
   pointerup(event: PointerEvent) {
@@ -118,6 +119,7 @@ export class PlayerActions {
   }
 
   onKeyUp(event: KeyboardEvent) {
+    event.preventDefault();
     if (event.key === "Control") {
       this.canvas.style.cursor = "auto";
       this.shipsManager.aimCircle.visible = false;
@@ -126,6 +128,7 @@ export class PlayerActions {
   }
 
   onKeyDown(event: KeyboardEvent) {
+    event.preventDefault();
     if (event.key === "c") {
       const intersection = this.waterIntersection();
       if (!intersection) return;
