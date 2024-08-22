@@ -39,9 +39,8 @@ export class ShipsManager {
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
     const material = new THREE.MeshPhongMaterial({
-      color: 0xffffff,
+      color: 0x000000,
       shininess: 80,
-      emissiveIntensity: 10,
     });
     this.islandsManager = new IslandsManager(game, scene);
     this.bulletModel = new THREE.InstancedMesh(geometry, material, 10000);
@@ -222,7 +221,7 @@ export class ShipsManager {
         bullets[i].position[1],
         bullets[i].position[2]
       );
-      this.bulletModel.setColorAt(i, playerColor(bullets[i].player_id));
+      // this.bulletModel.setColorAt(i, playerColor(bullets[i].player_id));
       this.bulletModel.setMatrixAt(i, matrix);
     }
 
