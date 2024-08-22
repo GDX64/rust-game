@@ -30,9 +30,11 @@ export class ExplosionManager {
     if (data.kind === ExplosionKind.Bullet) {
       velocity = 7;
       size = 0.7;
+      timeToLive = 3;
     } else if (data.kind === ExplosionKind.Ship) {
       velocity = 30;
       size = 3;
+      timeToLive = 3;
     } else {
       velocity = 3;
       size = 0.3;
