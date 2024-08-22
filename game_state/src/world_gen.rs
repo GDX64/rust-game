@@ -69,6 +69,7 @@ pub struct WorldGenConfig {
     pub tile_size: f64,
     pub noise_scale: f64,
     pub view_info: ViewInfo,
+    pub width: f64,
 }
 
 impl Default for WorldGenConfig {
@@ -95,6 +96,7 @@ impl Default for WorldGenConfig {
             noise_scale: 0.001,
             tile_size: 20.0,
             height_scale: 500.0,
+            width: 5000.0,
             view_info: ViewInfo::default(),
         }
     }
@@ -157,17 +159,29 @@ impl WorldGen {
         tiles
     }
 
+    fn width_decay_value(&self, x: f64, y: f64) -> f64 {
+        let r = (x * x + y * y).sqrt();
+        let half_width = self.config.width / 2.0;
+        let e0 = half_width * 0.9;
+        let e1 = half_width * 1.2;
+        let decay = smooth_step(e0, e1, r);
+        return decay;
+    }
+
     pub fn get_land_value(&self, x: f64, y: f64) -> f64 {
+        let decay = self.width_decay_value(x, y);
         let x = x * self.config.noise_scale;
         let y = y * self.config.noise_scale;
         let low_land = self.low_land.get(x, y);
         let high_land = self.high_land.get(x, y);
         let low_land_weight = self.config.weight_low_land;
-        let land_value = low_land_weight * low_land + (1.0 - low_land_weight) * high_land;
-        self.terrain_interpolation
+        let mut land_value = low_land_weight * low_land + (1.0 - low_land_weight) * high_land;
+        land_value = self
+            .terrain_interpolation
             .interpolate(land_value)
-            .unwrap_or(0.0)
-            * self.config.height_scale
+            .unwrap_or(0.0);
+        land_value -= decay;
+        land_value * self.config.height_scale
     }
 
     fn get_terrain_at(&self, x: f64, y: f64) -> Tile {
@@ -187,8 +201,8 @@ impl WorldGen {
 }
 
 impl WorldGen {
-    pub fn generate_grid(&self, width: f64) -> WorldGrid {
-        let mut grid = WorldGrid::new(width, Tile::default(), self.config.tile_size);
+    pub fn generate_grid(&self) -> WorldGrid {
+        let mut grid = WorldGrid::new(self.config.width, Tile::default(), self.config.tile_size);
         let data = grid
             .iter()
             .map(|(x, y, _)| {
@@ -205,7 +219,7 @@ impl WorldGen {
 mod test {
     use cgmath::Transform;
 
-    use crate::world_gen::lin_scale;
+    use crate::world_gen::{lin_scale, smooth_step};
 
     #[test]
     fn test() {
@@ -225,6 +239,17 @@ mod test {
         let v = camera.transform_point(cgmath::Point2::new(0.0, 0.0));
         assert_eq!(v, cgmath::Point2::new(-1.0, -1.0));
     }
+
+    #[test]
+    fn test_smooth_step() {
+        let e0 = 0.0;
+        let e1 = 1.0;
+        let x = 0.5;
+        let result = smooth_step(e0, e1, x);
+        assert_eq!(result, 0.5);
+
+        println!("result: {}", smooth_step(-1.0, 1.0, 0.8));
+    }
 }
 
 fn lin_scale(x0: Point2<f64>, x1: Point2<f64>, y0: Point2<f64>, y1: Point2<f64>) -> Matrix3<f64> {
@@ -236,4 +261,16 @@ fn lin_scale(x0: Point2<f64>, x1: Point2<f64>, y0: Point2<f64>, y1: Point2<f64>)
     let beta = y0 - alpha.transform_point(x0);
     let beta_matrix = Matrix3::from_translation(beta);
     return beta_matrix * alpha;
+}
+
+fn smooth_step(e0: f64, e1: f64, x: f64) -> f64 {
+    if x <= e0 {
+        return 0.0;
+    }
+    if x >= e1 {
+        return 1.0;
+    }
+    let t = (x - e0) / (e1 - e0);
+    let result = t * t * (3.0 - 2.0 * t);
+    result
 }

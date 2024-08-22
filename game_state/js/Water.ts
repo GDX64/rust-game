@@ -127,7 +127,7 @@ export class Water {
     const simpleWaterShader = waterCustomShader(makeDs(0), true);
 
     const simplePlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 2, width * 2, 1, 1),
+      new THREE.PlaneGeometry(width * 2, width * 2, 20, 20),
       // waterPlaneGeometry,
       simpleWaterShader
     );

@@ -261,8 +261,8 @@ pub struct ServerState {
 
 impl ServerState {
     pub fn new() -> Self {
-        let world_gen = Arc::new(world_gen::WorldGen::new(1));
-        let game_map = Arc::new(world_gen.generate_grid(5_000.0));
+        let world_gen = Arc::new(world_gen::WorldGen::new(3));
+        let game_map = Arc::new(world_gen.generate_grid());
         let mut me = Self {
             game_map,
             world_gen,
