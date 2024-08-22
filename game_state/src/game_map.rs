@@ -329,7 +329,7 @@ impl WorldGrid {
 
         let mut state = GoinTo::Right;
         let mut level = 0;
-        let max_level = 20;
+        let max_level = 100;
         loop {
             if level > max_level {
                 break;

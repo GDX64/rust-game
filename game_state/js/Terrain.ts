@@ -38,7 +38,7 @@ class TerrainChunk {
   ) {}
 
   static new(gameState: GameWasmState, position: THREE.Vector3) {
-    const segmentsPerKm = 200;
+    const segmentsPerKm = 100;
     const segments = (PLANE_WIDTH / 1000) * segmentsPerKm;
     const planeGeometry = new THREE.PlaneGeometry(
       PLANE_WIDTH,
