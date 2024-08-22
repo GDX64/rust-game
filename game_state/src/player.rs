@@ -2,7 +2,7 @@ use anyhow::Context;
 use cgmath::InnerSpace;
 use log::error;
 
-use crate::{game_map::V2D, ServerState, ShipKey, ShipState, StateMessage};
+use crate::{bullet::Bullet, game_map::V2D, ServerState, ShipKey, ShipState, StateMessage};
 use std::{
     collections::HashMap,
     sync::mpsc::{Receiver, Sender},
@@ -24,6 +24,7 @@ pub struct Player {
     actions: Sender<StateMessage>,
     actions_buffer: Receiver<StateMessage>,
     pub rng: fastrand::Rng,
+    pub shoot_radius: f64,
 }
 
 impl Player {
@@ -36,6 +37,7 @@ impl Player {
             actions_buffer: receiver,
             selected_ships: Vec::new(),
             rng: fastrand::Rng::with_seed(0),
+            shoot_radius: 10.0,
         }
     }
 
@@ -56,6 +58,10 @@ impl Player {
             .for_each(|(&ship_id, (x, y))| {
                 self.move_ship(game_state, ship_id, x, y);
             });
+    }
+
+    pub fn change_shoot_radius(&mut self, r: f64) {
+        self.shoot_radius = r;
     }
 
     pub fn clear_selected_ships(&mut self) {
@@ -95,7 +101,14 @@ impl Player {
         Some(())
     }
 
-    pub fn shoot_at_with(&self, ship_id: u64, x: f64, y: f64) {
+    pub fn shoot_at_with(&mut self, ship_id: u64, x: f64, y: f64) {
+        let theta = self.rng.f64() * std::f64::consts::PI * 2.0;
+        let r = self.rng.f64().sqrt() * self.shoot_radius;
+        let error_x = r * theta.cos();
+        let error_y = r * theta.sin();
+        let x = x + error_x;
+        let y = y + error_y;
+
         let msg = StateMessage::Shoot {
             ship_id,
             player_id: self.id,
@@ -106,13 +119,17 @@ impl Player {
         };
     }
 
-    pub fn shoot_at(&self, target: &V2D, game_state: &ServerState) {
+    pub fn shoot_at(&mut self, target: &V2D, game_state: &ServerState) {
         let selected_number = self.selected_ships.len() / 2;
-        self.shooting_ships(game_state)
+        let ships = self
+            .shooting_ships(game_state)
             .take(selected_number)
-            .for_each(|ship| {
-                self.shoot_at_with(ship.id, target.x, target.y);
-            });
+            .cloned()
+            .collect::<Vec<_>>();
+
+        for ship in ships {
+            self.shoot_at_with(ship.id, target.x, target.y);
+        }
     }
 
     fn rand_enemies<'a>(&mut self, game_state: &'a ServerState) -> Vec<&'a ShipState> {
@@ -135,11 +152,14 @@ impl Player {
 
     pub fn auto_shoot(&mut self, game_state: &ServerState) {
         let enemies = self.rand_enemies(game_state).into_iter();
-        self.shooting_ships(game_state)
+        let pairs: Vec<_> = self
+            .shooting_ships(game_state)
             .zip(enemies)
-            .for_each(|(ship, enemy)| {
-                self.shoot_at_with(ship.id, enemy.position.0, enemy.position.1);
-            });
+            .map(|(ship, enemy)| return (ship.id, enemy.position))
+            .collect();
+        for (id, enemy) in pairs {
+            self.shoot_at_with(id, enemy.0, enemy.1);
+        }
     }
 
     fn shooting_ships<'a>(&'a self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
@@ -153,10 +173,8 @@ impl Player {
     pub fn shoot_error_margin(&self, target: V2D, game: &ServerState) -> Option<f64> {
         let mut ships = self.shooting_ships(game);
         let ship = ships.next()?;
-        let error = game
-            .game_constants
-            .error_margin(ship.position.into(), target);
-        return error;
+        Bullet::maybe_from_target(ship.position.into(), target)?;
+        return Some(self.shoot_radius);
     }
 
     pub fn player_ships<'a>(&self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {

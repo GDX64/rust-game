@@ -43,9 +43,17 @@ impl GameWasmState {
         }
     }
 
-    pub fn action_shoot_at(&self, x: f64, y: f64) {
+    pub fn action_shoot_at(&mut self, x: f64, y: f64) {
         self.player
             .shoot_at(&V2D::new(x, y), self.running_mode.server_state());
+    }
+
+    pub fn shoot_radius(&self) -> f64 {
+        self.player.shoot_radius
+    }
+
+    pub fn change_shoot_radius(&mut self, r: f64) {
+        self.player.change_shoot_radius(r);
     }
 
     pub fn add_bot_ship_at(&mut self, x: f64, y: f64) {

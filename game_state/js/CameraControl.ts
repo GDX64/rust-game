@@ -75,18 +75,9 @@ export class CameraControl {
     document.addEventListener("keydown", (event: KeyboardEvent) => {
       this.keys[event.key] = true;
     });
-    document.addEventListener(
-      "wheel",
-      (event: WheelEvent) => {
-        event.preventDefault();
-        event.stopPropagation();
-        this.onWeel(event);
-      },
-      { passive: false }
-    );
   }
 
-  private onWeel(event: WheelEvent) {
+  onWeel(event: WheelEvent) {
     this.moveCameraOnZ(event.deltaY / 100);
   }
 

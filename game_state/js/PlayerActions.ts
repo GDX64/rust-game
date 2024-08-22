@@ -53,6 +53,11 @@ export class PlayerActions {
   }
 
   bindEvents() {
+    //add unload event
+    window.onbeforeunload = () => {
+      return false;
+    };
+
     this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
     this.canvas.addEventListener("pointermove", this.pointermove.bind(this));
@@ -63,6 +68,21 @@ export class PlayerActions {
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
     document.addEventListener("kepress", (event) => event.preventDefault());
+    document.addEventListener(
+      "wheel",
+      (event: WheelEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.ctrlKey) {
+          const delta = event.deltaY;
+          const shootCircle = this.game.shoot_radius() * (1 + delta / 1000);
+          this.game.change_shoot_radius(shootCircle);
+        } else {
+          this.camera.onWeel(event);
+        }
+      },
+      { passive: false }
+    );
   }
 
   pointerup(event: PointerEvent) {

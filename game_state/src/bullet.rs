@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::game_map::{V2D, V3D};
 
-const BULLET_SPEED: f64 = 200.0;
+const BULLET_SPEED: f64 = 150.0;
 const GRAVITY: f64 = 9.81;
-const MAX_SHOOT_ANGLE: f64 = 3.14 / 10.0;
+const MAX_SHOOT_ANGLE: f64 = 3.14 / 180.0 * 10.0;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
