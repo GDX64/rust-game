@@ -120,7 +120,7 @@ impl Player {
     }
 
     pub fn shoot_at(&mut self, target: &V2D, game_state: &ServerState) {
-        let selected_number = self.selected_ships.len() / 2;
+        let selected_number = (self.selected_ships.len() + 1) / 2;
         let ships = self
             .shooting_ships(game_state)
             .take(selected_number)
