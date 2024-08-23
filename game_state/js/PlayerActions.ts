@@ -75,7 +75,8 @@ export class PlayerActions {
         event.stopPropagation();
         if (event.ctrlKey) {
           const delta = event.deltaY;
-          const shootCircle = this.game.shoot_radius() * (1 + delta / 1000);
+          let shootCircle = this.game.shoot_radius() * (1 + delta / 500);
+          shootCircle = Math.min(100, Math.max(3, shootCircle));
           this.game.change_shoot_radius(shootCircle);
         } else {
           this.camera.onWeel(event);
