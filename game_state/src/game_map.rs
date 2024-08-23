@@ -1,4 +1,5 @@
 use cgmath::{InnerSpace, Vector2, Vector3};
+use log::info;
 use pathfinding::prelude::astar;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -329,13 +330,8 @@ impl WorldGrid {
 
     fn is_surounded_by(&self, x: usize, y: usize, kind: TileKind) -> bool {
         let search = SpiralSearch::new((x as i32, y as i32));
-        for (i, (x, y)) in search.enumerate() {
-            if i > 25 {
-                return false;
-            }
-            let x = x as usize;
-            let y = y as usize;
-            if let Some(tile) = self.get_tiles(x, y) {
+        for (x, y) in search.take(25) {
+            if let Some(tile) = self.get_tiles(x as usize, y as usize) {
                 if tile.kind() != kind {
                     return false;
                 }
@@ -345,31 +341,22 @@ impl WorldGrid {
     }
 
     fn find_lighthouse_place(&self, island: &Island) -> Option<V2D> {
-        let mut best = None;
-        let mut best_distance = f64::INFINITY;
-        let (min_x, min_y, max_x, max_y) = island.bounding_box();
-        for y in min_y..max_y {
-            for x in min_x..max_x {
-                let index = y * (self.tiles_dim as i32) + x;
-                let tile = if let Some(tile) = self.data.get(index as usize) {
-                    tile
-                } else {
-                    continue;
-                };
-
+        let center_x = self.tile_unit(island.center.x) as i32;
+        let center_y = self.tile_unit(island.center.y) as i32;
+        for (x, y) in SpiralSearch::new((center_x, center_y)).take(10_000) {
+            let x = x as usize;
+            let y = y as usize;
+            if let Some(tile) = self.get_tiles(x, y) {
                 if tile.is_water() && self.is_surounded_by(x as usize, y as usize, TileKind::Water)
                 {
+                    info!("Found lighthouse place at {}, {}", x, y);
                     let x = self.from_tile_unit(x as usize);
                     let y = self.from_tile_unit(y as usize);
-                    let distance = (island.center - V2D::new(x, y)).magnitude();
-                    if distance < best_distance {
-                        best_distance = distance;
-                        best = Some(V2D::new(x, y));
-                    }
+                    return Some(V2D::new(x, y));
                 }
             }
         }
-        best
+        return None;
     }
 
     pub fn iter(&mut self) -> impl Iterator<Item = (f64, f64, &Tile)> {
