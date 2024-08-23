@@ -18,6 +18,7 @@ mod boidlike;
 mod bot_player;
 mod bullet;
 mod diffing;
+mod spiral_search;
 mod ws_channel;
 
 #[wasm_bindgen(start)]

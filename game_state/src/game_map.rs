@@ -8,6 +8,8 @@ use std::{
 };
 use wasm_bindgen::prelude::*;
 
+use crate::spiral_search::SpiralSearch;
+
 const MIN_ISLAND_SIZE: usize = 50;
 
 pub struct WorldGrid {
@@ -312,94 +314,28 @@ impl WorldGrid {
         &self,
         x: f64,
         y: f64,
-        is_ok: impl Fn(f64, f64, &Tile) -> bool,
+        mut is_ok: impl FnMut(f64, f64, &Tile) -> bool,
     ) -> Option<(f64, f64)> {
-        let mut x = self.tile_unit(x) as i32;
-        let mut y = self.tile_unit(y) as i32;
-        //search in a spiral from the x y point
-        let x_begin = x;
-        let y_begin = y;
-
-        enum GoinTo {
-            Right,
-            Down,
-            Left,
-            Up,
-        }
-
-        let mut state = GoinTo::Right;
-        let mut level = 0;
-        let max_level = 100;
-        loop {
-            if level > max_level {
-                break;
-            }
-            if let Some(tile) = self.get_tiles(x as usize, y as usize) {
-                let x = self.from_tile_unit(x as usize);
-                let y = self.from_tile_unit(y as usize);
-
-                if is_ok(x, y, tile) {
-                    return Some((x, y));
-                }
-            }
-            let dx = (x - x_begin).abs();
-            let dy = (y - y_begin).abs();
-            match state {
-                GoinTo::Right => {
-                    if dx == level + 1 {
-                        state = GoinTo::Down;
-                        level += 1;
-                        y += 1;
-                    } else {
-                        x += 1;
-                    }
-                }
-                GoinTo::Down => {
-                    if dy == level {
-                        state = GoinTo::Left;
-                        x -= 1;
-                    } else {
-                        y += 1;
-                    }
-                }
-                GoinTo::Left => {
-                    if dx == level {
-                        state = GoinTo::Up;
-                        y -= 1;
-                    } else {
-                        x -= 1;
-                    }
-                }
-                GoinTo::Up => {
-                    if dy == level {
-                        state = GoinTo::Right;
-                        x += 1;
-                    } else {
-                        y -= 1;
-                    }
-                }
+        let mut spiral = SpiralSearch::new((self.tile_unit(x) as i32, self.tile_unit(y) as i32));
+        while let Some((x, y)) = spiral.next() {
+            let x = self.from_tile_unit(x as usize);
+            let y = self.from_tile_unit(y as usize);
+            if is_ok(x, y, self.get(x, y)?) {
+                return Some((x, y));
             }
         }
         return None;
     }
 
     fn is_surounded_by(&self, x: usize, y: usize, kind: TileKind) -> bool {
-        let mut neightbours = vec![];
-        if x > 0 {
-            neightbours.push((x - 1, y));
-        }
-        if y > 0 {
-            neightbours.push((x, y - 1));
-        }
-        if x < self.tiles_dim - 1 {
-            neightbours.push((x + 1, y));
-        }
-        if y < self.tiles_dim - 1 {
-            neightbours.push((x, y + 1));
-        }
-        for (x, y) in neightbours {
-            let index = y * self.tiles_dim + x;
-            if let Some(tile) = self.data.get(index) {
+        let search = SpiralSearch::new((x as i32, y as i32));
+        for (i, (x, y)) in search.enumerate() {
+            if i > 25 {
+                return false;
+            }
+            let x = x as usize;
+            let y = y as usize;
+            if let Some(tile) = self.get_tiles(x, y) {
                 if tile.kind() != kind {
                     return false;
                 }
@@ -420,6 +356,7 @@ impl WorldGrid {
                 } else {
                     continue;
                 };
+
                 if tile.is_water() && self.is_surounded_by(x as usize, y as usize, TileKind::Water)
                 {
                     let x = self.from_tile_unit(x as usize);
@@ -703,17 +640,5 @@ mod test {
 
         grid.find_islands();
         println!("{:?}", grid.islands);
-    }
-
-    #[test]
-    fn spiral_search() {
-        let mut grid = WorldGrid::new(10.0, Tile::default(), 1.0);
-
-        for _ in 0..25 {
-            if let Some((x, y)) = grid.spiral_search(1.0, 1.0, |_, _, tile| tile.is_water()) {
-                grid.set(x, y, Tile::grass(1.0));
-            }
-        }
-        println!("{:?}", grid);
     }
 }
