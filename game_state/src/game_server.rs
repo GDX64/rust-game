@@ -1,4 +1,7 @@
-use crate::{bot_player::BotPlayer, player::Player, ServerState, ShipState, StateMessage};
+use crate::{
+    bot_player::BotPlayer,
+    wasm_game::{ServerState, ShipState, StateMessage},
+};
 use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};

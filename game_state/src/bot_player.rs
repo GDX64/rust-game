@@ -3,7 +3,7 @@ use cgmath::InnerSpace;
 use crate::{
     game_map::{Island, V2D},
     player::Player,
-    ServerState,
+    wasm_game::ServerState,
 };
 
 enum BotState {

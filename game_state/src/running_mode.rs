@@ -1,5 +1,6 @@
+use crate::wasm_game::{ServerState, StateMessage, TICK_TIME};
 use crate::ws_channel::WSChannel;
-use crate::{game_server, GameMessage, ServerState, StateMessage, TICK_TIME};
+use crate::{game_server, wasm_game::GameMessage};
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 use wasm_bindgen::prelude::*;
@@ -189,11 +190,13 @@ impl RunningMode {
 
 #[cfg(test)]
 mod test {
+    use crate::wasm_game::GameMessage;
+
     #[test]
     fn running_mode() {
         let mut local = super::RunningMode::start_local();
-        local.send_game_message(crate::GameMessage::AddBot);
-        local.send_game_message(crate::GameMessage::AddBot);
+        local.send_game_message(GameMessage::AddBot);
+        local.send_game_message(GameMessage::AddBot);
         for _ in 0..1000 {
             local.tick(0.016)
         }
