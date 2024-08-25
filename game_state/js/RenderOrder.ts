@@ -5,4 +5,5 @@ export enum RenderOrder {
   PARTICLES,
   AIM,
   OUTLINE,
+  MINIMAP,
 }

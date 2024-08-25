@@ -1,19 +1,24 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
+import { RenderOrder } from "./RenderOrder";
 
 const PLANE_WIDTH = 5_000; //1km
+const SEGMENTS_PER_KM = 50;
 
 export class Terrain {
+  minimap;
   terrainGroup = new THREE.Group();
   constructor(
     private gameState: GameWasmState,
     private chunks: TerrainChunk[]
   ) {
+    this.minimap = new MiniMap(gameState);
     this.terrainGroup.add(...chunks.map((c) => c.planeMesh));
   }
 
   addToScene(scene: THREE.Scene) {
     scene.add(this.terrainGroup);
+    scene.add(this.minimap.mapMesh);
   }
 
   static new(gameState: GameWasmState) {
@@ -38,8 +43,7 @@ class TerrainChunk {
   ) {}
 
   static new(gameState: GameWasmState, position: THREE.Vector3) {
-    const segmentsPerKm = 100;
-    const segments = (PLANE_WIDTH / 1000) * segmentsPerKm;
+    const segments = (PLANE_WIDTH / 1000) * SEGMENTS_PER_KM;
     const planeGeometry = new THREE.PlaneGeometry(
       PLANE_WIDTH,
       PLANE_WIDTH,
@@ -103,5 +107,76 @@ class TerrainChunk {
     geometry.attributes.position.needsUpdate = true;
     geometry.attributes.color.needsUpdate = true;
     geometry.computeVertexNormals();
+  }
+}
+
+class MiniMap {
+  mapMesh;
+  constructor(game: GameWasmState) {
+    const terrain = game.uint_terrain();
+    const imgData = new Uint8ClampedArray(terrain.length * 4);
+    for (let i = 0; i < terrain.length; i++) {
+      const dataIndex = i * 4;
+      const terrainValue = terrain[i];
+      imgData[dataIndex] = terrainValue * 255;
+      imgData[dataIndex + 1] = terrainValue * 255;
+      imgData[dataIndex + 2] = terrainValue * 255;
+      imgData[dataIndex + 3] = 255;
+    }
+    console.log("terrain", imgData);
+    const dim = Math.sqrt(terrain.length);
+    const canvasTexture = new THREE.DataTexture(
+      imgData,
+      dim,
+      dim,
+      THREE.RGBAFormat
+    );
+    canvasTexture.needsUpdate = true;
+    const material = new THREE.ShaderMaterial({
+      fragmentShader: /*glsl*/ `
+      varying vec2 vUv;
+      uniform sampler2D canvasTexture;
+      void main() {
+        vec4 tex = texture2D(canvasTexture, vUv);
+        tex.a = 0.8;
+        //tex.x = vUv.x;
+        //tex.y = vUv.y;
+        gl_FragColor = tex;
+        //gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+      }
+      `,
+      vertexShader: /*glsl*/ `
+      varying vec2 vUv;
+      uniform float width;
+      uniform float height;
+      uniform float screenWidth;
+      uniform float screenHeight;
+      
+      void main() {
+        vUv = uv;
+        vec4 pos = vec4(position, 1.0);
+        float boxWidth = width / screenWidth ;
+        float boxHeight = height / screenHeight;
+        pos.x = (pos.x + 0.5)*boxWidth + 1.0 - boxWidth;
+        pos.y = (pos.y - 0.5)*boxHeight - 1.0 + boxHeight;
+        pos.z = .5;
+        gl_Position = pos;
+      }
+      `,
+      uniforms: {
+        canvasTexture: { value: canvasTexture },
+        width: { value: 500 },
+        height: { value: 500 },
+        screenWidth: { value: window.innerWidth },
+        screenHeight: { value: window.innerHeight },
+      },
+      depthTest: false,
+      depthWrite: false,
+      transparent: true,
+    });
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    const minimap = new THREE.Mesh(geometry, material);
+    minimap.renderOrder = RenderOrder.MINIMAP;
+    this.mapMesh = minimap;
   }
 }
