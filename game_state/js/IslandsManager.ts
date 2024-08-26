@@ -1,8 +1,8 @@
+// import brazil from "./assets/brasil.png";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import { GameWasmState } from "../pkg/game_state";
 import { playerColor } from "./PlayerStuff";
 import { IslandData, IslandOwners } from "./RustWorldTypes";
-import brazil from "./assets/brasil.png";
 import lighthouseUrl from "./assets/lighthouse.glb?url";
 import * as THREE from "three";
 
@@ -40,12 +40,20 @@ export class IslandsManager {
   }
 
   tick() {
+    if (!this.game.has_map_changed()) {
+      return;
+    }
     const owners: IslandOwners = this.game.island_owners();
     for (const [island, { owner }] of owners.entries()) {
       const sprite = this.flagSprites.get(island);
-      if (sprite && owner !== undefined) {
+      if (!sprite) {
+        continue;
+      }
+      if (owner != null) {
         const ownerColor = playerColor(Number(owner));
         sprite.material.color.set(ownerColor);
+      } else {
+        sprite.material.color.set(0x000000);
       }
     }
   }
@@ -53,10 +61,9 @@ export class IslandsManager {
   makeFlags() {
     const owners: IslandOwners = this.game.island_owners();
     const islandData: IslandData[] = this.game.all_island_data();
-    console.log(islandData);
 
-    const textureLoader = new THREE.TextureLoader();
-    const flagTexture = textureLoader.load(brazil);
+    // const textureLoader = new THREE.TextureLoader();
+    // const flagTexture = textureLoader.load(brazil);
 
     const sprites = islandData.map((island) => {
       const material = new THREE.SpriteMaterial({

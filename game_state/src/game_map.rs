@@ -349,7 +349,6 @@ impl WorldGrid {
             if let Some(tile) = self.get_tiles(x, y) {
                 if tile.is_water() && self.is_surounded_by(x as usize, y as usize, TileKind::Water)
                 {
-                    info!("Found lighthouse place at {}, {}", x, y);
                     let x = self.from_tile_unit(x as usize);
                     let y = self.from_tile_unit(y as usize);
                     return Some(V2D::new(x, y));

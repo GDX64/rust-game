@@ -563,6 +563,7 @@ impl ServerState {
                 self.island_dynamic.iter_mut().for_each(|(_, island)| {
                     if island.owner == Some(id) {
                         island.owner = None;
+                        self.flags.map_changed = true;
                     }
                 });
             }
