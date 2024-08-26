@@ -1,6 +1,7 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 import { RenderOrder } from "./RenderOrder";
+import { playerColor } from "./PlayerStuff";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
@@ -122,18 +123,7 @@ class MiniMap {
   canvasTexture;
 
   mapSizeInPixels = Math.floor(window.innerWidth * minimapPercentage);
-  constructor(game: GameWasmState) {
-    const terrain = game.uint_terrain();
-    const imgData = new Uint8ClampedArray(terrain.length * 4);
-    for (let i = 0; i < terrain.length; i++) {
-      const dataIndex = i * 4;
-      const terrainValue = terrain[i];
-      imgData[dataIndex] = terrainValue * 255;
-      imgData[dataIndex + 1] = terrainValue * 255;
-      imgData[dataIndex + 2] = terrainValue * 255;
-      imgData[dataIndex + 3] = 255;
-    }
-    const dim = Math.sqrt(terrain.length);
+  constructor(private game: GameWasmState) {
     const mapCanvas = new OffscreenCanvas(
       this.mapSizeInPixels,
       this.mapSizeInPixels
@@ -142,16 +132,6 @@ class MiniMap {
       this.mapSizeInPixels,
       this.mapSizeInPixels
     );
-    const imgDataArray = new ImageData(imgData, dim, dim);
-    createImageBitmap(imgDataArray).then((bitmap) => {
-      const ctx = islandsCanvas.getContext("2d")!;
-      ctx.scale(1, -1);
-      ctx.translate(0, -this.mapSizeInPixels);
-      ctx.drawImage(bitmap, 0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
-
-      const ctx2 = mapCanvas.getContext("2d")!;
-      ctx2.drawImage(islandsCanvas, 0, 0);
-    });
 
     const canvasTexture = new THREE.CanvasTexture(mapCanvas);
 
@@ -170,9 +150,51 @@ class MiniMap {
     this.islandsCanvas = islandsCanvas;
     this.mapCanvas = mapCanvas;
     this.canvasTexture = canvasTexture;
+
+    this.updateMiniMap();
+  }
+
+  updateMiniMap() {
+    const terrain = this.game.uint_terrain();
+    const imgData = new Uint8ClampedArray(terrain.length * 4);
+    for (let i = 0; i < terrain.length; i++) {
+      const dataIndex = i * 4;
+      const terrainValue = terrain[i];
+      let color = 0;
+      if (terrainValue === -1) {
+        color = 0;
+      } else if (terrainValue === -2) {
+        color = 0xffffff;
+      } else {
+        const threeColor = playerColor(terrainValue);
+        color = threeColor.getHex();
+      }
+      imgData[dataIndex] = color >> 16;
+      imgData[dataIndex + 1] = (color >> 8) & 0xff;
+      imgData[dataIndex + 2] = color & 0xff;
+      imgData[dataIndex + 3] = 255;
+    }
+
+    const dim = Math.sqrt(terrain.length);
+    const imgDataArray = new ImageData(imgData, dim, dim);
+    createImageBitmap(imgDataArray).then((bitmap) => {
+      const ctx = this.islandsCanvas.getContext("2d")!;
+      ctx.save();
+      ctx.scale(1, -1);
+      ctx.translate(0, -this.mapSizeInPixels);
+      ctx.drawImage(bitmap, 0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
+      ctx.restore();
+
+      const ctx2 = this.mapCanvas.getContext("2d")!;
+      ctx2.drawImage(this.islandsCanvas, 0, 0);
+    });
   }
 
   updateCanvas(camera: THREE.Camera) {
+    if (this.game.has_map_changed()) {
+      console.log("map changed");
+      this.updateMiniMap();
+    }
     const ctx = this.mapCanvas.getContext("2d")!;
     ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
     ctx.drawImage(this.islandsCanvas, 0, 0);

@@ -181,10 +181,10 @@ impl Island {
 
 #[derive(Clone, Copy)]
 pub struct Tile {
-    kind: TileKind,
+    pub kind: TileKind,
     height: f64,
     visited: bool,
-    island_number: Option<u64>,
+    pub island_number: Option<u64>,
 }
 
 pub struct TileUnit(usize);
@@ -309,18 +309,6 @@ impl WorldGrid {
             }
         }
         self.islands = island_map
-    }
-
-    pub fn u8_land_water(&self) -> Vec<u8> {
-        self.data
-            .iter()
-            .map(|x| {
-                match x.kind {
-                    TileKind::Water => 0,
-                    _ => 1,
-                }
-            })
-            .collect::<Vec<u8>>()
     }
 
     pub fn spiral_search(

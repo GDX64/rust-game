@@ -5,7 +5,6 @@ use crate::running_mode::{OnlineClient, RunningMode};
 pub use crate::server_state::*;
 use cgmath::Vector2;
 use core::panic;
-use js_sys::Uint8ClampedArray;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -30,9 +29,17 @@ impl GameWasmState {
             .shoot_at(&V2D::new(x, y), self.running_mode.server_state());
     }
 
-    pub fn uint_terrain(&self) -> Uint8ClampedArray {
-        let terrain = self.running_mode.server_state().game_map.u8_land_water();
-        Uint8ClampedArray::from(terrain.as_slice())
+    pub fn has_map_changed(&self) -> bool {
+        self.running_mode.server_state().flags.map_changed
+    }
+
+    pub fn clear_flags(&mut self) {
+        self.running_mode.clear_flags();
+    }
+
+    pub fn uint_terrain(&self) -> Vec<i16> {
+        let terrain = self.running_mode.server_state().minimap();
+        return terrain;
     }
 
     pub fn shoot_radius(&self) -> f64 {

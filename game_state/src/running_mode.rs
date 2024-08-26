@@ -101,7 +101,7 @@ impl Client for OnlineClient {
 pub struct LocalClient {
     game: game_server::GameServer,
     receiver: Receiver<Vec<u8>>,
-    state: ServerState,
+    pub state: ServerState,
     id: u64,
 }
 
@@ -167,6 +167,17 @@ impl RunningMode {
                 data.tick(dt);
             }
         };
+    }
+
+    pub fn clear_flags(&mut self) {
+        match self {
+            RunningMode::Local(data) => {
+                data.state.clear_flags();
+            }
+            RunningMode::Online(data) => {
+                data.game_state.clear_flags();
+            }
+        }
     }
 
     pub fn id(&self) -> u64 {

@@ -18,6 +18,7 @@ const EXPLOSION_TTL: f64 = 1.0;
 const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
 const SHIP_PRODUCTION_TIME: f64 = 10.0;
+const ISLAND_TAKE_TIME: f64 = 1.0;
 const MAX_PLAYER_SHIPS: usize = 120;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -244,6 +245,11 @@ pub struct IslandDynamicData {
     pub id: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct ServerFlags {
+    pub map_changed: bool,
+}
+
 #[derive(Clone)]
 pub struct ServerState {
     pub players: BTreeMap<u64, PlayerState>,
@@ -257,6 +263,7 @@ pub struct ServerState {
     pub game_constants: GameConstants,
     rng: fastrand::Rng,
     artifact_gen: ArtifactGen,
+    pub flags: ServerFlags,
 }
 
 impl ServerState {
@@ -278,9 +285,36 @@ impl ServerState {
                 err_per_m: 0.01,
             },
             rng: fastrand::Rng::with_seed(0),
+            flags: ServerFlags { map_changed: false },
         };
         me.fill_island_dynamic();
         return me;
+    }
+
+    pub fn minimap(&self) -> Vec<i16> {
+        self.game_map
+            .data
+            .iter()
+            .map(|x| {
+                match x.island_number {
+                    Some(num) => {
+                        if let Some(owner) = self
+                            .island_dynamic
+                            .get(&num)
+                            .and_then(|island| island.owner)
+                        {
+                            //owner id
+                            return owner as i16;
+                        } else {
+                            //island with no owner
+                            -2
+                        }
+                    }
+                    //water
+                    None => -1,
+                }
+            })
+            .collect::<_>()
     }
 
     fn fill_island_dynamic(&mut self) {
@@ -430,17 +464,27 @@ impl ServerState {
             self.explosions.insert(explosion.id, explosion);
         }
 
-        self.tick_handle_island_takes();
+        self.tick_handle_island_takes(dt);
         self.tick_handle_ship_production(dt);
     }
 
-    fn tick_handle_island_takes(&mut self) {
+    fn tick_handle_island_takes(&mut self, dt: f64) {
+        let progress = dt / ISLAND_TAKE_TIME;
         let all_island_data = self.game_map.all_island_data();
         let all_island_data = all_island_data.as_slice();
         for ship in self.ship_collection.values() {
             if let Some(island) = self.is_ship_near_lighthouse(ship, all_island_data) {
                 if let Some(island) = self.island_dynamic.get_mut(&island) {
-                    island.owner = Some(ship.player_id);
+                    if island.owner != Some(ship.player_id) {
+                        island.take_progress -= progress;
+                        if island.take_progress <= 0.0 {
+                            island.owner = Some(ship.player_id);
+                            self.flags.map_changed = true;
+                        }
+                    } else {
+                        island.take_progress += progress;
+                    }
+                    island.take_progress = island.take_progress.min(1.0).max(0.0);
                 }
             }
         }
@@ -466,6 +510,10 @@ impl ServerState {
         ships_to_create.into_iter().for_each(|ship| {
             self.on_message(StateMessage::CreateShip { ship: ship });
         });
+    }
+
+    pub fn clear_flags(&mut self) {
+        self.flags.map_changed = false;
     }
 
     pub fn get_ships(&self) -> Vec<ShipState> {

@@ -208,6 +208,7 @@ export class Render3D {
       this.cameraControls.tick(time);
       this.terrain.tick(this.camera);
       composer.render();
+      this.gameState.clear_flags();
       // renderer.render(scene, this.camera);
     });
 
