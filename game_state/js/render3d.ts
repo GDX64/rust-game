@@ -206,6 +206,7 @@ export class Render3D {
       this.shipsManager.tick(time);
       this.water.tick(time, this.camera);
       this.cameraControls.tick(time);
+      this.terrain.tick(this.camera);
       composer.render();
       // renderer.render(scene, this.camera);
     });

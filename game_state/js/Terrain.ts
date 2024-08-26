@@ -4,6 +4,7 @@ import { RenderOrder } from "./RenderOrder";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
+const minimapPercentage = 0.2;
 
 export class Terrain {
   minimap;
@@ -32,6 +33,10 @@ export class Terrain {
       }
     }
     return new Terrain(gameState, chunks);
+  }
+
+  tick(camera: THREE.Camera) {
+    this.minimap.updateCanvas(camera);
   }
 }
 
@@ -112,6 +117,11 @@ class TerrainChunk {
 
 class MiniMap {
   mapMesh;
+  islandsCanvas;
+  mapCanvas;
+  canvasTexture;
+
+  mapSizeInPixels = Math.floor(window.innerWidth * minimapPercentage);
   constructor(game: GameWasmState) {
     const terrain = game.uint_terrain();
     const imgData = new Uint8ClampedArray(terrain.length * 4);
@@ -123,29 +133,102 @@ class MiniMap {
       imgData[dataIndex + 2] = terrainValue * 255;
       imgData[dataIndex + 3] = 255;
     }
-    console.log("terrain", imgData);
     const dim = Math.sqrt(terrain.length);
-    const canvasTexture = new THREE.DataTexture(
-      imgData,
-      dim,
-      dim,
-      THREE.RGBAFormat
+    const mapCanvas = new OffscreenCanvas(
+      this.mapSizeInPixels,
+      this.mapSizeInPixels
     );
-    canvasTexture.needsUpdate = true;
-    const material = new THREE.ShaderMaterial({
-      fragmentShader: /*glsl*/ `
+    const islandsCanvas = new OffscreenCanvas(
+      this.mapSizeInPixels,
+      this.mapSizeInPixels
+    );
+    const imgDataArray = new ImageData(imgData, dim, dim);
+    createImageBitmap(imgDataArray).then((bitmap) => {
+      const ctx = islandsCanvas.getContext("2d")!;
+      ctx.scale(1, -1);
+      ctx.translate(0, -this.mapSizeInPixels);
+      ctx.drawImage(bitmap, 0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
+
+      const ctx2 = mapCanvas.getContext("2d")!;
+      ctx2.drawImage(islandsCanvas, 0, 0);
+    });
+
+    const canvasTexture = new THREE.CanvasTexture(mapCanvas);
+
+    const material = drawImageShader(
+      canvasTexture,
+      this.mapSizeInPixels,
+      this.mapSizeInPixels
+    );
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    const minimap = new THREE.Mesh(geometry, material);
+    new THREE.SpriteMaterial({});
+    minimap.renderOrder = RenderOrder.MINIMAP;
+    minimap.frustumCulled = false;
+
+    this.mapMesh = minimap;
+    this.islandsCanvas = islandsCanvas;
+    this.mapCanvas = mapCanvas;
+    this.canvasTexture = canvasTexture;
+  }
+
+  updateCanvas(camera: THREE.Camera) {
+    const ctx = this.mapCanvas.getContext("2d")!;
+    ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
+    ctx.drawImage(this.islandsCanvas, 0, 0);
+
+    const cameraPosition = camera.position;
+    const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+
+    //draw triangle for camera
+    ctx.fillStyle = "#ffff00";
+    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
+
+    ctx.save();
+
+    ctx.scale(1, -1);
+    ctx.translate(this.mapSizeInPixels / 2, -this.mapSizeInPixels / 2);
+
+    const xOnCanvas = (cameraPosition.x / PLANE_WIDTH) * this.mapSizeInPixels;
+    const yOnCanvas = (cameraPosition.y / PLANE_WIDTH) * this.mapSizeInPixels;
+
+    // const drawMatrix = new DOMMatrix();
+    // drawMatrix.rotateSelf(rotationOnXY * (180 / Math.PI));
+    // drawMatrix.e = xOnCanvas;
+    // drawMatrix.f = yOnCanvas;
+
+    ctx.translate(xOnCanvas, yOnCanvas);
+    ctx.rotate(rotationOnXY);
+
+    ctx.beginPath();
+    ctx.moveTo(0, -3);
+    ctx.lineTo(10, 0);
+    ctx.lineTo(0, 3);
+    ctx.fill();
+    ctx.restore();
+    this.canvasTexture.needsUpdate = true;
+  }
+}
+
+function drawImageShader(
+  texture: THREE.Texture,
+  width: number,
+  height: number
+) {
+  const material = new THREE.ShaderMaterial({
+    fragmentShader: /*glsl*/ `
       varying vec2 vUv;
       uniform sampler2D canvasTexture;
       void main() {
         vec4 tex = texture2D(canvasTexture, vUv);
-        tex.a = 0.8;
+        tex.a = 0.5;
         //tex.x = vUv.x;
         //tex.y = vUv.y;
         gl_FragColor = tex;
         //gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
       }
       `,
-      vertexShader: /*glsl*/ `
+    vertexShader: /*glsl*/ `
       varying vec2 vUv;
       uniform float width;
       uniform float height;
@@ -155,28 +238,24 @@ class MiniMap {
       void main() {
         vUv = uv;
         vec4 pos = vec4(position, 1.0);
-        float boxWidth = width / screenWidth ;
-        float boxHeight = height / screenHeight;
+        float boxWidth = 2.0*width / (screenWidth) ;
+        float boxHeight = 2.0*height / (screenHeight);
         pos.x = (pos.x + 0.5)*boxWidth + 1.0 - boxWidth;
         pos.y = (pos.y - 0.5)*boxHeight - 1.0 + boxHeight;
         pos.z = .5;
         gl_Position = pos;
       }
       `,
-      uniforms: {
-        canvasTexture: { value: canvasTexture },
-        width: { value: 500 },
-        height: { value: 500 },
-        screenWidth: { value: window.innerWidth },
-        screenHeight: { value: window.innerHeight },
-      },
-      depthTest: false,
-      depthWrite: false,
-      transparent: true,
-    });
-    const geometry = new THREE.PlaneGeometry(1, 1);
-    const minimap = new THREE.Mesh(geometry, material);
-    minimap.renderOrder = RenderOrder.MINIMAP;
-    this.mapMesh = minimap;
-  }
+    uniforms: {
+      canvasTexture: { value: texture },
+      width: { value: width },
+      height: { value: height },
+      screenWidth: { value: window.innerWidth },
+      screenHeight: { value: window.innerHeight },
+    },
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
+  });
+  return material;
 }
