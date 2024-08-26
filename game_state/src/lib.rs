@@ -15,6 +15,8 @@ mod world_gen;
 mod ws_channel;
 use wasm_bindgen::prelude::*;
 
+pub use game_server::{GameServer, TICK_TIME};
+
 #[wasm_bindgen(start)]
 pub fn start() {
     //setup logger
