@@ -54,7 +54,7 @@ impl Player {
     }
 
     pub fn move_selected_ships(&mut self, game_state: &ServerState, x: f64, y: f64) {
-        let formation = unit_formation(self.selected_ships.len(), x, y, game_state);
+        let formation = unit_box_formation(self.selected_ships.len(), x, y);
         self.selected_ships
             .clone()
             .iter()
@@ -273,7 +273,7 @@ impl Player {
     }
 }
 
-fn unit_formation(n: usize, x: f64, y: f64, game: &ServerState) -> Vec<(f64, f64)> {
+fn unit_spiral_formation(n: usize, x: f64, y: f64, game: &ServerState) -> Vec<(f64, f64)> {
     let cell_size = 20.0;
     let spiral = SpiralSearch::new((0, 0));
     let mut v = Vec::with_capacity(n);
