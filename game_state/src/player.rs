@@ -40,7 +40,7 @@ impl Player {
             actions: sender,
             actions_buffer: receiver,
             selected_ships: Vec::new(),
-            rng: fastrand::Rng::with_seed(0),
+            rng: fastrand::Rng::with_seed(id),
             shoot_radius: 10.0,
         }
     }

@@ -5,7 +5,7 @@ import { playerColor } from "./PlayerStuff";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
-const minimapPercentage = 0.2;
+const minimapPercentage = 0.15;
 
 export class Terrain {
   minimap;

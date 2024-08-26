@@ -1,5 +1,4 @@
-use cgmath::InnerSpace;
-use log::info;
+use cgmath::MetricSpace;
 
 use crate::{
     game_map::{Island, V2D},
@@ -9,8 +8,10 @@ use crate::{
 
 enum BotState {
     Idle,
+    WaitingShips,
     Conquering(Island),
     Reiforcing(Island),
+    Dead,
 }
 
 const UNITS_TO_ATTACK_AGAIN: usize = 20;
@@ -31,20 +32,15 @@ impl BotPlayer {
         }
     }
 
+    pub fn is_dead(&self) -> bool {
+        matches!(self.bot_state, BotState::Dead)
+    }
+
     pub fn tick(&mut self, _dt: f64, game_state: &ServerState) -> Option<()> {
         self.player.tick(&game_state);
         self.player.select_all(&game_state);
         self.player.auto_shoot(&game_state);
         let ships_number = self.player.number_of_ships(&game_state);
-        if ships_number <= 0 {
-            self.bot_state = BotState::Idle;
-            let max_size = game_state.game_map.dim;
-            let x = (self.player.rng.f64() - 0.5) * max_size / 2.0;
-            let y = (self.player.rng.f64() - 0.5) * max_size / 2.0;
-            for _ in 0..20 {
-                self.player.create_ship(x, y)
-            }
-        }
 
         let current_time = game_state.current_time;
         if current_time < self.time_to_next_action {
@@ -58,9 +54,20 @@ impl BotPlayer {
 
         match &self.bot_state {
             BotState::Idle => {
-                let closest_island = self.closes_island_not_mine(game_state)?;
-                self.attack_island(game_state, &closest_island);
-                self.bot_state = BotState::Conquering(closest_island);
+                let max_size = game_state.game_map.dim;
+                let x = (self.player.rng.f64() - 0.5) * max_size / 2.0;
+                let y = (self.player.rng.f64() - 0.5) * max_size / 2.0;
+                for _ in 0..20 {
+                    self.player.create_ship(x, y)
+                }
+                self.bot_state = BotState::WaitingShips;
+            }
+            BotState::WaitingShips => {
+                if ships_number > 0 {
+                    let closest_island = self.closes_island_not_mine(game_state)?;
+                    self.attack_island(game_state, &closest_island);
+                    self.bot_state = BotState::Conquering(closest_island);
+                }
             }
             BotState::Conquering(island) => {
                 let island = island.clone();
@@ -72,17 +79,24 @@ impl BotPlayer {
                         self.attack_island(game_state, &island);
                     }
                 }
+                if ships_number == 0 {
+                    self.bot_state = BotState::Dead;
+                }
             }
             BotState::Reiforcing(_island) => {
-                if ships_number < UNITS_TO_ATTACK_AGAIN {
+                if ships_number > UNITS_TO_ATTACK_AGAIN {
                     let closest_island = self.closes_island_not_mine(game_state)?;
                     self.attack_island(game_state, &closest_island);
                     self.bot_state = BotState::Conquering(closest_island);
                 }
+                if ships_number == 0 {
+                    self.bot_state = BotState::Dead;
+                }
+            }
+            BotState::Dead => {
+                return None;
             }
         }
-        info!("Bot state: {:?}", self.bot_state);
-
         return None;
     }
 
@@ -95,6 +109,9 @@ impl BotPlayer {
     fn closes_island_not_mine(&self, game_state: &ServerState) -> Option<Island> {
         let mut center_of_ships = V2D::new(0.0, 0.0);
         let ships = self.player.my_ships(game_state);
+        if ships.len() == 0 {
+            return None;
+        }
         for ship in ships.iter() {
             center_of_ships += ship.position.into();
         }
@@ -110,8 +127,8 @@ impl BotPlayer {
             })
             .min_by_key(|&island| {
                 let pos = island.light_house;
-                let dist = (center_of_ships - pos).magnitude();
-                dist as i32
+                let dist = center_of_ships.distance(pos);
+                dist as u64
             });
         return island.cloned();
     }

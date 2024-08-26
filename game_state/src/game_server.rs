@@ -23,11 +23,6 @@ pub enum GameMessage {
 }
 
 impl GameMessage {
-    pub fn from_string(msg: String) -> GameMessage {
-        let msg: GameMessage = serde_json::from_str(&msg).unwrap_or(GameMessage::None);
-        return msg;
-    }
-
     pub fn serialize_arr(arr: &Vec<GameMessage>) -> Vec<u8> {
         bincode::serialize(arr).expect("Failed to serialize")
     }
@@ -35,27 +30,12 @@ impl GameMessage {
     pub fn from_arr_bytes(bytes: &[u8]) -> Vec<GameMessage> {
         bincode::deserialize(bytes).unwrap_or(vec![])
     }
-
-    pub fn to_string(&self) -> String {
-        match serde_json::to_string(&self) {
-            Ok(msg) => msg,
-            Err(e) => {
-                log::error!("error serializing message: {:?}", e);
-                "error".to_string()
-            }
-        }
-    }
 }
 
 type PlayerSender = Sender<Vec<u8>>;
 struct PlayerBufferSenderPair {
     buffer: Vec<GameMessage>,
     sender: PlayerSender,
-}
-
-pub enum GameServerMessageResult {
-    PlayerID(u64),
-    None,
 }
 
 pub struct GameServer {
@@ -90,10 +70,11 @@ impl GameServer {
         self.bots.push(bot);
     }
 
-    fn remove_bot(&mut self) {
-        if let Some(bot) = self.bots.pop() {
+    fn remove_bot(&mut self, id: u64) {
+        if let Some(bot) = self.bots.iter().find(|bot| bot.player.id == id) {
             self.add_to_frame(StateMessage::RemovePlayer { id: bot.player.id });
         }
+        self.bots.retain(|bot| bot.player.id != id);
     }
 
     pub fn next_player_id(&mut self) -> u64 {
@@ -128,7 +109,11 @@ impl GameServer {
             }
             GameMessage::InputMessage(msg) => self.add_to_frame(msg),
             GameMessage::AddBot => self.add_bot(),
-            GameMessage::RemoveBot => self.remove_bot(),
+            GameMessage::RemoveBot => {
+                if let Some(bot) = self.bots.first() {
+                    self.remove_bot(bot.player.id);
+                }
+            }
             GameMessage::AddBotShipAt(x, y) => {
                 if let Some(bot) = self.bots.last_mut() {
                     bot.player.create_ship(x, y);
@@ -189,6 +174,15 @@ impl GameServer {
             .collect::<Vec<_>>();
         for msg in bot_messages {
             self.add_to_frame(msg);
+        }
+        let dead_bots: Vec<_> = self
+            .bots
+            .iter()
+            .filter(|bot| bot.is_dead())
+            .map(|bot| bot.player.id)
+            .collect();
+        for bot in dead_bots {
+            self.remove_bot(bot);
         }
     }
 
