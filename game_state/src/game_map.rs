@@ -317,8 +317,8 @@ impl WorldGrid {
         y: f64,
         mut is_ok: impl FnMut(f64, f64, &Tile) -> bool,
     ) -> Option<(f64, f64)> {
-        let mut spiral = SpiralSearch::new((self.tile_unit(x) as i32, self.tile_unit(y) as i32));
-        while let Some((x, y)) = spiral.next() {
+        let spiral = SpiralSearch::new((self.tile_unit(x) as i32, self.tile_unit(y) as i32));
+        for (x, y) in spiral.take(10_000) {
             let x = self.from_tile_unit(x as usize);
             let y = self.from_tile_unit(y as usize);
             if is_ok(x, y, self.get(x, y)?) {

@@ -25,6 +25,14 @@ pub struct BulletSnapShot {
 }
 
 impl Bullet {
+    pub fn max_distance() -> f64 {
+        let v_horizontal = BULLET_SPEED * f64::cos(MAX_SHOOT_ANGLE);
+        let v_vertical = BULLET_SPEED * f64::sin(MAX_SHOOT_ANGLE);
+        let time = v_vertical * 2.0 / GRAVITY;
+        let distance = v_horizontal * time;
+        return distance;
+    }
+
     pub fn maybe_from_target(initial: V2D, target: V2D) -> Option<Bullet> {
         let v0 = BULLET_SPEED;
         let g = GRAVITY;

@@ -154,14 +154,24 @@ impl Player {
     }
 
     pub fn auto_shoot(&mut self, game_state: &ServerState) {
-        let enemies = self.rand_enemies(game_state).into_iter();
-        let pairs: Vec<_> = self
+        let mut enemies = self.rand_enemies(game_state).into_iter();
+        let max_bullet_distance = Bullet::max_distance();
+        let pairs = self
             .shooting_ships(game_state)
-            .zip(enemies)
-            .map(|(ship, enemy)| return (ship.id, enemy.position))
-            .collect();
+            .filter_map(|ship| {
+                while let Some(enemy) = enemies.next() {
+                    let enemy_pos: V2D = enemy.position.into();
+                    let ship_pos: V2D = ship.position.into();
+                    let distance = (enemy_pos - ship_pos).magnitude();
+                    if distance < max_bullet_distance {
+                        return Some((ship.id, enemy_pos));
+                    }
+                }
+                return None;
+            })
+            .collect::<Vec<_>>();
         for (id, enemy) in pairs {
-            self.shoot_at_with(id, enemy.0, enemy.1);
+            self.shoot_at_with(id, enemy.x, enemy.y);
         }
     }
 

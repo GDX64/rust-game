@@ -179,9 +179,9 @@ impl GameServer {
     }
 
     fn handle_bots(&mut self) {
-        self.bots
-            .iter_mut()
-            .for_each(|bot| bot.tick(TICK_TIME, &self.game_state));
+        self.bots.iter_mut().for_each(|bot| {
+            bot.tick(TICK_TIME, &self.game_state);
+        });
         let bot_messages = self
             .bots
             .iter()
