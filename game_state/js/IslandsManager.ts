@@ -72,7 +72,7 @@ export class IslandsManager {
       });
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(50, 35, 1);
-      sprite.position.set(island.center[0], island.center[1], 150);
+      sprite.position.set(island.light_house[0], island.light_house[1], 150);
       return { sprite, island: island.id };
     });
     const spriteGroup = new THREE.Group();
