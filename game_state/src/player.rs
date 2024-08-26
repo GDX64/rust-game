@@ -1,6 +1,7 @@
 use crate::{
     bullet::Bullet,
     game_map::V2D,
+    spiral_search::SpiralSearch,
     wasm_game::{ServerState, ShipKey, ShipState, StateMessage},
 };
 use anyhow::Context;
@@ -53,7 +54,7 @@ impl Player {
     }
 
     pub fn move_selected_ships(&mut self, game_state: &ServerState, x: f64, y: f64) {
-        let formation = unit_formation(self.selected_ships.len(), x, y);
+        let formation = unit_formation(self.selected_ships.len(), x, y, game_state);
         self.selected_ships
             .clone()
             .iter()
@@ -272,7 +273,24 @@ impl Player {
     }
 }
 
-fn unit_formation(n: usize, x: f64, y: f64) -> Vec<(f64, f64)> {
+fn unit_formation(n: usize, x: f64, y: f64, game: &ServerState) -> Vec<(f64, f64)> {
+    let cell_size = 20.0;
+    let spiral = SpiralSearch::new((0, 0));
+    let mut v = Vec::with_capacity(n);
+    for (x_i, y_i) in spiral {
+        let x = x_i as f64 * cell_size + x;
+        let y = y_i as f64 * cell_size + y;
+        if game.game_map.is_allowed_place(x, y) {
+            v.push((x, y));
+        }
+        if v.len() >= n {
+            break;
+        }
+    }
+    return v;
+}
+
+fn unit_box_formation(n: usize, x: f64, y: f64) -> Vec<(f64, f64)> {
     let cell_size = 20.0;
     let sqrt = (n as f64).sqrt();
     let cols = sqrt;
@@ -299,7 +317,7 @@ fn unit_formation(n: usize, x: f64, y: f64) -> Vec<(f64, f64)> {
 mod test {
     #[test]
     fn test_formation_even() {
-        let formation = super::unit_formation(4, 0.0, 0.0);
+        let formation = super::unit_box_formation(4, 0.0, 0.0);
         let expected = vec![(-10.0, -10.0), (10.0, -10.0), (-10.0, 10.0), (10.0, 10.0)];
         assert_eq!(formation, expected);
     }

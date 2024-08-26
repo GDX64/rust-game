@@ -1,4 +1,5 @@
 use cgmath::InnerSpace;
+use log::info;
 
 use crate::{
     game_map::{Island, V2D},
@@ -7,17 +8,18 @@ use crate::{
 };
 
 enum BotState {
-    WaitingShips,
     Idle,
     Conquering(Island),
     Reiforcing(Island),
 }
 
 const UNITS_TO_ATTACK_AGAIN: usize = 20;
+const TIME_FOR_ACTION: f64 = 1.0;
 
 pub struct BotPlayer {
     pub player: Player,
     bot_state: BotState,
+    time_to_next_action: f64,
 }
 
 impl BotPlayer {
@@ -25,6 +27,7 @@ impl BotPlayer {
         Self {
             player: Player::new(id),
             bot_state: BotState::Idle,
+            time_to_next_action: 0.0,
         }
     }
 
@@ -34,53 +37,59 @@ impl BotPlayer {
         self.player.auto_shoot(&game_state);
         let ships_number = self.player.number_of_ships(&game_state);
         if ships_number <= 0 {
-            self.bot_state = BotState::WaitingShips;
+            self.bot_state = BotState::Idle;
             let max_size = game_state.game_map.dim;
-            let x = (self.player.rng.f64() - 0.5) * max_size;
-            let y = (self.player.rng.f64() - 0.5) * max_size;
+            let x = (self.player.rng.f64() - 0.5) * max_size / 2.0;
+            let y = (self.player.rng.f64() - 0.5) * max_size / 2.0;
             for _ in 0..20 {
                 self.player.create_ship(x, y)
             }
         }
 
+        let current_time = game_state.current_time;
+        if current_time < self.time_to_next_action {
+            return None;
+        }
+        self.time_to_next_action = current_time + TIME_FOR_ACTION;
+        let should_take_action = self.player.rng.f64() < 0.5;
+        if !should_take_action {
+            return None;
+        }
+
         match &self.bot_state {
-            BotState::WaitingShips => {
-                if self.player.number_of_ships(&game_state) > 0 {
-                    self.bot_state = BotState::Idle;
-                }
-            }
             BotState::Idle => {
-                let closest_island = self.attack_closest_island(game_state)?;
+                let closest_island = self.closes_island_not_mine(game_state)?;
+                self.attack_island(game_state, &closest_island);
                 self.bot_state = BotState::Conquering(closest_island);
             }
             BotState::Conquering(island) => {
+                let island = island.clone();
                 if let Some(island_dyn) = game_state.island_dynamic.get(&island.id) {
                     let is_mine = island_dyn.owner == Some(self.player.id);
                     if is_mine {
                         self.bot_state = BotState::Reiforcing(island.clone());
+                    } else {
+                        self.attack_island(game_state, &island);
                     }
                 }
             }
             BotState::Reiforcing(_island) => {
                 if ships_number < UNITS_TO_ATTACK_AGAIN {
-                    return None;
+                    let closest_island = self.closes_island_not_mine(game_state)?;
+                    self.attack_island(game_state, &closest_island);
+                    self.bot_state = BotState::Conquering(closest_island);
                 }
-                let closest_island = self.attack_closest_island(game_state)?;
-                self.bot_state = BotState::Conquering(closest_island);
             }
         }
+        info!("Bot state: {:?}", self.bot_state);
+
         return None;
     }
 
-    fn attack_closest_island(&mut self, game_state: &ServerState) -> Option<Island> {
-        let closest_island = self.closes_island_not_mine(game_state);
-        if let Some(island) = closest_island {
-            self.player.select_all(game_state);
-            self.player
-                .move_selected_ships(game_state, island.light_house.x, island.light_house.y);
-            return Some(island);
-        }
-        return None;
+    fn attack_island(&mut self, game_state: &ServerState, island: &Island) {
+        self.player.select_all(game_state);
+        self.player
+            .move_selected_ships(game_state, island.light_house.x, island.light_house.y);
     }
 
     fn closes_island_not_mine(&self, game_state: &ServerState) -> Option<Island> {
