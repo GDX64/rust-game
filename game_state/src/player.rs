@@ -61,7 +61,10 @@ impl Player {
             .iter()
             .zip(formation)
             .for_each(|(&ship_id, (x, y))| {
-                self.move_ship(game_state, ship_id, x, y);
+                let path = self.find_path_for_ship(game_state, ship_id, x, y);
+                if let Some(path) = path {
+                    self.make_ship_follow_path(ship_id, path);
+                }
             });
     }
 
@@ -79,13 +82,23 @@ impl Player {
             .retain(|&id| game.get_ship(id, self.id).is_some())
     }
 
-    pub fn move_ship(
+    fn make_ship_follow_path(&mut self, ship_id: u64, path: Vec<V2D>) {
+        let ship = PlayerShip {
+            path,
+            id: ship_id,
+            destroyed: false,
+        };
+
+        self.moving_ships.insert(ship_id, ship);
+    }
+
+    pub fn find_path_for_ship(
         &mut self,
         game_state: &ServerState,
         ship_id: u64,
         x: f64,
         y: f64,
-    ) -> Option<()> {
+    ) -> Option<Vec<V2D>> {
         let server_ship = game_state
             .ship_collection
             .get(&ShipKey::new(ship_id, self.id))?;
@@ -95,15 +108,7 @@ impl Player {
 
         //the fist one is already the current position
         let path = path[1..].to_vec();
-
-        let ship = PlayerShip {
-            path,
-            id: ship_id,
-            destroyed: false,
-        };
-
-        self.moving_ships.insert(ship_id, ship);
-        Some(())
+        return Some(path);
     }
 
     pub fn shoot_at_with(&mut self, ship_id: u64, x: f64, y: f64) {
@@ -167,7 +172,7 @@ impl Player {
                     .filter_map(|entity| {
                         if let HashEntityKind::Boat(key) = entity.entity {
                             if key.player_id != self.id {
-                                return game_state.ship_collection.get(&key);
+                                return Some((entity.position, key));
                             } else {
                                 return None;
                             }
@@ -175,15 +180,14 @@ impl Player {
                             return None;
                         }
                     });
-                for enemy in enemies {
-                    if shot_already.contains(&enemy) {
+                for (enemy_pos, key) in enemies {
+                    if shot_already.contains(&key) {
                         continue;
                     }
-                    let enemy_pos: V2D = enemy.position.into();
                     let ship_pos: V2D = ship.position.into();
                     let distance = (enemy_pos - ship_pos).magnitude();
                     if distance < max_bullet_distance {
-                        shot_already.push(enemy);
+                        shot_already.push(key);
                         return Some((ship.id, enemy_pos));
                     }
                 }
