@@ -41,6 +41,7 @@ impl OnlineClient {
                     GameMessage::MyID(id) => {
                         info!("My ID is: {}", id);
                         self.id = id;
+                        self.send(GameMessage::AskBroadcast { player: id });
                         return ();
                     }
                     _ => {}

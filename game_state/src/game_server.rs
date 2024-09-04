@@ -19,6 +19,7 @@ pub enum GameMessage {
     AddBotShipAt(f64, f64),
     RemoveBot,
     MyID(u64),
+    AskBroadcast { player: u64 },
     None,
 }
 
@@ -121,6 +122,10 @@ impl GameServer {
                     self.add_bot();
                 }
             }
+            GameMessage::AskBroadcast { player } => {
+                let state = self.game_state.state_message();
+                self.send_message_to_player(player, GameMessage::FrameMessage(vec![state]));
+            }
             GameMessage::MyID(_) => {}
             GameMessage::None => {}
         };
@@ -139,9 +144,6 @@ impl GameServer {
 
         let my_id = GameMessage::MyID(id);
         self.send_message_to_player(id, my_id);
-
-        let state = self.game_state.state_message();
-        self.send_message_to_player(id, GameMessage::FrameMessage(vec![state]));
 
         for _ in 0..100 {
             let mut ship = ShipState::default();
