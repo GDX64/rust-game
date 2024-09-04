@@ -19,7 +19,7 @@ const BOAT_ACC: f64 = 30.0;
 pub struct PlayerShip {
     path: Vec<V2D>,
     id: u64,
-    destroyed: bool,
+    should_remove: bool,
 }
 
 pub struct Player {
@@ -86,7 +86,7 @@ impl Player {
         let ship = PlayerShip {
             path,
             id: ship_id,
-            destroyed: false,
+            should_remove: false,
         };
 
         self.moving_ships.insert(ship_id, ship);
@@ -158,6 +158,18 @@ impl Player {
 
     pub fn select_all(&mut self, game_state: &ServerState) {
         self.selected_ships = self.player_ships(game_state).map(|ship| ship.id).collect();
+    }
+
+    pub fn select_all_idle(&mut self, game_state: &ServerState) {
+        self.selected_ships = self
+            .player_ships(game_state)
+            .filter_map(|ship| {
+                if self.moving_ships.contains_key(&ship.id) {
+                    return None;
+                }
+                return Some(ship.id);
+            })
+            .collect();
     }
 
     pub fn auto_shoot(&mut self, game_state: &ServerState) {
@@ -255,7 +267,7 @@ impl Player {
             let ship = if let Some(ship) = ship {
                 ship
             } else {
-                player_ship.destroyed = true;
+                player_ship.should_remove = true;
                 continue;
             };
             loop {
@@ -272,6 +284,7 @@ impl Player {
                             }) {
                                 log::error!("Error sending message: {:?}", e)
                             }
+                            player_ship.should_remove = true;
                             break;
                         } else {
                             continue;
@@ -292,7 +305,7 @@ impl Player {
             }
         }
 
-        self.moving_ships.retain(|_, ship| !ship.destroyed);
+        self.moving_ships.retain(|_, ship| !ship.should_remove);
     }
 }
 

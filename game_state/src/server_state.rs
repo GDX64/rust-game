@@ -66,7 +66,7 @@ pub struct ShipState {
 }
 
 impl ShipState {
-    fn key(&self) -> ShipKey {
+    pub fn key(&self) -> ShipKey {
         ShipKey::new(self.id, self.player_id)
     }
 

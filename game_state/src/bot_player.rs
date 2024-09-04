@@ -101,7 +101,7 @@ impl BotPlayer {
     }
 
     fn attack_island(&mut self, game_state: &ServerState, island: &Island) {
-        self.player.select_all(game_state);
+        self.player.select_all_idle(game_state);
         self.player
             .move_selected_ships(game_state, island.light_house.x, island.light_house.y);
     }

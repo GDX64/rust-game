@@ -467,9 +467,7 @@ impl WorldGrid {
                 let sw = get_info(p.x - 1, p.y + 1);
                 let s = get_info(p.x, p.y + 1);
                 let se = get_info(p.x + 1, p.y + 1);
-                return vec![nw, n, ne, w, e, sw, s, se]
-                    .into_iter()
-                    .filter_map(|x| x);
+                return [nw, n, ne, w, e, sw, s, se].into_iter().filter_map(|x| x);
             },
             goal_fn,
             |p| {
@@ -571,7 +569,7 @@ mod grid_line {
     }
 }
 
-const MAX_SEARCH: usize = 1_000;
+const MAX_SEARCH: usize = 5_000;
 
 #[cfg(test)]
 mod test {
