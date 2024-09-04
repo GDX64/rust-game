@@ -58,7 +58,7 @@ impl HashGrid {
         Some(())
     }
 
-    fn query_near<'a>(&'a self, v: &V2D) -> impl Iterator<Item = &'a HashEntity> {
+    pub fn query_near<'a>(&'a self, v: &V2D) -> impl Iterator<Item = &'a HashEntity> {
         let entities = self
             .near_buckets(v)
             .into_iter()

@@ -344,7 +344,7 @@ impl ServerState {
     }
 
     fn update_hashgrid(&mut self) {
-        let mut hash_grid = HashGrid::new(self.game_map.dim, self.game_map.tile_size);
+        let mut hash_grid = HashGrid::new(self.game_map.dim, Bullet::max_distance());
         for state in self.ship_collection.values() {
             hash_grid.insert(state.to_hash_entity());
         }

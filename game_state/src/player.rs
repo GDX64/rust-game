@@ -1,6 +1,7 @@
 use crate::{
     bullet::Bullet,
     game_map::V2D,
+    hashgrid::HashEntityKind,
     spiral_search::SpiralSearch,
     wasm_game::{ServerState, ShipKey, ShipState, StateMessage},
 };
@@ -155,16 +156,34 @@ impl Player {
     }
 
     pub fn auto_shoot(&mut self, game_state: &ServerState) {
-        let mut enemies = self.rand_enemies(game_state).into_iter();
         let max_bullet_distance = Bullet::max_distance();
+        let mut shot_already = vec![];
         let pairs = self
             .shooting_ships(game_state)
             .filter_map(|ship| {
-                while let Some(enemy) = enemies.next() {
+                let enemies = game_state
+                    .hash_grid
+                    .query_near(&ship.position.into())
+                    .filter_map(|entity| {
+                        if let HashEntityKind::Boat(key) = entity.entity {
+                            if key.player_id != self.id {
+                                return game_state.ship_collection.get(&key);
+                            } else {
+                                return None;
+                            }
+                        } else {
+                            return None;
+                        }
+                    });
+                for enemy in enemies {
+                    if shot_already.contains(&enemy) {
+                        continue;
+                    }
                     let enemy_pos: V2D = enemy.position.into();
                     let ship_pos: V2D = ship.position.into();
                     let distance = (enemy_pos - ship_pos).magnitude();
                     if distance < max_bullet_distance {
+                        shot_already.push(enemy);
                         return Some((ship.id, enemy_pos));
                     }
                 }
