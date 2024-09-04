@@ -29,6 +29,7 @@ function defaultState() {
     bloomEnabled: false,
     shootError: 0.1,
     showAxes: false,
+    fastSimulation: false,
   };
 }
 export class Render3D {
@@ -77,6 +78,7 @@ export class Render3D {
     );
 
     //reset gui defaults
+    this.gui.add(this.state, "fastSimulation");
     this.gui.add(
       {
         reset: () => {
@@ -199,17 +201,28 @@ export class Render3D {
 
     this.outline = outline;
 
+    let lastTime = 0;
     renderer.setAnimationLoop((_time) => {
       const time = _time / 1000;
-      this.playerActions.tick();
-      this.gameState.tick(time);
-      this.shipsManager.tick(time);
-      this.water.tick(time, this.camera);
-      this.cameraControls.tick(time);
+      const dt = time - lastTime;
+      if (!lastTime) {
+        lastTime = time;
+        return;
+      }
+      const N = this.state.fastSimulation ? 10 : 1;
+      for (let i = 0; i < N; i++) {
+        const gameTime = this.gameState.current_time + dt;
+        this.gameState.tick(gameTime);
+      }
+      const gameTime = this.gameState.current_time;
+      this.shipsManager.tick(gameTime);
+      this.water.tick(gameTime, this.camera);
       this.terrain.tick(this.camera);
-      composer.render();
+      this.playerActions.tick();
+      this.cameraControls.tick(time);
       this.gameState.clear_flags();
-      // renderer.render(scene, this.camera);
+      composer.render();
+      lastTime = time;
     });
 
     const helpersFolder = this.gui.addFolder("Helpers");

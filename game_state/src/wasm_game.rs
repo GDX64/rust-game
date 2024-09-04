@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 pub struct GameWasmState {
     running_mode: RunningMode,
     player: Player,
-    current_time: f64,
+    pub current_time: f64,
 }
 
 #[wasm_bindgen]
