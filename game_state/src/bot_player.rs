@@ -73,7 +73,7 @@ impl BotPlayer {
             BotState::Conquering(island) => {
                 let island = island.clone();
                 let units_to_attack =
-                    self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN;
+                    self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN / 2;
                 if let Some(island_dyn) = game_state.island_dynamic.get(&island.id) {
                     let is_mine = island_dyn.owner == Some(self.player.id);
                     if is_mine {
