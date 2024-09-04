@@ -5,6 +5,7 @@ mod diffing;
 mod game_map;
 mod game_noise;
 mod game_server;
+mod hashgrid;
 mod interpolation;
 mod player;
 mod running_mode;
