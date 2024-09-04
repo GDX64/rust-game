@@ -41,6 +41,7 @@ impl BotPlayer {
         self.player.select_all(&game_state);
         self.player.auto_shoot(&game_state);
         let ships_number = self.player.number_of_ships(&game_state);
+        let idle_ships = self.player.number_of_idle_ships(game_state);
 
         let current_time = game_state.current_time;
         if current_time < self.time_to_next_action {
@@ -71,11 +72,13 @@ impl BotPlayer {
             }
             BotState::Conquering(island) => {
                 let island = island.clone();
+                let units_to_attack =
+                    self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN;
                 if let Some(island_dyn) = game_state.island_dynamic.get(&island.id) {
                     let is_mine = island_dyn.owner == Some(self.player.id);
                     if is_mine {
                         self.bot_state = BotState::Reiforcing(island.clone());
-                    } else {
+                    } else if idle_ships >= units_to_attack {
                         self.attack_island(game_state, &island);
                     }
                 }
@@ -87,7 +90,7 @@ impl BotPlayer {
                 let units_to_attack =
                     self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN;
 
-                if self.player.number_of_idle_ships(game_state) > units_to_attack {
+                if idle_ships >= units_to_attack {
                     let closest_island = self.closes_island_not_mine(game_state)?;
                     self.attack_island(game_state, &closest_island);
                     self.bot_state = BotState::Conquering(closest_island);
