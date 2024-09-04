@@ -2,6 +2,7 @@ use crate::{
     bullet::Bullet,
     diffing::Diff,
     game_map::{IslandData, WorldGrid, V2D, V3D},
+    hashgrid::{HashEntity, HashEntityKind, HashGrid},
     world_gen,
 };
 use cgmath::InnerSpace;
@@ -67,6 +68,14 @@ pub struct ShipState {
 impl ShipState {
     fn key(&self) -> ShipKey {
         ShipKey::new(self.id, self.player_id)
+    }
+
+    fn to_hash_entity(&self) -> HashEntity {
+        let key = self.key();
+        HashEntity {
+            entity: HashEntityKind::Boat(key),
+            position: self.position.into(),
+        }
     }
 }
 
@@ -261,6 +270,7 @@ pub struct ServerState {
     pub ship_collection: ShipCollection,
     pub current_time: f64,
     pub game_constants: GameConstants,
+    pub hash_grid: HashGrid,
     rng: fastrand::Rng,
     artifact_gen: ArtifactGen,
     pub flags: ServerFlags,
@@ -270,6 +280,7 @@ impl ServerState {
     pub fn new() -> Self {
         let world_gen = Arc::new(world_gen::WorldGen::new(5));
         let game_map = Arc::new(world_gen.generate_grid());
+        let hash_grid = HashGrid::new(game_map.dim, game_map.tile_size);
         let mut me = Self {
             game_map,
             world_gen,
@@ -284,6 +295,7 @@ impl ServerState {
                 wind_speed: (0.0, 0.0, 0.0),
                 err_per_m: 0.01,
             },
+            hash_grid,
             rng: fastrand::Rng::with_seed(0),
             flags: ServerFlags { map_changed: true },
         };
@@ -329,6 +341,14 @@ impl ServerState {
                 },
             );
         }
+    }
+
+    fn update_hashgrid(&mut self) {
+        let mut hash_grid = HashGrid::new(self.game_map.dim, self.game_map.tile_size);
+        for state in self.ship_collection.values() {
+            hash_grid.insert(state.to_hash_entity());
+        }
+        self.hash_grid = hash_grid;
     }
 
     pub fn all_islands(&self) -> Vec<IslandData> {
@@ -387,6 +407,8 @@ impl ServerState {
     }
 
     fn tick(&mut self, dt: f64) {
+        self.update_hashgrid();
+
         self.current_time += dt;
         let mut explosions = vec![];
 

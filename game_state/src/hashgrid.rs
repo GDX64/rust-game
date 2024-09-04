@@ -1,17 +1,18 @@
 use crate::{game_map::V2D, wasm_game::ShipKey};
 
 #[derive(Clone)]
-struct HashEntity {
-    position: V2D,
-    entity: EntityKind,
+pub struct HashEntity {
+    pub position: V2D,
+    pub entity: HashEntityKind,
 }
 
 #[derive(Clone)]
-enum EntityKind {
+pub enum HashEntityKind {
     Boat(ShipKey),
     Lighthouse(u64),
 }
 
+#[derive(Clone)]
 pub struct HashGrid {
     tile_size: f64,
     entities: Vec<Option<Vec<HashEntity>>>,
@@ -20,7 +21,7 @@ pub struct HashGrid {
 }
 
 impl HashGrid {
-    fn new(dim: f64, tile_size: f64) -> Self {
+    pub fn new(dim: f64, tile_size: f64) -> Self {
         let tiles_dim = (dim / tile_size).ceil() as usize;
         let dim_square = tiles_dim * tiles_dim;
         let entities = vec![None; dim_square];
@@ -87,19 +88,19 @@ impl HashGrid {
 
 #[cfg(test)]
 mod test {
-    use super::{EntityKind, HashEntity, HashGrid};
+    use super::{HashEntity, HashEntityKind, HashGrid};
 
     #[test]
     fn test_grid() {
         let mut grid = HashGrid::new(1000.0, 100.0);
         let e1 = HashEntity {
-            entity: EntityKind::Lighthouse(1),
+            entity: HashEntityKind::Lighthouse(1),
             position: (10.0, 10.0).into(),
         };
         grid.insert(e1);
 
         let e2 = HashEntity {
-            entity: EntityKind::Lighthouse(1),
+            entity: HashEntityKind::Lighthouse(1),
             position: (120.0, 10.0).into(),
         };
 
@@ -110,11 +111,11 @@ mod test {
         assert_eq!(count, 2);
 
         let e3 = HashEntity {
-            entity: EntityKind::Lighthouse(1),
+            entity: HashEntityKind::Lighthouse(1),
             position: (-90.0, 10.0).into(),
         };
         let e4 = HashEntity {
-            entity: EntityKind::Lighthouse(1),
+            entity: HashEntityKind::Lighthouse(1),
             position: (-120.0, 10.0).into(),
         };
         grid.insert(e3);
