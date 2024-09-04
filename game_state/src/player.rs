@@ -175,6 +175,7 @@ impl Player {
     pub fn auto_shoot(&mut self, game_state: &ServerState) {
         let max_bullet_distance = Bullet::max_distance();
         let mut shot_already = vec![];
+        let mut rng = self.rng.clone();
         let pairs = self
             .shooting_ships(game_state)
             .filter_map(|ship| {
@@ -193,7 +194,7 @@ impl Player {
                         }
                     });
                 for (enemy_pos, key) in enemies {
-                    if shot_already.contains(&key) {
+                    if shot_already.contains(&key) || rng.f32() > 0.1 {
                         continue;
                     }
                     let ship_pos: V2D = ship.position.into();
@@ -209,6 +210,7 @@ impl Player {
         for (id, enemy) in pairs {
             self.shoot_at_with(id, enemy.x, enemy.y);
         }
+        self.rng = rng;
     }
 
     fn shooting_ships<'a>(&'a self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
