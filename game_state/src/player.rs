@@ -260,6 +260,13 @@ impl Player {
         return self.player_ships(state).count();
     }
 
+    pub fn number_of_idle_ships(&self, state: &ServerState) -> usize {
+        return self
+            .player_ships(state)
+            .filter(|ship| ship.speed.0 == 0.0 && ship.speed.1 == 0.0)
+            .count();
+    }
+
     pub fn tick(&mut self, game_state: &ServerState) {
         for player_ship in self.moving_ships.values_mut() {
             let path = &mut player_ship.path;

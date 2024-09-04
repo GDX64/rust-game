@@ -14,7 +14,7 @@ enum BotState {
     Dead,
 }
 
-const UNITS_TO_ATTACK_AGAIN: usize = 20;
+const UNITS_PER_ISLAND_TO_ATTACK_AGAIN: usize = 20;
 const TIME_FOR_ACTION: f64 = 1.0;
 
 pub struct BotPlayer {
@@ -84,7 +84,10 @@ impl BotPlayer {
                 }
             }
             BotState::Reiforcing(_island) => {
-                if ships_number > UNITS_TO_ATTACK_AGAIN {
+                let units_to_attack =
+                    self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN;
+
+                if self.player.number_of_idle_ships(game_state) > units_to_attack {
                     let closest_island = self.closes_island_not_mine(game_state)?;
                     self.attack_island(game_state, &closest_island);
                     self.bot_state = BotState::Conquering(closest_island);
@@ -104,6 +107,14 @@ impl BotPlayer {
         self.player.select_all_idle(game_state);
         self.player
             .move_selected_ships(game_state, island.light_house.x, island.light_house.y);
+    }
+
+    fn my_islands(&self, game_state: &ServerState) -> usize {
+        game_state
+            .island_dynamic
+            .values()
+            .filter(|island| return island.owner == Some(self.player.id))
+            .count()
     }
 
     fn closes_island_not_mine(&self, game_state: &ServerState) -> Option<Island> {
