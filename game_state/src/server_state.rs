@@ -285,7 +285,7 @@ impl ServerState {
                 err_per_m: 0.01,
             },
             rng: fastrand::Rng::with_seed(0),
-            flags: ServerFlags { map_changed: false },
+            flags: ServerFlags { map_changed: true },
         };
         me.fill_island_dynamic();
         return me;
@@ -577,6 +577,7 @@ impl ServerState {
                 self.rng.seed(state.rng_seed);
                 self.game_constants = state.game_constants;
                 self.island_dynamic = state.island_dynamic;
+                self.flags.map_changed = true;
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {
