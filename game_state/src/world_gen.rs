@@ -171,8 +171,8 @@ impl WorldGen {
     fn width_decay_value(&self, x: f64, y: f64) -> f64 {
         let r = (x * x + y * y).sqrt();
         let half_width = self.config.width / 2.0;
-        let e0 = half_width * 0.8;
-        let e1 = half_width * 0.9;
+        let e0 = half_width * 0.9;
+        let e1 = half_width * 1.0;
         let decay = smooth_step(e0, e1, r);
         return decay;
     }
