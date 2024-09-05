@@ -13,7 +13,7 @@ pub struct WorldGen {
     low_land: GameNoise,
     high_land: GameNoise,
     forest: GameNoise,
-    config: WorldGenConfig,
+    pub config: WorldGenConfig,
     matrix: Matrix3<f64>,
     terrain_interpolation: LinearInterpolation,
 }
@@ -66,6 +66,10 @@ pub struct WorldGenConfig {
     pub weight_low_land: f64,
     pub forest_threshold: f64,
     pub land_threshold: f64,
+    pub sand_threshold: f64,
+    pub grass_threshold: f64,
+    pub mountain_threshold: f64,
+    pub deep_water_threshold: f64,
     pub tile_size: f64,
     pub noise_scale: f64,
     pub view_info: ViewInfo,
@@ -93,6 +97,10 @@ impl Default for WorldGenConfig {
             weight_low_land: 0.9,
             forest_threshold: 0.17,
             land_threshold: 0.0,
+            sand_threshold: 0.1,
+            grass_threshold: 0.2,
+            mountain_threshold: 0.4,
+            deep_water_threshold: -0.1,
             noise_scale: 0.001,
             tile_size: 20.0,
             height_scale: 500.0,
@@ -112,18 +120,19 @@ impl WorldGenConfig {
 #[wasm_bindgen]
 impl WorldGen {
     pub fn new(seed: u32) -> Self {
+        let config = WorldGenConfig::default();
         Self {
             terrain_interpolation: LinearInterpolation::new(vec![
                 Point2::new(-1.0, -1.0),
-                Point2::new(0.10, 0.0),
-                Point2::new(0.5, 0.15),
-                Point2::new(0.7, 0.4),
-                Point2::new(1.0, 0.5),
+                Point2::new(0.1, 0.0),
+                Point2::new(0.2, 0.03),
+                Point2::new(0.5, 0.10),
+                Point2::new(1.0, 0.4),
             ]),
             low_land: GameNoise::new(Some(seed)),
             high_land: GameNoise::new(Some(seed)),
             forest: GameNoise::new(Some(seed)),
-            config: WorldGenConfig::default(),
+            config,
             matrix: Matrix3::identity(),
         }
     }
@@ -162,8 +171,8 @@ impl WorldGen {
     fn width_decay_value(&self, x: f64, y: f64) -> f64 {
         let r = (x * x + y * y).sqrt();
         let half_width = self.config.width / 2.0;
-        let e0 = half_width * 0.9;
-        let e1 = half_width * 1.2;
+        let e0 = half_width * 0.8;
+        let e1 = half_width * 0.9;
         let decay = smooth_step(e0, e1, r);
         return decay;
     }
@@ -176,12 +185,20 @@ impl WorldGen {
         let high_land = self.high_land.get(x, y);
         let low_land_weight = self.config.weight_low_land;
         let mut land_value = low_land_weight * low_land + (1.0 - low_land_weight) * high_land;
+        land_value -= decay;
         land_value = self
             .terrain_interpolation
             .interpolate(land_value)
             .unwrap_or(0.0);
-        land_value -= decay;
         land_value * self.config.height_scale
+    }
+
+    pub fn min_max_height(&self) -> Vec<f64> {
+        let min =
+            self.terrain_interpolation.interpolate(-1.0).unwrap_or(0.0) * self.config.height_scale;
+        let max =
+            self.terrain_interpolation.interpolate(1.0).unwrap_or(0.0) * self.config.height_scale;
+        vec![min, max]
     }
 
     fn get_terrain_at(&self, x: f64, y: f64) -> Tile {

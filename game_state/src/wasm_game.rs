@@ -3,6 +3,7 @@ pub use crate::game_server::*;
 use crate::player::Player;
 use crate::running_mode::{OnlineClient, RunningMode};
 pub use crate::server_state::*;
+use crate::world_gen::WorldGenConfig;
 use cgmath::Vector2;
 use core::panic;
 use wasm_bindgen::prelude::*;
@@ -48,6 +49,14 @@ impl GameWasmState {
 
     pub fn change_shoot_radius(&mut self, r: f64) {
         self.player.change_shoot_radius(r);
+    }
+
+    pub fn gen_config(&self) -> WorldGenConfig {
+        self.running_mode.server_state().world_gen.config.clone()
+    }
+
+    pub fn min_max_height(&self) -> Vec<f64> {
+        self.running_mode.server_state().world_gen.min_max_height()
     }
 
     pub fn add_bot_ship_at(&mut self, x: f64, y: f64) {

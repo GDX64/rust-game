@@ -3,7 +3,7 @@ use crate::{
     diffing::Diff,
     game_map::{IslandData, WorldGrid, V2D, V3D},
     hashgrid::{HashEntity, HashEntityKind, HashGrid},
-    world_gen,
+    world_gen::{self, WorldGen},
 };
 use cgmath::InnerSpace;
 use log::info;

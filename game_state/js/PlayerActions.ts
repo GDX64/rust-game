@@ -54,9 +54,9 @@ export class PlayerActions {
 
   bindEvents() {
     //add unload event
-    window.onbeforeunload = () => {
-      return false;
-    };
+    // window.onbeforeunload = () => {
+    //   return false;
+    // };
 
     this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
@@ -67,7 +67,9 @@ export class PlayerActions {
     );
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
-    document.addEventListener("kepress", (event) => event.preventDefault());
+    document.addEventListener("kepress", (event) => {
+      // event.preventDefault()
+    });
     document.addEventListener(
       "wheel",
       (event: WheelEvent) => {
@@ -140,7 +142,7 @@ export class PlayerActions {
   }
 
   onKeyUp(event: KeyboardEvent) {
-    event.preventDefault();
+    // event.preventDefault();
     if (event.key === "Control") {
       this.canvas.style.cursor = "auto";
       this.shipsManager.aimCircle.visible = false;
@@ -149,7 +151,7 @@ export class PlayerActions {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    event.preventDefault();
+    // event.preventDefault();
     if (event.key === "c") {
       const intersection = this.waterIntersection();
       if (!intersection) return;

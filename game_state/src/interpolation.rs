@@ -11,6 +11,16 @@ impl LinearInterpolation {
     }
 
     pub fn interpolate(&self, x: f64) -> Option<f64> {
+        let first = self.points.first()?;
+        let smaller_than_first = first.x >= x;
+        if smaller_than_first {
+            return first.y.into();
+        }
+        let last = self.points.last()?;
+        let greater_than_last = last.x <= x;
+        if greater_than_last {
+            return last.y.into();
+        }
         let index = self.points.iter().position(|p| p.x >= x)?;
         let first_point = self.points.get(index - 1)?;
         let next_point = self.points.get(index)?;
