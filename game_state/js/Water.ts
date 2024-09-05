@@ -123,13 +123,15 @@ export class Water {
     const arrPositions = waterPlaneGeometry.attributes.position.array;
     const posLength = arrPositions.length;
     const maxDistance = WIDTH / 2;
+
     for (let i = 0; i < posLength; i += 3) {
       const x = arrPositions[i];
       const y = arrPositions[i + 1];
 
-      const distance = Math.min(1, Math.sqrt(x ** 2 + y ** 2) / maxDistance);
-      const xNormalized = x * distance ** 2;
-      const yNormalized = y * distance ** 2;
+      const layer = Math.max(Math.abs(x), Math.abs(y));
+      const factor = layer / maxDistance;
+      const xNormalized = x * factor ** 2;
+      const yNormalized = y * factor ** 2;
 
       arrPositions[i] = xNormalized;
       arrPositions[i + 1] = yNormalized;
@@ -137,6 +139,9 @@ export class Water {
     waterPlaneGeometry.attributes.position.needsUpdate = true;
 
     const waterShader = waterCustomShader(makeDs(FREQ_START), false);
+    // const wireFrameMaterial = new THREE.MeshBasicMaterial({
+    //   wireframe: true,
+    // });
 
     const completeWater = new THREE.Mesh(waterPlaneGeometry, waterShader);
     // const completeWater = new THREE.Mesh(waterPlaneGeometry, wireFrameMaterial);
