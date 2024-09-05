@@ -1,4 +1,4 @@
-const int DIR = 8;
+const int DIR = 3;
 
 uniform float time;
 uniform vec2 directions[DIR];

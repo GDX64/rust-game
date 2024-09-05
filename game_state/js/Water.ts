@@ -4,8 +4,8 @@ import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 
 const FREQ_START = 0.05;
-const WIDTH = 2_000;
-const WATER_DETAIL = 400;
+const WIDTH = 5_000;
+const WATER_DETAIL = 300;
 export class Water {
   freq = FREQ_START;
 
@@ -119,9 +119,27 @@ export class Water {
       WATER_DETAIL
     );
 
+    //adjust detail so that closer to the origin we have more vertices
+    const arrPositions = waterPlaneGeometry.attributes.position.array;
+    const posLength = arrPositions.length;
+    const maxDistance = WIDTH / 2;
+    for (let i = 0; i < posLength; i += 3) {
+      const x = arrPositions[i];
+      const y = arrPositions[i + 1];
+
+      const distance = Math.min(1, Math.sqrt(x ** 2 + y ** 2) / maxDistance);
+      const xNormalized = x * distance ** 2;
+      const yNormalized = y * distance ** 2;
+
+      arrPositions[i] = xNormalized;
+      arrPositions[i + 1] = yNormalized;
+    }
+    waterPlaneGeometry.attributes.position.needsUpdate = true;
+
     const waterShader = waterCustomShader(makeDs(FREQ_START), false);
 
     const completeWater = new THREE.Mesh(waterPlaneGeometry, waterShader);
+    // const completeWater = new THREE.Mesh(waterPlaneGeometry, wireFrameMaterial);
     completeWater.renderOrder = RenderOrder.Water;
 
     const simpleWaterShader = waterCustomShader(makeDs(0), true);
@@ -213,7 +231,7 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
 }
 
 function makeDs(freq: number) {
-  return [...Array(8)].map((_, i) =>
+  return [...Array(3)].map((_, i) =>
     new THREE.Vector2(Math.random(), Math.random())
       .normalize()
       .multiplyScalar((i + 1) * freq)
