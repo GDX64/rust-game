@@ -1,6 +1,7 @@
 // uniform vec3 cameraPosition;
 
 uniform vec3 sunPosition;
+uniform float time;
 uniform vec3 scatter_color;
 uniform float scatter_factor;
 uniform vec3 water_color;

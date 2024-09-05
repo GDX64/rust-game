@@ -6,6 +6,7 @@ import { RenderOrder } from "./RenderOrder";
 const FREQ_START = 0.05;
 const WIDTH = 5_000;
 const WATER_DETAIL = 300;
+const DIR = 1;
 export class Water {
   freq = FREQ_START;
 
@@ -236,7 +237,7 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
 }
 
 function makeDs(freq: number) {
-  return [...Array(3)].map((_, i) =>
+  return [...Array(DIR)].map((_, i) =>
     new THREE.Vector2(Math.random(), Math.random())
       .normalize()
       .multiplyScalar((i + 1) * freq)
