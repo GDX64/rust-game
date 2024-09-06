@@ -2,61 +2,59 @@ extern crate noise;
 
 use noise::{utils::*, *};
 
-fn make_noise_image(seed: u32, final_color: [u8; 4]) -> NoiseImage {
+const SIZE: usize = 1024;
+
+fn make_noise_image(seed: u32) -> NoiseImage {
     // Large slime bubble texture.
-    let freq = 2.0;
-    let red = Fbm::<Perlin>::new(seed).set_frequency(freq).set_octaves(3);
+    let freq = 0.003;
+    let red = Fbm::<Perlin>::new(seed).set_frequency(freq).set_octaves(8);
+    let z_gain = 50.0;
 
     let domain_x = Fbm::<Perlin>::new(100).set_frequency(freq);
     let domain_y = Fbm::<Perlin>::new(101).set_frequency(freq);
-    // let warp =
 
-    // Finally, perturb the slime texture to add realism.
-    // let final_slime = Turbulence::<_, Perlin>::new(large_slime)
-    //     .set_seed(3)
-    //     .set_frequency(8.0)
-    //     .set_power(1.0 / 32.0)
-    //     .set_roughness(2);
+    let warped_noise = |point: [f64; 2]| {
+        // let x = domain_x.get(point);
+        // let y = domain_y.get(point);
+        // return red.get([x, y]);
+        return red.get(point);
+    };
 
-    let planar_red = PlaneMapBuilder::new_fn(|point: [f64; 2]| {
-        let x = domain_x.get(point);
-        let y = domain_y.get(point);
-        return red.get([x, y]);
-    })
-    .set_size(1024, 1024)
-    .set_is_seamless(true)
-    .build();
+    let mut grid = vec![[0.0; SIZE]; SIZE];
 
-    // Create a slime palette.
-    let red_grad = ColorGradient::new()
-        .clear_gradient()
-        .add_gradient_point(-1.0, [0, 0, 0, 255])
-        .add_gradient_point(1.0, final_color);
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            let point = [x as f64, y as f64];
+            grid[y][x] = warped_noise(point) * z_gain;
+        }
+    }
 
-    let red_image = ImageRenderer::new()
-        .set_gradient(red_grad)
-        .render(&planar_red);
+    let mut image = NoiseImage::new(SIZE, SIZE);
+    for y in 0..SIZE {
+        for x in 0..SIZE {
+            let z = grid[y][x];
+            let prev_x = if x == 0 { 0 } else { x - 1 };
+            let prev_zx = grid[y][prev_x];
+            let dz_dx = z - prev_zx;
+            let prev_y = if y == 0 { 0 } else { y - 1 };
+            let prev_zy = grid[prev_y][x];
+            let dz_dy = z - prev_zy;
 
-    red_image
+            let grad_x = Vector3::new(1.0, 0.0, dz_dx);
+            let grad_y = Vector3::new(0.0, 1.0, dz_dy);
+            let normal = grad_x.cross(grad_y).normalize();
+            let normal = (normal + 1.0).normalize() * 255.0;
+            image.set_value(x, y, [normal.x as u8, normal.y as u8, normal.z as u8, 255]);
+        }
+    }
+
+    image
 }
 
 fn main() {
-    let red_image = make_noise_image(0, [255, 0, 0, 255]);
-    let green_image = make_noise_image(1, [0, 255, 0, 255]);
-    let blue_image = make_noise_image(2, [0, 0, 255, 255]);
+    let image = make_noise_image(0);
 
-    let mut final_image = red_image;
-    final_image
-        .iter_mut()
-        .zip(green_image.iter())
-        .zip(blue_image.iter())
-        .for_each(|((r, g), b)| {
-            r[1] = g[1];
-            r[2] = b[2];
-            normalize_pixel(r);
-        });
-
-    utils::write_image_to_file(&final_image, "water_normals.png");
+    utils::write_image_to_file(&image, "water_normals.png");
 }
 mod utils {
     use noise::utils::{NoiseImage, NoiseMap};
