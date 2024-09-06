@@ -2,12 +2,14 @@ extern crate noise;
 
 use noise::{utils::*, *};
 
-fn main() {
+fn make_noise_image(seed: u32, final_color: [u8; 4]) -> NoiseImage {
     // Large slime bubble texture.
-    let freq = 10.0;
-    let red = Fbm::<Perlin>::new(0).set_frequency(freq);
-    let green = Fbm::<Perlin>::new(1).set_frequency(freq);
-    let blue = Fbm::<Perlin>::new(2).set_frequency(freq);
+    let freq = 2.0;
+    let red = Fbm::<Perlin>::new(seed).set_frequency(freq).set_octaves(3);
+
+    let domain_x = Fbm::<Perlin>::new(100).set_frequency(freq);
+    let domain_y = Fbm::<Perlin>::new(101).set_frequency(freq);
+    // let warp =
 
     // Finally, perturb the slime texture to add realism.
     // let final_slime = Turbulence::<_, Perlin>::new(large_slime)
@@ -16,44 +18,32 @@ fn main() {
     //     .set_power(1.0 / 32.0)
     //     .set_roughness(2);
 
-    let planar_red = PlaneMapBuilder::new(&red)
-        .set_size(1024, 1024)
-        .set_is_seamless(true)
-        .build();
-    let planar_green = PlaneMapBuilder::new(&green)
-        .set_size(1024, 1024)
-        .set_is_seamless(true)
-        .build();
-    let planar_blue = PlaneMapBuilder::new(&blue)
-        .set_size(1024, 1024)
-        .set_is_seamless(true)
-        .build();
+    let planar_red = PlaneMapBuilder::new_fn(|point: [f64; 2]| {
+        let x = domain_x.get(point);
+        let y = domain_y.get(point);
+        return red.get([x, y]);
+    })
+    .set_size(1024, 1024)
+    .set_is_seamless(true)
+    .build();
 
     // Create a slime palette.
     let red_grad = ColorGradient::new()
         .clear_gradient()
         .add_gradient_point(-1.0, [0, 0, 0, 255])
-        .add_gradient_point(1.0, [255, 0, 0, 255]);
-
-    let green_grad = ColorGradient::new()
-        .clear_gradient()
-        .add_gradient_point(-1.0, [0, 0, 0, 255])
-        .add_gradient_point(1.0, [0, 255, 0, 255]);
-
-    let blue_grad = ColorGradient::new()
-        .clear_gradient()
-        .add_gradient_point(-1.0, [0, 0, 0, 255])
-        .add_gradient_point(1.0, [0, 0, 255, 255]);
+        .add_gradient_point(1.0, final_color);
 
     let red_image = ImageRenderer::new()
         .set_gradient(red_grad)
         .render(&planar_red);
-    let green_image = ImageRenderer::new()
-        .set_gradient(green_grad)
-        .render(&planar_green);
-    let blue_image = ImageRenderer::new()
-        .set_gradient(blue_grad)
-        .render(&planar_blue);
+
+    red_image
+}
+
+fn main() {
+    let red_image = make_noise_image(0, [255, 0, 0, 255]);
+    let green_image = make_noise_image(1, [0, 255, 0, 255]);
+    let blue_image = make_noise_image(2, [0, 0, 255, 255]);
 
     let mut final_image = red_image;
     final_image

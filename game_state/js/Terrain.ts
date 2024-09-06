@@ -58,7 +58,7 @@ class TerrainChunk {
     const grad = ctx.createLinearGradient(0, 0, width, 0);
     const sand = "#f4e434";
     grad.addColorStop(0, "#010b13");
-    grad.addColorStop(scale.scale(-20), sand);
+    grad.addColorStop(scale.scale(-20), "#010b13");
     grad.addColorStop(scale.scale(5), sand);
     grad.addColorStop(scale.scale(20), "#20bc20");
     // grad.addColorStop(scale.scale(30), "#157c15");

@@ -15,14 +15,16 @@ varying float depth;
 
 vec3 get_displacement() {
   vec2 uv = vViewPosition.xy / texture_scale;
-  float t = time * 0.003;
-  vec2 uv_offset1 = uv + vec2(t, 0.0);
-  vec2 uv_offset2 = uv + vec2(-t, 0.0);
+  float t = time / 10.0;
+  vec2 uv_offset1 = uv + vec2(t / 17.0, t / 29.0);
+  vec2 uv_offset2 = uv + vec2(-t / 19.0, t / 32.0);
+  vec2 uv_offset3 = uv + vec2(t / 101.0, -t / 113.0);
+  vec2 uv_offset4 = uv + vec2(-t / 109.0, t / 97.0);
   vec4 normal1 = texture2D(normal_map, uv_offset1);
   vec4 normal2 = texture2D(normal_map, uv_offset2);
-  normal1.xy = normal1.xy * 2.0 - 1.0;
-  normal2.xy = normal2.xy * 2.0 - 1.0;
-  vec3 normal = normal1.xyz * 0.5 + normal2.xyz * 0.5;
+  vec4 normal3 = texture2D(normal_map, uv_offset3);
+  vec4 normal4 = texture2D(normal_map, uv_offset4);
+  vec3 normal = normal1.xyz + normal2.xyz + normal3.xyz + normal4.xyz;
   normal.z = normal.z * z_gain;
   return normalize(normal);
 }
@@ -52,6 +54,6 @@ void main() {
   vec3 color = water_color * intensity + scatter_effect;
   //add fog effect
   color = mix(color, vec3(0.6, 0.6, 0.6), depth / 2000.0);
-  gl_FragColor = vec4(color, 0.95);
+  gl_FragColor = vec4(color, 0.9);
 
 }

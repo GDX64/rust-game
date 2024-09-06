@@ -2,7 +2,7 @@ import * as THREE from "three";
 import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
-import normalMap from "../example_images/water_normals.png";
+import normalMap from "../example_images/water_normal.jpg";
 
 const FREQ_START = 0.05;
 const WIDTH = 5_000;
@@ -233,7 +233,7 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
         value: ds,
       },
       normal_map: { value: normalTexture },
-      scatter_color: { value: new THREE.Color("#0xd3ff") },
+      scatter_color: { value: new THREE.Color("#11eded") },
       water_color: { value: new THREE.Color("#30b4ca") },
       scatter_factor: { value: 5.5 },
       amplitude: { value: 2 },
