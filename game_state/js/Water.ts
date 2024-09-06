@@ -2,6 +2,7 @@ import * as THREE from "three";
 import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
+import normalMap from "../example_images/water_normals.png";
 
 const FREQ_START = 0.05;
 const WIDTH = 5_000;
@@ -44,6 +45,8 @@ export class Water {
       this.material.uniforms.directions.value = d;
       this.material.uniforms.directions.value = d;
     });
+    waterFolder.add(this.material.uniforms.texture_scale, "value", 100, 5000);
+    waterFolder.add(this.material.uniforms.z_gain, "value", 0.1, 10);
     waterFolder
       .addColor(
         {
@@ -151,7 +154,7 @@ export class Water {
     const simpleWaterShader = waterCustomShader(makeDs(0), true);
 
     const simplePlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(width * 2, width * 2, 20, 20),
+      new THREE.PlaneGeometry(width * 2, width * 2, 5, 5),
       // waterPlaneGeometry,
       simpleWaterShader
     );
@@ -212,6 +215,12 @@ export class Water {
 }
 
 function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
+  const textureLoader = new THREE.TextureLoader();
+  const normalTexture = textureLoader.load(normalMap);
+  normalTexture.wrapS = THREE.RepeatWrapping;
+  normalTexture.wrapT = THREE.RepeatWrapping;
+  normalTexture.needsUpdate = true;
+
   return new THREE.ShaderMaterial({
     vertexShader: vertShader,
     fragmentShader: fragShader,
@@ -219,15 +228,18 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
     transparent: true,
     depthWrite: false,
     uniforms: {
-      time: { value: 1.0 },
+      time: { value: 0.0 },
       directions: {
         value: ds,
       },
-      scatter_color: { value: new THREE.Color("#00ff9d") },
+      normal_map: { value: normalTexture },
+      scatter_color: { value: new THREE.Color("#0xd3ff") },
       water_color: { value: new THREE.Color("#30b4ca") },
       scatter_factor: { value: 5.5 },
       amplitude: { value: 2 },
       sunPosition: { value: new THREE.Vector3(1, 1, 1) },
+      texture_scale: { value: 500 },
+      z_gain: { value: 1.6 },
     },
     premultipliedAlpha: false,
     stencilWrite: stencil,
