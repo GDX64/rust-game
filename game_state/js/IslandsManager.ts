@@ -23,12 +23,20 @@ export class IslandsManager {
 
   loadLighthouse() {
     const loader = new GLTFLoader();
+    const headlight = new THREE.SphereGeometry(0.15, 16, 16);
+    const headlightMaterial = new THREE.MeshLambertMaterial({
+      color: 0xffff00,
+      // emissive: 0xffff00,
+      // emissiveIntensity: 10,
+    });
+    const headlightMesh = new THREE.Mesh(headlight, headlightMaterial);
     loader.load(lighthouseUrl, (gltf) => {
       const lighthouse = gltf.scene;
       lighthouse.rotateX(Math.PI / 2);
       lighthouse.scale.set(10, 10, 10);
       lighthouse.position.set(0, 0, 0);
-      console.log(this.islandData);
+      headlightMesh.position.set(0, 5.1, 0);
+      lighthouse.add(headlightMesh);
       this.islandData.forEach((island) => {
         const [x, y] = island.light_house;
         const lighthouseInstance = lighthouse.clone();
