@@ -4,9 +4,9 @@ import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 import normalMap from "../example_images/water_normals.png";
 
-const FREQ_START = 0.05;
+const FREQ_START = 0.025;
 const WIDTH = 5_000;
-const WATER_DETAIL = 300;
+const WATER_DETAIL = 100;
 const DIR = 1;
 export class Water {
   freq = FREQ_START;
@@ -238,7 +238,7 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
       scatter_factor: { value: 150 },
       amplitude: { value: 2 },
       sunPosition: { value: new THREE.Vector3(1, 1, 1) },
-      texture_scale: { value: 800 },
+      texture_scale: { value: 1000 },
       z_gain: { value: 1.6 },
     },
     premultipliedAlpha: false,
