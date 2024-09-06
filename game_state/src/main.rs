@@ -6,12 +6,12 @@ const SIZE: usize = 1024;
 
 fn make_noise_image(seed: u32) -> NoiseImage {
     // Large slime bubble texture.
-    let freq = 0.003;
+    let freq = 1.0;
     let red = Fbm::<Perlin>::new(seed).set_frequency(freq).set_octaves(8);
-    let z_gain = 50.0;
+    let z_gain = 0.3;
 
-    let domain_x = Fbm::<Perlin>::new(100).set_frequency(freq);
-    let domain_y = Fbm::<Perlin>::new(101).set_frequency(freq);
+    // let domain_x = Fbm::<Perlin>::new(100).set_frequency(freq);
+    // let domain_y = Fbm::<Perlin>::new(101).set_frequency(freq);
 
     let warped_noise = |point: [f64; 2]| {
         // let x = domain_x.get(point);
@@ -20,31 +20,41 @@ fn make_noise_image(seed: u32) -> NoiseImage {
         return red.get(point);
     };
 
-    let mut grid = vec![[0.0; SIZE]; SIZE];
+    // let mut grid = vec![[0.0; SIZE]; SIZE];
+    let grid = PlaneMapBuilder::new(red)
+        .set_size(SIZE, SIZE)
+        .set_x_bounds(-1.0, 1.0)
+        .set_y_bounds(-1.0, 1.0)
+        .set_is_seamless(true)
+        .build();
 
-    for y in 0..SIZE {
-        for x in 0..SIZE {
-            let point = [x as f64, y as f64];
-            grid[y][x] = warped_noise(point) * z_gain;
-        }
-    }
+    // for y in 0..SIZE {
+    //     for x in 0..SIZE {
+    //         let point = [x as f64, y as f64];
+    //         grid[(x, y)] = warped_noise(point) * z_gain;
+    //     }
+    // }
+
+    let d = 2.0 / SIZE as f64;
 
     let mut image = NoiseImage::new(SIZE, SIZE);
     for y in 0..SIZE {
         for x in 0..SIZE {
-            let z = grid[y][x];
-            let prev_x = if x == 0 { 0 } else { x - 1 };
-            let prev_zx = grid[y][prev_x];
+            let z = grid[(x, y)];
+            let prev_x = if x == 0 { SIZE - 1 } else { x - 1 };
+            let prev_zx = grid[(prev_x, y)];
             let dz_dx = z - prev_zx;
-            let prev_y = if y == 0 { 0 } else { y - 1 };
-            let prev_zy = grid[prev_y][x];
+            let prev_y = if y == 0 { SIZE - 1 } else { y - 1 };
+            let prev_zy = grid[(x, prev_y)];
             let dz_dy = z - prev_zy;
 
-            let grad_x = Vector3::new(1.0, 0.0, dz_dx);
-            let grad_y = Vector3::new(0.0, 1.0, dz_dy);
+            let grad_x = Vector3::new(d, 0.0, dz_dx * z_gain);
+            let grad_y = Vector3::new(0.0, d, dz_dy * z_gain);
             let normal = grad_x.cross(grad_y).normalize();
             let normal = (normal + 1.0).normalize() * 255.0;
             image.set_value(x, y, [normal.x as u8, normal.y as u8, normal.z as u8, 255]);
+            // let color = (z.abs() * 255.0) as u8;
+            // image.set_value(x, y, [color, color, color, 255]);
         }
     }
 

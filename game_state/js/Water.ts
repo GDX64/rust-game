@@ -67,7 +67,7 @@ export class Water {
         },
         "scatter_factor",
         1,
-        10
+        500
       )
       .onChange((value: number) => {
         this.material.uniforms.scatter_factor.value = value;
@@ -233,12 +233,12 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
         value: ds,
       },
       normal_map: { value: normalTexture },
-      scatter_color: { value: new THREE.Color("#11eded") },
+      scatter_color: { value: new THREE.Color("#f2b361") },
       water_color: { value: new THREE.Color("#30b4ca") },
-      scatter_factor: { value: 5.5 },
+      scatter_factor: { value: 150 },
       amplitude: { value: 2 },
       sunPosition: { value: new THREE.Vector3(1, 1, 1) },
-      texture_scale: { value: 500 },
+      texture_scale: { value: 800 },
       z_gain: { value: 1.6 },
     },
     premultipliedAlpha: false,

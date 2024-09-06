@@ -37,21 +37,20 @@ void main() {
   // vec3 view_direction = vec3(0.0, 0.0, 1.0);
 
   vec3 reflected = normalize(reflect(-sunPosition, normal));
-  float reflect_intensity = dot(view_direction, reflected);
+  float reflect_intensity = abs(dot(view_direction, reflected));
   reflect_intensity = clamp(reflect_intensity, 0.0, 1.0);
-  reflect_intensity = pow(reflect_intensity, 100.0);
+  reflect_intensity = pow(reflect_intensity, scatter_factor);
 
   float diffusion_intensity = dot(normal, sunPosition);
 
   // Calculate subsurface scattering
-  float scatter_intensity = exp(-scatter_factor * (1.0 - abs(diffusion_intensity)));
-  vec3 scatter_effect = scatter_color * scatter_intensity;
+  // float scatter_intensity = exp(-scatter_factor * (1.0 - abs(diffusion_intensity)));
 
   diffusion_intensity = clamp(diffusion_intensity, 0.0, 1.0);
 
-  float intensity = 0.2 + 0.8 * diffusion_intensity + 1.0 * reflect_intensity;
+  float intensity = 0.2 + 0.8 * diffusion_intensity;
 
-  vec3 color = water_color * intensity + scatter_effect;
+  vec3 color = water_color * intensity + scatter_color * reflect_intensity;
   //add fog effect
   color = mix(color, vec3(0.6, 0.6, 0.6), depth / 2000.0);
   gl_FragColor = vec4(color, 0.9);
