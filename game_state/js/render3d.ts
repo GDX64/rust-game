@@ -20,7 +20,7 @@ function defaultState() {
     controlsEnabled: false,
     terrainColor: "#2b5232",
     waterColor: "#1d3d7d",
-    skyColor: "#2fe6e6",
+    skyColor: "#f5d7a3",
     bloomStrength: 1.5,
     bloomRadius: 0.4,
     bloomThreshold: 0.85,
