@@ -209,7 +209,7 @@ impl WorldGen {
             if self.forest.get(x, y) > self.config.forest_threshold {
                 TileKind::Forest
             } else {
-                TileKind::Grass
+                TileKind::Land
             }
         };
 

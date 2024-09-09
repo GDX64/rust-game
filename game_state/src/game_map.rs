@@ -37,9 +37,10 @@ impl Default for WorldGrid {
 #[derive(Clone, Copy, PartialEq)]
 pub enum TileKind {
     Water,
-    Grass,
+    Land,
     Forest,
     Lighthouse,
+    Coast,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -72,7 +73,7 @@ impl Tile {
 
     pub fn grass(height: f64) -> Self {
         Self {
-            kind: TileKind::Grass,
+            kind: TileKind::Land,
             height,
             visited: false,
             island_number: None,
@@ -92,11 +93,11 @@ impl Tile {
     }
 
     pub fn is_water(&self) -> bool {
-        self.kind == TileKind::Water
+        self.kind == TileKind::Water || self.kind == TileKind::Lighthouse
     }
 
     pub fn is_land(&self) -> bool {
-        self.kind != TileKind::Water
+        self.kind == TileKind::Land || self.kind == TileKind::Forest
     }
 
     pub fn can_go(&self) -> bool {
@@ -207,10 +208,20 @@ impl WorldGrid {
     pub fn get(&self, x: f64, y: f64) -> Option<&Tile> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
-        return self.get_tiles(x, y);
+        return self.get_usize(x, y);
     }
 
-    fn get_tiles(&self, x: usize, y: usize) -> Option<&Tile> {
+    fn get_usize(&self, x: usize, y: usize) -> Option<&Tile> {
+        let index = (y * self.tiles_dim + x) as usize;
+        self.data.get(index)
+    }
+
+    fn get_i32(&self, x: i32, y: i32) -> Option<&Tile> {
+        if x < 0 || y < 0 {
+            return None;
+        }
+        let x = x as usize;
+        let y = y as usize;
         let index = (y * self.tiles_dim + x) as usize;
         self.data.get(index)
     }
@@ -224,6 +235,27 @@ impl WorldGrid {
             tile_size,
             data: vec![default; tiles_dim * tiles_dim],
             islands: BTreeMap::new(),
+        }
+    }
+
+    fn fill_coast(&mut self) {
+        for y in 0..self.tiles_dim {
+            for x in 0..self.tiles_dim {
+                let index = y * self.tiles_dim + x;
+                let tile = self.data.get(index).unwrap();
+                if !tile.is_water() {
+                    continue;
+                }
+                let search = SpiralSearch::new((x as i32, y as i32));
+                for (x, y) in search.take(9) {
+                    if let Some(tile) = self.get_i32(x, y) {
+                        if tile.is_land() {
+                            self.data[index] = Tile::new(TileKind::Coast, tile.height());
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -308,6 +340,7 @@ impl WorldGrid {
                 }
             }
         }
+        self.fill_coast();
         self.islands = island_map
     }
 
@@ -331,7 +364,7 @@ impl WorldGrid {
     fn is_surounded_by(&self, x: usize, y: usize, kind: TileKind) -> bool {
         let search = SpiralSearch::new((x as i32, y as i32));
         for (x, y) in search.take(25) {
-            if let Some(tile) = self.get_tiles(x as usize, y as usize) {
+            if let Some(tile) = self.get_usize(x as usize, y as usize) {
                 if tile.kind() != kind {
                     return false;
                 }
@@ -346,7 +379,7 @@ impl WorldGrid {
         for (x, y) in SpiralSearch::new((center_x, center_y)).take(10_000) {
             let x = x as usize;
             let y = y as usize;
-            if let Some(tile) = self.get_tiles(x, y) {
+            if let Some(tile) = self.get_usize(x, y) {
                 if tile.is_water() && self.is_surounded_by(x as usize, y as usize, TileKind::Water)
                 {
                     let x = self.from_tile_unit(x as usize);
@@ -387,7 +420,7 @@ impl WorldGrid {
     pub fn is_allowed_place(&self, x: f64, y: f64) -> bool {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
-        if let Some(value) = self.get_tiles(x, y) {
+        if let Some(value) = self.get_usize(x, y) {
             return value.can_go();
         }
         return false;
@@ -396,7 +429,7 @@ impl WorldGrid {
     pub fn height_of(&self, x: f64, y: f64) -> f64 {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
-        if let Some(value) = self.get_tiles(x, y) {
+        if let Some(value) = self.get_usize(x, y) {
             return value.height();
         }
         return 0.0;
@@ -416,7 +449,7 @@ impl WorldGrid {
     pub fn island_at(&self, x: f64, y: f64) -> Option<IslandData> {
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
-        let tile = self.get_tiles(x, y)?;
+        let tile = self.get_usize(x, y)?;
         let island = self.islands.get(&tile.island_number?)?;
         self.island_data(island.id)
     }
@@ -452,7 +485,7 @@ impl WorldGrid {
                     if x < 0 || y < 0 {
                         return None;
                     }
-                    let value = self.get_tiles(x as usize, y as usize)?;
+                    let value = self.get_usize(x as usize, y as usize)?;
                     if value.can_go() {
                         let point = Vector2::new(x, y);
                         return Some((point, goal_fn(&point)));
@@ -497,12 +530,13 @@ impl Debug for WorldGrid {
         let mut s = String::new();
         for y in 0..self.tiles_dim {
             for x in 0..self.tiles_dim {
-                let tile = self.get_tiles(x, y).unwrap();
+                let tile = self.get_usize(x, y).unwrap();
                 let c = match tile.kind() {
                     TileKind::Water => "W ",
-                    TileKind::Grass => "G ",
+                    TileKind::Land => "G ",
                     TileKind::Forest => "F ",
                     TileKind::Lighthouse => "L ",
+                    TileKind::Coast => "C ",
                 };
                 s.push_str(c);
             }
