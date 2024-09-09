@@ -515,9 +515,10 @@ impl WorldGrid {
             .0
             .into_iter()
             .map(|v| {
+                let half_tile = self.tile_size / 2.0;
                 Vector2::new(
-                    self.from_tile_unit(v.x as usize),
-                    self.from_tile_unit(v.y as usize),
+                    self.from_tile_unit(v.x as usize) + half_tile,
+                    self.from_tile_unit(v.y as usize) + half_tile,
                 )
             })
             .collect();

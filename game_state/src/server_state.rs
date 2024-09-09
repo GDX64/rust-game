@@ -463,8 +463,10 @@ impl ServerState {
                 ship.orientation = speed.normalize().into();
             }
             let position = position + speed * dt;
+
             ship.position = position.into();
             ship.speed = speed.into();
+
             if ship.hp > 0.0 {
                 return true;
             }
@@ -615,7 +617,7 @@ impl ServerState {
                 if let Some(place) =
                     self.game_map
                         .spiral_search(ship.position.0, ship.position.1, |x, y, tile| {
-                            if tile.is_water() {
+                            if tile.can_go() {
                                 return !self.is_ship_here(x, y);
                             }
                             return false;
