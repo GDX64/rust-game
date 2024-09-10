@@ -11,6 +11,8 @@ uniform float texture_scale;
 uniform float z_gain;
 
 const vec3 SHALLOW_COLOR = vec3(0.0, 0.9, 1.0);
+const float FOAM_TEXTURE_SCALE = 0.01;
+const vec3 WHITE = vec3(1.0, 1.0, 1.0);
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
@@ -31,6 +33,17 @@ vec3 get_displacement() {
   vec3 normal = normal1.xyz + normal2.xyz + normal3.xyz + normal4.xyz;
   normal.z = normal.z * z_gain;
   return normalize(normal);
+}
+
+float get_foam() {
+  vec2 uv = vViewPosition.xy * FOAM_TEXTURE_SCALE;
+  float t = time / 10.0;
+  vec2 uv_offset1 = uv + vec2(t / 17.0, t / 29.0);
+  vec2 uv_offset2 = uv + vec2(-t / 19.0, t / 31.0);
+  float foam_noise1 = texture2D(normal_map, uv_offset1).r;
+  float foam_noise2 = texture2D(normal_map, uv_offset2).g;
+  float foam_noise = (foam_noise1 + foam_noise2) / 2.0;
+  return foam_noise * height_value * height_value;
 }
 
 vec3 get_water_height_color() {
@@ -62,6 +75,8 @@ void main() {
   vec3 color = height_color * intensity + scatter_color * reflect_intensity;
   //add fog effect
   color = mix(color, vec3(0.6, 0.6, 0.6), depth / 2000.0);
+  color = mix(color, WHITE, get_foam());
+
   gl_FragColor = vec4(color, 0.9);
 
 }
