@@ -7,9 +7,14 @@ WORKDIR /app
 COPY ./backend ./backend
 COPY ./game_state ./game_state
 
+# RUN apt update && apt install -y musl-tools musl-dev
+# RUN apt-get install -y build-essential
+# RUN yes | apt install gcc-x86-64-linux-gnu
+
 RUN rustup target add x86_64-unknown-linux-musl
 
-ENV RUSTFLAGS='-C linker=x86_64-linux-gnu-gcc'
+ENV RUSTFLAGS='-Clinker=x86_64-linux-gnu-gcc'
+
 RUN cd ./backend && cargo build --release --target x86_64-unknown-linux-musl
 
 FROM rust:latest as WasmBuilder
