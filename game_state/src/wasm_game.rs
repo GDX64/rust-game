@@ -6,7 +6,6 @@ pub use crate::server_state::*;
 use crate::world_gen::WorldGenConfig;
 use cgmath::Vector2;
 use core::panic;
-use std::mem::size_of;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -241,9 +240,9 @@ impl GameWasmState {
             }
         });
 
-        let mut iterate_on_map = || {
-            for i in 0..size {
-                for j in 0..size {
+        fn iterate_on_map(range: impl Iterator<Item = i32> + Clone, map: &mut [u8], size: i32) {
+            for i in range.clone() {
+                for j in range.clone() {
                     let idx = (i + j * size) as usize;
                     let my_distance = map[idx];
                     let plus_one = my_distance.checked_add(1).unwrap_or(255);
@@ -258,19 +257,18 @@ impl GameWasmState {
                             }
                             let x = i + dx;
                             let y = j + dy;
-                            if x >= 0 && x < size && y >= 0 && y < size {
-                                let idx = (x + y * size) as usize;
-                                map[idx] = map[idx].min(plus_one);
+                            let index = (x + y * size) as usize;
+                            if let Some(neighbor) = map.get_mut(index) {
+                                *neighbor = (*neighbor).min(plus_one);
                             }
                         }
                     }
                 }
             }
-        };
-
-        for _ in 0..16 {
-            iterate_on_map();
         }
+
+        iterate_on_map(0..size, &mut map, size);
+        iterate_on_map((0..size).rev(), &mut map, size);
 
         return map;
     }

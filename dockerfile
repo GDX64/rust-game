@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:bookworm AS builder
+FROM rust:latest AS builder
 
 
 WORKDIR /app
@@ -8,9 +8,11 @@ COPY ./backend ./backend
 COPY ./game_state ./game_state
 
 RUN rustup target add x86_64-unknown-linux-musl
+
+ENV RUSTFLAGS='-C linker=x86_64-linux-gnu-gcc'
 RUN cd ./backend && cargo build --release --target x86_64-unknown-linux-musl
 
-FROM rust:bookworm as WasmBuilder
+FROM rust:latest as WasmBuilder
 
 WORKDIR /app
 
