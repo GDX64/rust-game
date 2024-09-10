@@ -73,15 +73,15 @@ impl HashGrid {
         let x = self.tile_unit(v.x) as i32;
         let y = self.tile_unit(v.y) as i32;
         let tiles_dim = self.tiles_dim as i32;
-        candidates[0] = x + y * tiles_dim;
-        candidates[1] = x + 1 + y * tiles_dim;
-        candidates[2] = x + 1 + (y + 1) * tiles_dim;
-        candidates[3] = x + (y + 1) * tiles_dim;
-        candidates[4] = x - 1 + (y + 1) * tiles_dim;
-        candidates[5] = x - 1 + (y) * tiles_dim;
-        candidates[6] = x - 1 + (y + 1) * tiles_dim;
-        candidates[7] = x + (y + 1) * tiles_dim;
-        candidates[8] = x + 1 + (y + 1) * tiles_dim;
+        let mut i = 0;
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                let x = x + dx;
+                let y = y + dy;
+                candidates[i] = x + y * tiles_dim;
+                i += 1;
+            }
+        }
         return candidates;
     }
 }
