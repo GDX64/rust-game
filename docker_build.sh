@@ -1,8 +1,8 @@
 imageName="br_server"
 
 function buildDockerImage(){
-    docker build --platform linux/amd64 -t $imageName .
-    docker save -o img.tar $imageName
+    sudo docker build --platform linux/amd64 -t $imageName .
+    sudo docker save -o img.tar $imageName
 }
 
 function runImage(){
