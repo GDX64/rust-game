@@ -3,11 +3,17 @@ import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 import normalMap from "../example_images/water_normals.png";
+import { GameWasmState } from "../pkg/game_state";
+import { Linscale } from "./Linscale";
 
 const FREQ_START = 0.025;
 const WIDTH = 5_000;
 const WATER_DETAIL = 100;
 const DIR = 1;
+
+const roundingFactor = 100;
+const round = (x: number) => Math.floor(x / roundingFactor) * roundingFactor;
+
 export class Water {
   freq = FREQ_START;
 
@@ -115,7 +121,37 @@ export class Water {
     return [acc * this.amplitude(), normal] as const;
   }
 
-  static startWater(width: number) {
+  static generateHeightTexture(game: GameWasmState) {
+    const width = game.map_size();
+    const textureSize = 512;
+    const heightData = new Float32Array(textureSize * textureSize);
+    const [min] = game.min_max_height();
+    const colorScale = Linscale.fromPoints(min / 4, 0, 0, 1);
+    const dimScale = Linscale.fromPoints(0, -width / 2, textureSize, width / 2);
+    for (let i = 0; i < textureSize; i++) {
+      for (let j = 0; j < textureSize; j++) {
+        const x = dimScale.scale(i);
+        const y = dimScale.scale(j);
+        const landValue = game.get_land_value(x, y);
+        const idx = i + j * textureSize;
+        heightData[idx] =
+          Math.max(0, Math.min(colorScale.scale(landValue), 1)) ** 2;
+        // heightData[idx] = 1;
+      }
+    }
+    const texture = new THREE.DataTexture(
+      heightData,
+      textureSize,
+      textureSize,
+      THREE.RedFormat,
+      THREE.FloatType
+    );
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  static startWater(width: number, game: GameWasmState) {
+    const heightTexture = Water.generateHeightTexture(game);
     const waterPlaneGeometry = new THREE.PlaneGeometry(
       WIDTH,
       WIDTH,
@@ -123,26 +159,14 @@ export class Water {
       WATER_DETAIL
     );
 
-    //adjust detail so that closer to the origin we have more vertices
-    const arrPositions = waterPlaneGeometry.attributes.position.array;
-    const posLength = arrPositions.length;
-    const maxDistance = WIDTH / 2;
+    // Water.adjustGeometry(waterPlaneGeometry);
 
-    for (let i = 0; i < posLength; i += 3) {
-      const x = arrPositions[i];
-      const y = arrPositions[i + 1];
+    const waterShader = waterCustomShader(
+      heightTexture,
+      makeDs(FREQ_START),
+      false
+    );
 
-      const layer = Math.max(Math.abs(x), Math.abs(y));
-      const factor = layer / maxDistance;
-      const xNormalized = x * factor ** 2;
-      const yNormalized = y * factor ** 2;
-
-      arrPositions[i] = xNormalized;
-      arrPositions[i + 1] = yNormalized;
-    }
-    waterPlaneGeometry.attributes.position.needsUpdate = true;
-
-    const waterShader = waterCustomShader(makeDs(FREQ_START), false);
     // const wireFrameMaterial = new THREE.MeshBasicMaterial({
     //   wireframe: true,
     // });
@@ -151,7 +175,7 @@ export class Water {
     // const completeWater = new THREE.Mesh(waterPlaneGeometry, wireFrameMaterial);
     completeWater.renderOrder = RenderOrder.Water;
 
-    const simpleWaterShader = waterCustomShader(makeDs(0), true);
+    const simpleWaterShader = waterCustomShader(heightTexture, makeDs(0), true);
 
     const simplePlane = new THREE.Mesh(
       new THREE.PlaneGeometry(width * 2, width * 2, 5, 5),
@@ -200,6 +224,27 @@ export class Water {
     );
   }
 
+  private static adjustGeometry(waterPlaneGeometry: THREE.PlaneGeometry) {
+    const arrPositions = waterPlaneGeometry.attributes.position.array;
+    const posLength = arrPositions.length;
+    const maxDistance = WIDTH / 2;
+
+    for (let i = 0; i < posLength; i += 3) {
+      const x = arrPositions[i];
+      const y = arrPositions[i + 1];
+
+      const layer = Math.max(Math.abs(x), Math.abs(y));
+      const factor = (layer / maxDistance) ** 2;
+      const xNormalized = x * factor;
+      const yNormalized = y * factor;
+
+      arrPositions[i] = round(xNormalized);
+      arrPositions[i + 1] = round(yNormalized);
+    }
+
+    waterPlaneGeometry.attributes.position.needsUpdate = true;
+  }
+
   setSunPosition(sunPosition: THREE.Vector3) {
     this.material.uniforms.sunPosition.value = sunPosition.clone().normalize();
     this.simpleMaterial.uniforms.sunPosition.value = sunPosition
@@ -210,11 +255,20 @@ export class Water {
   tick(time: number, camera: THREE.Camera) {
     this.material.uniforms.time.value = time;
     this.simpleMaterial.uniforms.time.value = time;
-    this.waterGroup.position.set(camera.position.x, camera.position.y, 0);
+
+    this.waterGroup.position.set(
+      round(camera.position.x),
+      round(camera.position.y),
+      0
+    );
   }
 }
 
-function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
+function waterCustomShader(
+  heightTexture: THREE.Texture,
+  ds: THREE.Vec2[],
+  stencil: boolean
+) {
   const textureLoader = new THREE.TextureLoader();
   const normalTexture = textureLoader.load(normalMap);
   normalTexture.wrapS = THREE.RepeatWrapping;
@@ -240,6 +294,7 @@ function waterCustomShader(ds: THREE.Vec2[], stencil: boolean) {
       sunPosition: { value: new THREE.Vector3(1, 1, 1) },
       texture_scale: { value: 1000 },
       z_gain: { value: 1.6 },
+      height_texture: { value: heightTexture },
     },
     premultipliedAlpha: false,
     stencilWrite: stencil,

@@ -51,7 +51,7 @@ export class Render3D {
   readonly PLANE_WIDTH = this.gameState.map_size();
   readonly SEGMENTS_DENSITY = this.gameState.tile_size();
   readonly PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
-  readonly water = Water.startWater(this.PLANE_WIDTH);
+  readonly water = Water.startWater(this.PLANE_WIDTH, this.gameState);
   readonly shipsManager = new ShipsManager(
     this.gameState,
     this.scene,

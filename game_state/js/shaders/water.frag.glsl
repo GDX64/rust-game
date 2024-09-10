@@ -6,12 +6,16 @@ uniform vec3 scatter_color;
 uniform float scatter_factor;
 uniform vec3 water_color;
 uniform sampler2D normal_map;
+uniform sampler2D height_texture;
 uniform float texture_scale;
 uniform float z_gain;
+
+const vec3 SHALLOW_COLOR = vec3(0.0, 0.9, 1.0);
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
 varying float depth;
+varying float height_value;
 
 vec3 get_displacement() {
   vec2 uv = vViewPosition.xy / texture_scale;
@@ -27,6 +31,10 @@ vec3 get_displacement() {
   vec3 normal = normal1.xyz + normal2.xyz + normal3.xyz + normal4.xyz;
   normal.z = normal.z * z_gain;
   return normalize(normal);
+}
+
+vec3 get_water_height_color() {
+  return mix(water_color, SHALLOW_COLOR, height_value);
 }
 
 void main() {
@@ -49,8 +57,9 @@ void main() {
   diffusion_intensity = clamp(diffusion_intensity, 0.0, 1.0);
 
   float intensity = 0.2 + 0.8 * diffusion_intensity;
+  vec3 height_color = get_water_height_color();
 
-  vec3 color = water_color * intensity + scatter_color * reflect_intensity;
+  vec3 color = height_color * intensity + scatter_color * reflect_intensity;
   //add fog effect
   color = mix(color, vec3(0.6, 0.6, 0.6), depth / 2000.0);
   gl_FragColor = vec4(color, 0.9);

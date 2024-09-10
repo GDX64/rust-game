@@ -3,10 +3,14 @@ const int DIR = 1;
 uniform float time;
 uniform vec2 directions[DIR];
 uniform float amplitude;
+uniform sampler2D height_texture;
+
+const float HALF_MAP_SIZE = 5000.0;
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
 varying float depth;
+varying float height_value;
 
 void wave(vec3 pos, out float wave, out vec3 normal) {
   float z_acc = 0.0;
@@ -33,5 +37,8 @@ void main() {
   gl_Position = projectionMatrix * viewMatrix * pos;
   normal_v = normal_calc;
   depth = gl_Position.z;
+
+  vec2 uv = vViewPosition.xy / HALF_MAP_SIZE + 0.5;
+  height_value = texture2D(height_texture, uv).r;
   // normal_v = vec3(0.0, 0.0, 1.0);
 }
