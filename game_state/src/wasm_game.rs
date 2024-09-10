@@ -203,14 +203,13 @@ impl GameWasmState {
         let min_max = self.min_max_height();
         let min = min_max[0];
         let half_size = self.map_size() / 2.0;
-        let half_tile = self.tile_size() / 2.0;
         let scale_dimensions =
             linear_scale_from_points(0.0, -half_size, size as f64 - 1.0, half_size);
         let scale = linear_scale_from_points(min / 4.0, 0.0, 0.0, 1.0);
         for i in 0..size {
             for j in 0..size {
-                let x = scale_dimensions(i as f64) - half_tile;
-                let y = scale_dimensions(j as f64) - half_tile;
+                let x = scale_dimensions(i as f64);
+                let y = scale_dimensions(j as f64);
                 let value = self.get_land_value(x, y);
                 let value = scale(value).min(1.0).max(0.0);
                 map[i + j * size] = (value * 255.0) as u8;
