@@ -16,9 +16,8 @@ const vec3 WHITE = vec3(1.0, 1.0, 1.0);
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
+varying vec2 vUv;
 varying float depth;
-varying float height_value;
-varying float coast_distance;
 
 vec3 get_displacement() {
   vec2 uv = vViewPosition.xy / texture_scale;
@@ -38,17 +37,19 @@ vec3 get_displacement() {
 
 float get_foam() {
   vec2 uv = vViewPosition.xy * FOAM_TEXTURE_SCALE;
-  float t = time / 10.0;
+  float t = time * FOAM_TEXTURE_SCALE * 20.0;
   vec2 uv_offset1 = uv + vec2(t / 17.0, t / 29.0);
   vec2 uv_offset2 = uv + vec2(-t / 19.0, t / 31.0);
   float foam_noise1 = texture2D(normal_map, uv_offset1).r;
   float foam_noise2 = texture2D(normal_map, uv_offset2).g;
   float foam_noise = (foam_noise1 + foam_noise2) / 2.0;
+  float coast_distance = texture2D(height_texture, vUv).g;
   float foam_influence = 1.0 - smoothstep(0.0, 0.015, coast_distance);
   return foam_influence * foam_noise;
 }
 
 vec3 get_water_height_color() {
+  float height_value = texture2D(height_texture, vUv).r;
   return mix(water_color, SHALLOW_COLOR, height_value);
 }
 

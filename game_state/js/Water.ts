@@ -10,7 +10,7 @@ const WIDTH = 5_000;
 const WATER_DETAIL = 100;
 const DIR = 1;
 
-const roundingFactor = WATER_DETAIL;
+const roundingFactor = 1;
 const round = (x: number) => Math.floor(x / roundingFactor) * roundingFactor;
 
 export class Water {
@@ -130,6 +130,8 @@ export class Water {
       textureSize,
       THREE.RGBAFormat
     );
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
     texture.needsUpdate = true;
     return texture;
   }
@@ -143,7 +145,7 @@ export class Water {
       WATER_DETAIL
     );
 
-    // Water.adjustGeometry(waterPlaneGeometry);
+    Water.adjustGeometry(waterPlaneGeometry);
 
     const waterShader = waterCustomShader(
       heightTexture,
