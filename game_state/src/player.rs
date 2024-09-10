@@ -222,10 +222,11 @@ impl Player {
     }
 
     pub fn shoot_error_margin(&self, target: V2D, game: &ServerState) -> Option<f64> {
-        let mut ships = self.shooting_ships(game);
-        let ship = ships.next()?;
-        Bullet::maybe_from_target(ship.position.into(), target)?;
-        return Some(self.shoot_radius);
+        let mut ships = self.shooting_ships(game).filter_map(|ship| {
+            Bullet::maybe_from_target(ship.position.into(), target)?;
+            return Some(self.shoot_radius);
+        });
+        return ships.next();
     }
 
     pub fn player_ships<'a>(&self, game: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
