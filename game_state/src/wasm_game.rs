@@ -6,6 +6,7 @@ pub use crate::server_state::*;
 use crate::world_gen::WorldGenConfig;
 use cgmath::Vector2;
 use core::panic;
+use std::mem::size_of;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -197,6 +198,73 @@ impl GameWasmState {
         serde_wasm_bindgen::to_value(&islands).unwrap_or_default()
     }
 
+    pub fn make_ocean_height_map(&self, size: usize) -> Vec<u8> {
+        let mut map = vec![0; size * size];
+        let min_max = self.min_max_height();
+        let min = min_max[0];
+        let half_size = self.map_size() / 2.0;
+        let half_tile = self.tile_size() / 2.0;
+        let scale_dimensions =
+            linear_scale_from_points(0.0, -half_size, size as f64 - 1.0, half_size);
+        let scale = linear_scale_from_points(min / 4.0, 0.0, 0.0, 1.0);
+        for i in 0..size {
+            for j in 0..size {
+                let x = scale_dimensions(i as f64) - half_tile;
+                let y = scale_dimensions(j as f64) - half_tile;
+                let value = self.get_land_value(x, y);
+                let value = scale(value).min(1.0).max(0.0);
+                map[i + j * size] = (value * 255.0) as u8;
+            }
+        }
+        map
+    }
+
+    pub fn make_coast_distance_map(&self, size: usize) -> Vec<u8> {
+        let height_map = self.make_ocean_height_map(size);
+        let mut map = vec![255u8; size * size];
+        let size = size as i32;
+
+        map.iter_mut().enumerate().for_each(|(idx, v)| {
+            let my_height = height_map[idx];
+            if my_height == 255 {
+                *v = 0;
+            }
+        });
+
+        let mut iterate_on_map = || {
+            for i in 0..size {
+                for j in 0..size {
+                    let idx = (i + j * size) as usize;
+                    let my_distance = map[idx];
+                    let plus_one = my_distance.checked_add(1).unwrap_or(255);
+                    if plus_one == 255 {
+                        continue;
+                    }
+                    //fill neighbors
+                    for dx in -1..=1 {
+                        for dy in -1..=1 {
+                            if dx == 0 && dy == 0 {
+                                continue;
+                            }
+                            let x = i + dx;
+                            let y = j + dy;
+                            if x >= 0 && x < size && y >= 0 && y < size {
+                                let idx = (x + y * size) as usize;
+                                map[idx] = map[idx].min(plus_one);
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        for _ in 0..16 {
+            iterate_on_map();
+        }
+
+        return map;
+    }
+
     pub fn island_owners(&self) -> JsValue {
         let owners = &self.running_mode.server_state().island_dynamic;
         serde_wasm_bindgen::to_value(&owners).unwrap_or_default()
@@ -228,4 +296,10 @@ impl GameWasmState {
             .collect();
         serde_json::to_string(&player).unwrap_or("[]".to_string())
     }
+}
+
+fn linear_scale_from_points(x0: f64, y0: f64, x1: f64, y1: f64) -> impl Fn(f64) -> f64 {
+    let m = (y1 - y0) / (x1 - x0);
+    let b = y0 - m * x0;
+    move |x| m * x + b
 }

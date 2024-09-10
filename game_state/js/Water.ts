@@ -122,29 +122,22 @@ export class Water {
   }
 
   static generateHeightTexture(game: GameWasmState) {
-    const width = game.map_size();
     const textureSize = 512;
-    const heightData = new Float32Array(textureSize * textureSize);
-    const [min] = game.min_max_height();
-    const colorScale = Linscale.fromPoints(min / 4, 0, 0, 1);
-    const dimScale = Linscale.fromPoints(0, -width / 2, textureSize, width / 2);
-    for (let i = 0; i < textureSize; i++) {
-      for (let j = 0; j < textureSize; j++) {
-        const x = dimScale.scale(i);
-        const y = dimScale.scale(j);
-        const landValue = game.get_land_value(x, y);
-        const idx = i + j * textureSize;
-        heightData[idx] =
-          Math.max(0, Math.min(colorScale.scale(landValue), 1)) ** 2;
-        // heightData[idx] = 1;
-      }
+    const heightData = new Uint8ClampedArray(textureSize * textureSize * 4);
+    const oceanHeight = game.make_ocean_height_map(textureSize);
+    const coastDistance = game.make_coast_distance_map(textureSize);
+    for (let i = 0; i < oceanHeight.length; i++) {
+      heightData[i * 4] = oceanHeight[i];
+      heightData[i * 4 + 1] = coastDistance[i];
     }
+
+    console.log({ coastDistance });
+
     const texture = new THREE.DataTexture(
       heightData,
       textureSize,
       textureSize,
-      THREE.RedFormat,
-      THREE.FloatType
+      THREE.RGBAFormat
     );
     texture.needsUpdate = true;
     return texture;

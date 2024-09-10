@@ -10,6 +10,7 @@ varying vec3 normal_v;
 varying vec3 vViewPosition;
 varying float depth;
 varying float height_value;
+varying float coast_distance;
 
 void wave(vec3 pos, out float wave, out vec3 normal) {
   float z_acc = 0.0;
@@ -39,5 +40,6 @@ void main() {
 
   vec2 uv = vViewPosition.xy / map_size + 0.5;
   height_value = texture2D(height_texture, uv).r;
+  coast_distance = texture2D(height_texture, uv).g;
   // normal_v = vec3(0.0, 0.0, 1.0);
 }

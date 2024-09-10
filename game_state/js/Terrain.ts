@@ -80,7 +80,7 @@ class TerrainChunk {
     const texture = TerrainChunk.terrainPalletteTexture(gameState);
 
     const planeMaterial = new THREE.MeshLambertMaterial({
-      // vertexColors: true,
+      // wireframe: true,
       color: 0x666666,
       map: texture,
     });
@@ -104,15 +104,14 @@ class TerrainChunk {
     const posArr = geometry.attributes.position.array;
     const uvArr = geometry.attributes.uv.array;
     const [min, max] = this.gameState.min_max_height();
-    console.log("min", min, "max", max);
     const heightScale = Linscale.fromPoints(min, 0, max, 1);
+    const halfTile = this.gameState.tile_size();
     for (let x = 0; x < this.segments; x += 1) {
       for (let y = 0; y < this.segments; y += 1) {
         const i = (y * this.segments + x) * 3;
         const uvIndex = (y * this.segments + x) * 2;
-        const yProportion = y / this.segments;
-        let xWorld = (x / this.segments) * PLANE_WIDTH - PLANE_WIDTH / 2;
-        let yWorld = (0.5 - yProportion) * PLANE_WIDTH;
+        let xWorld = posArr[i];
+        let yWorld = posArr[i + 1];
         xWorld += this.planeMesh.position.x;
         yWorld += this.planeMesh.position.y;
         let height = this.gameState.get_land_value(xWorld, yWorld);

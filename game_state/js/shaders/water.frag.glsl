@@ -18,6 +18,7 @@ varying vec3 normal_v;
 varying vec3 vViewPosition;
 varying float depth;
 varying float height_value;
+varying float coast_distance;
 
 vec3 get_displacement() {
   vec2 uv = vViewPosition.xy / texture_scale;
@@ -43,7 +44,8 @@ float get_foam() {
   float foam_noise1 = texture2D(normal_map, uv_offset1).r;
   float foam_noise2 = texture2D(normal_map, uv_offset2).g;
   float foam_noise = (foam_noise1 + foam_noise2) / 2.0;
-  return foam_noise * height_value * height_value;
+  float foam_influence = 1.0 - smoothstep(0.0, 0.015, coast_distance);
+  return foam_influence * foam_noise;
 }
 
 vec3 get_water_height_color() {
