@@ -4,7 +4,6 @@ import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 import normalMap from "../example_images/water_normals.png";
 import { GameWasmState } from "../pkg/game_state";
-import { Linscale } from "./Linscale";
 
 const FREQ_START = 0.025;
 const WIDTH = 5_000;
@@ -130,8 +129,6 @@ export class Water {
       heightData[i * 4] = oceanHeight[i];
       heightData[i * 4 + 1] = coastDistance[i];
     }
-
-    console.log({ coastDistance });
 
     const texture = new THREE.DataTexture(
       heightData,

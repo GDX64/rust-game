@@ -11,7 +11,7 @@ uniform float texture_scale;
 uniform float z_gain;
 
 const vec3 SHALLOW_COLOR = vec3(0.0, 0.9, 1.0);
-const float FOAM_TEXTURE_SCALE = 0.01;
+const float FOAM_TEXTURE_SCALE = 0.003;
 const vec3 WHITE = vec3(1.0, 1.0, 1.0);
 
 varying vec3 normal_v;
