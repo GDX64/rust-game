@@ -65,9 +65,9 @@ impl GameWasmState {
             .send_game_message(GameMessage::AddBotShipAt(x, y));
     }
 
-    pub fn shoot_error_margin(&self, x: f64, y: f64) -> Option<f64> {
+    pub fn can_shoot_here(&self, x: f64, y: f64) -> bool {
         self.player
-            .shoot_error_margin((x, y).into(), self.running_mode.server_state())
+            .can_shoot_here((x, y).into(), self.running_mode.server_state())
     }
 
     pub fn get_selected_ships(&self) -> JsValue {

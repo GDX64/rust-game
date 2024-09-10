@@ -207,12 +207,18 @@ export class PlayerActions {
       const intersection = this.waterIntersection();
       if (intersection) {
         const { x, y } = intersection.point;
-        const margin = this.game.shoot_error_margin(x, y);
-        if (margin) {
-          this.shipsManager.aimCircle.position.set(x, y, 0);
-          this.shipsManager.aimCircle.scale.set(margin, margin, 1);
+        const canShoot = this.game.can_shoot_here(x, y);
+        const margin = this.game.shoot_radius();
+        this.shipsManager.aimCircle.position.set(x, y, 0);
+        this.shipsManager.aimCircle.scale.set(margin, margin, 1);
+        if (canShoot) {
+          this.shipsManager.aimCircle.material.color = new THREE.Color(
+            "#fbff00"
+          );
         } else {
-          this.shipsManager.aimCircle.visible = false;
+          this.shipsManager.aimCircle.material.color = new THREE.Color(
+            "#ff0000"
+          );
         }
       }
     }

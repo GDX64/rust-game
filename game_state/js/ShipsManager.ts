@@ -71,7 +71,7 @@ export class ShipsManager {
       color: 0xffff00,
       blending: THREE.NormalBlending,
       transparent: true,
-      opacity: 0.1,
+      opacity: 0.3,
       depthWrite: false,
     });
     this.aimCircle = new THREE.Mesh(circle, circleMaterial);
@@ -221,7 +221,6 @@ export class ShipsManager {
         bullets[i].position[1],
         bullets[i].position[2]
       );
-      // this.bulletModel.setColorAt(i, playerColor(bullets[i].player_id));
       this.bulletModel.setMatrixAt(i, matrix);
     }
 
