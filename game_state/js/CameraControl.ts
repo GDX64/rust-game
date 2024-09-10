@@ -34,8 +34,8 @@ const MAX_Z = 200;
 const MAX_MOVING_SPEED = 10;
 const MAX_ROTATION_SPEED = 0.03;
 export class CameraControl {
-  private target = new LerpBox().duration(0.166);
-  private position = new LerpBox().duration(0.166);
+  target = new LerpBox().duration(0.166);
+  position = new LerpBox().duration(0.166);
   private keys: Record<string, boolean> = {};
   private time = 0;
   constructor(public camera: THREE.Camera) {
@@ -60,12 +60,18 @@ export class CameraControl {
     this.time = time;
   }
 
-  changeTarget(v: V3) {
+  private changeTarget(v: V3) {
     this.target.updateTo(v);
   }
 
-  changePosition(v: V3) {
+  private changePosition(v: V3) {
     this.position.updateTo(v);
+  }
+
+  changeCameraPosition(v: V3) {
+    const diff = v.clone().sub(this.position.to);
+    this.changePosition(v);
+    this.changeTarget(this.target.to.clone().add(diff));
   }
 
   addListeners() {

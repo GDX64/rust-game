@@ -3,6 +3,7 @@ import { ShipsManager } from "./ShipsManager";
 import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 import { IslandData } from "./RustWorldTypes";
+import { Terrain } from "./Terrain";
 
 enum States {
   IDLE,
@@ -21,7 +22,8 @@ export class PlayerActions {
     public canvas: HTMLCanvasElement,
     public shipsManager: ShipsManager,
     public camera: CameraControl,
-    public water: Water
+    public water: Water,
+    public terrain: Terrain
   ) {
     this.mouse = { x: canvas.offsetWidth / 2, y: canvas.offsetHeight / 2 };
 
@@ -57,6 +59,12 @@ export class PlayerActions {
     // window.onbeforeunload = () => {
     //   return false;
     // };
+
+    this.terrain.minimap.mapClick$.subscribe((point) => {
+      this.camera.changeCameraPosition(
+        new THREE.Vector3(point.x, point.y, this.camera.camera.position.z)
+      );
+    });
 
     this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
@@ -172,15 +180,6 @@ export class PlayerActions {
     if (event.key === " ") {
       this.shipsManager.auto_shoot();
     }
-  }
-
-  targetSelected() {
-    const selected = this.shipsManager.selectedShips().next().value;
-    if (!selected) {
-      return;
-    }
-    const [x, y] = selected.position;
-    this.camera.changeTarget(new THREE.Vector3(x, y, 0));
   }
 
   handleMousePos() {

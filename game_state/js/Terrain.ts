@@ -2,6 +2,7 @@ import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 import { playerColor } from "./PlayerStuff";
 import { Linscale } from "./Linscale";
+import { Subject } from "rxjs";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
@@ -128,6 +129,7 @@ class TerrainChunk {
 class MiniMap {
   islandsCanvas;
   mapCanvas;
+  mapClick$ = new Subject<{ x: number; y: number }>();
 
   mapSizeInPixels = Math.floor(window.innerWidth * minimapPercentage);
   constructor(private game: GameWasmState) {
@@ -135,6 +137,28 @@ class MiniMap {
     mapCanvas.classList.add("minimap-canvas");
     mapCanvas.width = this.mapSizeInPixels;
     mapCanvas.height = this.mapSizeInPixels;
+
+    mapCanvas.onclick = (event: MouseEvent) => {
+      const { height, width } = mapCanvas.getBoundingClientRect();
+      const miniMapToWorldX = Linscale.fromPoints(
+        0,
+        -PLANE_WIDTH / 2,
+        width,
+        PLANE_WIDTH / 2
+      );
+      const miniMapToWorldY = Linscale.fromPoints(
+        0,
+        PLANE_WIDTH / 2,
+        height,
+        -PLANE_WIDTH / 2
+      );
+      event.stopPropagation();
+      const x = event.offsetX;
+      const y = event.offsetY;
+      const xWorld = miniMapToWorldX.scale(x);
+      const yWorld = miniMapToWorldY.scale(y);
+      this.mapClick$.next({ x: xWorld, y: yWorld });
+    };
 
     const islandsCanvas = new OffscreenCanvas(
       this.mapSizeInPixels,

@@ -74,7 +74,8 @@ export class Render3D {
       this.canvas,
       this.shipsManager,
       this.cameraControls,
-      this.water
+      this.water,
+      this.terrain
     );
 
     //reset gui defaults
