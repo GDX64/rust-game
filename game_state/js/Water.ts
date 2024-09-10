@@ -2,7 +2,7 @@ import * as THREE from "three";
 import fragShader from "./shaders/water.frag.glsl?raw";
 import vertShader from "./shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
-import normalMap from "../example_images/water_normals.png";
+import normalMap from "./assets/water_normals.jpg";
 import { GameWasmState } from "../pkg/game_state";
 
 const FREQ_START = 0.025;
