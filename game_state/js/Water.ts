@@ -10,7 +10,7 @@ const WIDTH = 5_000;
 const WATER_DETAIL = 100;
 const DIR = 1;
 
-const roundingFactor = 100;
+const roundingFactor = WATER_DETAIL;
 const round = (x: number) => Math.floor(x / roundingFactor) * roundingFactor;
 
 export class Water {
@@ -122,16 +122,10 @@ export class Water {
 
   static generateHeightTexture(game: GameWasmState) {
     const textureSize = 512;
-    const heightData = new Uint8ClampedArray(textureSize * textureSize * 4);
-    const oceanHeight = game.make_ocean_height_map(textureSize);
-    const coastDistance = game.make_coast_distance_map(textureSize);
-    for (let i = 0; i < oceanHeight.length; i++) {
-      heightData[i * 4] = oceanHeight[i];
-      heightData[i * 4 + 1] = coastDistance[i];
-    }
+    const oceanData = game.ocean_data(textureSize);
 
     const texture = new THREE.DataTexture(
-      heightData,
+      oceanData,
       textureSize,
       textureSize,
       THREE.RGBAFormat
@@ -278,6 +272,7 @@ function waterCustomShader(
     blending: THREE.NormalBlending,
     transparent: true,
     depthWrite: false,
+    depthTest: true,
     uniforms: {
       time: { value: 0.0 },
       directions: {

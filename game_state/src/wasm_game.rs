@@ -198,7 +198,19 @@ impl GameWasmState {
         serde_wasm_bindgen::to_value(&islands).unwrap_or_default()
     }
 
-    pub fn make_ocean_height_map(&self, size: usize) -> Vec<u8> {
+    pub fn ocean_data(&self, size: usize) -> Vec<u8> {
+        let height_map = self.make_ocean_height_map(size);
+        let distance_map = self.make_coast_distance_map(size, &height_map);
+        height_map
+            .into_iter()
+            .zip(distance_map.into_iter())
+            .flat_map(|(height, distance)| {
+                return [height, distance, 0, 0];
+            })
+            .collect()
+    }
+
+    fn make_ocean_height_map(&self, size: usize) -> Vec<u8> {
         let mut map = vec![0; size * size];
         let min_max = self.min_max_height();
         let min = min_max[0];
@@ -218,8 +230,7 @@ impl GameWasmState {
         map
     }
 
-    pub fn make_coast_distance_map(&self, size: usize) -> Vec<u8> {
-        let height_map = self.make_ocean_height_map(size);
+    fn make_coast_distance_map(&self, size: usize, height_map: &[u8]) -> Vec<u8> {
         let mut map = vec![255u8; size * size];
         let size = size as i32;
 
