@@ -163,6 +163,7 @@ export class Water {
 
     const waterShader = waterCustomShader(
       heightTexture,
+      game.map_size(),
       makeDs(FREQ_START),
       false
     );
@@ -175,7 +176,12 @@ export class Water {
     // const completeWater = new THREE.Mesh(waterPlaneGeometry, wireFrameMaterial);
     completeWater.renderOrder = RenderOrder.Water;
 
-    const simpleWaterShader = waterCustomShader(heightTexture, makeDs(0), true);
+    const simpleWaterShader = waterCustomShader(
+      heightTexture,
+      game.map_size(),
+      makeDs(0),
+      true
+    );
 
     const simplePlane = new THREE.Mesh(
       new THREE.PlaneGeometry(width * 2, width * 2, 5, 5),
@@ -266,6 +272,7 @@ export class Water {
 
 function waterCustomShader(
   heightTexture: THREE.Texture,
+  mapSize: number,
   ds: THREE.Vec2[],
   stencil: boolean
 ) {
@@ -286,6 +293,7 @@ function waterCustomShader(
       directions: {
         value: ds,
       },
+      map_size: { value: mapSize },
       normal_map: { value: normalTexture },
       scatter_color: { value: new THREE.Color("#f2b361") },
       water_color: { value: new THREE.Color("#30b4ca") },

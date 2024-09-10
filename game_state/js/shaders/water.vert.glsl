@@ -4,8 +4,7 @@ uniform float time;
 uniform vec2 directions[DIR];
 uniform float amplitude;
 uniform sampler2D height_texture;
-
-const float HALF_MAP_SIZE = 5000.0;
+uniform float map_size;
 
 varying vec3 normal_v;
 varying vec3 vViewPosition;
@@ -38,7 +37,7 @@ void main() {
   normal_v = normal_calc;
   depth = gl_Position.z;
 
-  vec2 uv = vViewPosition.xy / HALF_MAP_SIZE + 0.5;
+  vec2 uv = vViewPosition.xy / map_size + 0.5;
   height_value = texture2D(height_texture, uv).r;
   // normal_v = vec3(0.0, 0.0, 1.0);
 }
