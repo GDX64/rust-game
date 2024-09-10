@@ -25,7 +25,7 @@ export class PlayerActions {
     public water: Water,
     public terrain: Terrain
   ) {
-    this.mouse = { x: canvas.offsetWidth / 2, y: canvas.offsetHeight / 2 };
+    this.mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
     this.axesHelper = new THREE.AxesHelper(1000);
     this.shipsManager.scene.add(this.axesHelper);
