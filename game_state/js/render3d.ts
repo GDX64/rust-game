@@ -161,7 +161,7 @@ export class Render3D {
     this.gameState.start_online(onlineData);
   }
 
-  async init() {
+  async init(el: HTMLElement) {
     if (this.state.online) {
       await this.startRemoteServer();
     } else {
@@ -170,7 +170,6 @@ export class Render3D {
     this.gameState.change_error(this.state.shootError);
 
     setInterval(() => this.saveState(), 1_000);
-    document.body.appendChild(this.canvas);
     this.playerActions.bindEvents();
     const scene = this.scene;
 
@@ -180,6 +179,9 @@ export class Render3D {
     this.water.addToScene(scene);
 
     this.terrain.addToScene(scene);
+    this.canvas.classList.add("main-canvas");
+    el.appendChild(this.canvas);
+    el.appendChild(this.terrain.minimap.mapCanvas);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
