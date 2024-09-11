@@ -130,6 +130,7 @@ class MiniMap {
   islandsCanvas;
   mapCanvas;
   mapClick$ = new Subject<{ x: number; y: number }>();
+  newBitmapImage: null | ImageBitmap = null;
 
   mapSizeInPixels = Math.floor(window.innerWidth * minimapPercentage);
   constructor(private game: GameWasmState) {
@@ -197,16 +198,7 @@ class MiniMap {
     const dim = Math.sqrt(terrain.length);
     const imgDataArray = new ImageData(imgData, dim, dim);
     createImageBitmap(imgDataArray).then((bitmap) => {
-      const ctx = this.islandsCanvas.getContext("2d")!;
-      ctx.save();
-      ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
-      ctx.scale(1, -1);
-      ctx.translate(0, -this.mapSizeInPixels);
-      ctx.drawImage(bitmap, 0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
-      ctx.restore();
-
-      const ctx2 = this.mapCanvas.getContext("2d")!;
-      ctx2.drawImage(this.islandsCanvas, 0, 0);
+      this.newBitmapImage = bitmap;
     });
   }
 
@@ -214,6 +206,28 @@ class MiniMap {
     if (this.game.has_map_changed()) {
       this.updateMiniMap();
     }
+
+    if (this.newBitmapImage) {
+      const ctx = this.islandsCanvas.getContext("2d")!;
+      ctx.save();
+      ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
+      ctx.scale(1, -1);
+      ctx.translate(0, -this.mapSizeInPixels);
+      ctx.drawImage(
+        this.newBitmapImage,
+        0,
+        0,
+        this.mapSizeInPixels,
+        this.mapSizeInPixels
+      );
+      ctx.restore();
+
+      const ctx2 = this.mapCanvas.getContext("2d")!;
+      ctx2.drawImage(this.islandsCanvas, 0, 0);
+
+      this.newBitmapImage = null;
+    }
+
     const ctx = this.mapCanvas.getContext("2d")!;
     ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
     ctx.drawImage(this.islandsCanvas, 0, 0);
