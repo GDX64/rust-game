@@ -8,15 +8,24 @@ mod game_server;
 mod hashgrid;
 mod interpolation;
 mod player;
+mod player_state;
 mod running_mode;
 mod server_state;
 mod spiral_search;
 mod wasm_game;
 mod world_gen;
 mod ws_channel;
+pub use game_server::{GameServer, TICK_TIME};
+use std::sync::OnceLock;
 use wasm_bindgen::prelude::*;
 
-pub use game_server::{GameServer, TICK_TIME};
+const FLAG_NAMES: &'static str = include_str!("../assets/flagnames.txt");
+type FlagSet = Vec<&'static str>;
+static ONCE_FLAGS: OnceLock<FlagSet> = OnceLock::new();
+
+pub fn get_flag_names() -> &'static FlagSet {
+    ONCE_FLAGS.get_or_init(|| FLAG_NAMES.lines().collect())
+}
 
 #[wasm_bindgen(start)]
 pub fn start() {

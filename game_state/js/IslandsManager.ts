@@ -1,16 +1,31 @@
-// import brazil from "./assets/brasil.png";
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import { GameWasmState } from "../pkg/game_state";
-import { playerColor } from "./PlayerStuff";
 import { IslandData, IslandOwners } from "./RustWorldTypes";
 import lighthouseUrl from "./assets/lighthouse.glb?url";
 import * as THREE from "three";
 
+const allCountries = import.meta.glob<string>("./assets/flags/*.png", {
+  query: "?url",
+  import: "default",
+});
+
+// const countryOptions = Object.keys(allCountries).map((key) => {
+//   return key.match(/flags\/(.*)\.png/)![1];
+// });
+
+function getFlagPromise(country: string) {
+  return allCountries[`./assets/flags/${country}.png`]();
+}
+
+const loader = new THREE.TextureLoader();
 export class IslandsManager {
-  flagSprites = new Map<bigint, THREE.Sprite>();
+  flagSprites = new Map<number, THREE.Sprite>();
   lightHouseGroup = new THREE.Group();
   owners: IslandOwners;
-  islandData: Map<bigint, IslandData>;
+  islandData: Map<number, IslandData>;
+  flagsTextures = new Map<string, THREE.Texture>();
+  flagsLoading = new Set<string>();
+  needsUpdate = false;
 
   constructor(readonly game: GameWasmState, readonly scene: THREE.Scene) {
     const { spriteMap, spriteGroup, owners, islandData } = this.makeFlags();
@@ -19,6 +34,25 @@ export class IslandsManager {
     this.flagSprites = spriteMap;
     this.scene.add(spriteGroup);
     this.loadLighthouse();
+  }
+
+  getFlagTexture(country: string) {
+    if (this.flagsTextures.has(country)) {
+      return this.flagsTextures.get(country);
+    }
+    if (this.flagsLoading.has(country)) {
+      return null;
+    }
+    this.flagsLoading.add(country);
+    getFlagPromise(country)
+      .then((url) => {
+        const texture = loader.load(url);
+        this.flagsTextures.set(country, texture);
+        this.needsUpdate = true;
+      })
+      .finally(() => {
+        this.flagsLoading.delete(country);
+      });
   }
 
   loadLighthouse() {
@@ -48,9 +82,10 @@ export class IslandsManager {
   }
 
   tick() {
-    if (!this.game.has_map_changed()) {
+    if (!this.game.has_map_changed() && !this.needsUpdate) {
       return;
     }
+    this.needsUpdate = false;
     const owners: IslandOwners = this.game.island_owners();
     for (const [island, { owner }] of owners.entries()) {
       const sprite = this.flagSprites.get(island);
@@ -58,10 +93,12 @@ export class IslandsManager {
         continue;
       }
       if (owner != null) {
-        const ownerColor = playerColor(Number(owner));
-        sprite.material.color.set(ownerColor);
+        const ownerFlag = this.game.get_player_flag(BigInt(owner));
+        const flag = this.getFlagTexture(ownerFlag);
+        sprite.material.map = flag ?? null;
+        sprite.material.needsUpdate = true;
       } else {
-        sprite.material.color.set(0x000000);
+        sprite.material.map = null;
       }
     }
   }
@@ -70,17 +107,13 @@ export class IslandsManager {
     const owners: IslandOwners = this.game.island_owners();
     const islandData: IslandData[] = this.game.all_island_data();
 
-    // const textureLoader = new THREE.TextureLoader();
-    // const flagTexture = textureLoader.load(brazil);
-
     const sprites = islandData.map((island) => {
       const material = new THREE.SpriteMaterial({
-        color: 0x000000,
-        // map: flagTexture,
+        color: 0xffffff,
       });
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(50, 35, 1);
-      sprite.position.set(island.light_house[0], island.light_house[1], 150);
+      sprite.position.set(island.light_house[0], island.light_house[1], 100);
       return { sprite, island: island.id };
     });
     const spriteGroup = new THREE.Group();

@@ -25,15 +25,15 @@ export type ExplosionData = {
 };
 
 export type IslandData = {
-  id: bigint;
+  id: number;
   center: [number, number];
   light_house: [number, number];
 };
 
 export type IslandOwners = Map<
-  bigint,
+  number,
   {
     take_progress: number;
-    owner?: bigint;
+    owner?: number;
   }
 >;

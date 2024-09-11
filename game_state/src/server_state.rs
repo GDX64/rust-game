@@ -3,6 +3,7 @@ use crate::{
     diffing::Diff,
     game_map::{IslandData, WorldGrid, V2D, V3D},
     hashgrid::{HashEntity, HashEntityKind, HashGrid},
+    player_state::PlayerState,
     world_gen::{self, WorldGen},
 };
 use cgmath::InnerSpace;
@@ -43,13 +44,6 @@ impl GameConstants {
         let err = d.magnitude() * self.err_per_m;
         return Some(err);
     }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct PlayerState {
-    name: String,
-    position: (f64, f64),
-    id: u64,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -576,7 +570,6 @@ impl ServerState {
                     id,
                     PlayerState {
                         name: "Player".to_string(),
-                        position: (0.0, 0.0),
                         id,
                     },
                 );

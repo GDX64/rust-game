@@ -1,6 +1,8 @@
 use crate::game_map::V2D;
 pub use crate::game_server::*;
+use crate::get_flag_names;
 use crate::player::Player;
+use crate::player_state::PlayerState;
 use crate::running_mode::{OnlineClient, RunningMode};
 pub use crate::server_state::*;
 use crate::world_gen::WorldGenConfig;
@@ -303,6 +305,10 @@ impl GameWasmState {
             .cloned()
             .collect();
         serde_json::to_string(&player).unwrap_or("[]".to_string())
+    }
+
+    pub fn get_player_flag(&self, id: u64) -> String {
+        get_flag_names()[id as usize % get_flag_names().len()].into()
     }
 }
 
