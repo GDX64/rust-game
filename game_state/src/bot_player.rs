@@ -1,10 +1,6 @@
 use cgmath::MetricSpace;
 
-use crate::{
-    game_map::{Island, V2D},
-    player::Player,
-    wasm_game::ServerState,
-};
+use crate::{game_map::V2D, island::Island, player::Player, wasm_game::ServerState};
 
 enum BotState {
     Idle,

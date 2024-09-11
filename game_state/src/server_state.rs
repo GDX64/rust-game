@@ -1,8 +1,9 @@
 use crate::{
     bullet::Bullet,
     diffing::Diff,
-    game_map::{IslandData, WorldGrid, V2D, V3D},
+    game_map::{WorldGrid, V2D, V3D},
     hashgrid::{HashEntity, HashEntityKind, HashGrid},
+    island::IslandData,
     player_state::PlayerState,
     world_gen::{self, WorldGen},
 };
