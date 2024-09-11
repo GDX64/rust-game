@@ -281,19 +281,7 @@ export class Render3D {
   }
 
   private makeSun(scene: THREE.Scene) {
-    const sun = new THREE.SphereGeometry(30, 32, 32);
-    const sunMaterial = new THREE.MeshLambertMaterial({
-      color: 0xffff00,
-      reflectivity: 0.0,
-      refractionRatio: 0.0,
-      emissive: 0xffff00,
-      emissiveIntensity: 1,
-      fog: false,
-    });
-    const sunMesh = new THREE.Mesh(sun, sunMaterial);
-    const sunPosition = new THREE.Vector3(4000, 0, 500);
-    sunMesh.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
-    scene.add(sunMesh);
+    const sunPosition = new THREE.Vector3(0, 4000, 500);
     const light = new THREE.DirectionalLight(0xffffff, 10);
     const ambientLight = new THREE.AmbientLight(0x404040, 30);
     light.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
