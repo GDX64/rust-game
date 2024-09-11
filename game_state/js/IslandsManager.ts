@@ -18,7 +18,22 @@ function getFlagPromise(country: string) {
 }
 
 const flagsTextures = new Map<string, THREE.Texture>();
+const flagImages = new Map<string, HTMLImageElement>();
 const flagsLoading = new Map<string, Promise<void>>();
+
+export function getFlagImage(country: string) {
+  if (flagImages.has(country)) {
+    return flagImages.get(country);
+  }
+  getFlagPromise(country).then((url) => {
+    const img = new Image();
+    img.src = url;
+    img.width = 100;
+    img.height = 100;
+    flagImages.set(country, img);
+  });
+  return null;
+}
 
 export function getFlagTexture(country: string) {
   if (flagsTextures.has(country)) {

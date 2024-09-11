@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { playerColor } from "./PlayerStuff";
 import { Linscale } from "./Linscale";
 import { Subject } from "rxjs";
-import { IslandData } from "./RustWorldTypes";
+import { IslandData, IslandOwners } from "./RustWorldTypes";
+import { getFlagImage, getFlagTexture } from "./IslandsManager";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
@@ -176,6 +177,8 @@ class MiniMap {
   updateMiniMap() {
     const islandData: IslandData[] = this.game.all_island_data();
     const ctx = this.islandsCanvas.getContext("2d")!;
+    ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
+
     const mapSize = this.game.map_size();
     const scaleX = Linscale.fromPoints(
       -mapSize / 2,
@@ -189,46 +192,58 @@ class MiniMap {
       -mapSize / 2,
       this.mapSizeInPixels
     );
+
+    const owners: IslandOwners = this.game.island_owners();
+
     islandData.forEach((island) => {
+      ctx.save();
       const path: [number, number][] = this.game.get_island_path(
         BigInt(island.id)
       );
+      const owner = owners.get(island.id)?.owner;
       ctx.beginPath();
-      console.log(path);
-      ctx.moveTo(scaleX.scale(path[0][0]), scaleY.scale(path[0][1]));
-      path.forEach(([x, y]) => {
-        ctx.lineTo(scaleX.scale(x), scaleY.scale(y));
+      const x = scaleX.scale(path[0][0]);
+      const y = scaleY.scale(path[0][1]);
+      ctx.moveTo(x, y);
+      let minX = x;
+      let minY = y;
+      let maxX = x;
+      let maxY = y;
+      path.slice(1).forEach(([x, y]) => {
+        const scaledX = scaleX.scale(x);
+        const scaledY = scaleY.scale(y);
+        ctx.lineTo(scaledX, scaledY);
+        minX = Math.min(minX, scaledX);
+        minY = Math.min(minY, scaledY);
+        maxX = Math.max(maxX, scaledX);
+        maxY = Math.max(maxY, scaledY);
       });
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
       ctx.closePath();
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
+      ctx.strokeStyle = "#000000";
+      ctx.stroke();
+
+      if (owner != null) {
+        const country = this.game.get_player_flag(BigInt(owner));
+        const img = getFlagImage(country);
+        if (img) {
+          ctx.clip();
+          ctx.drawImage(img, minX, minY, width, height);
+        }
+      } else {
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+      }
+      ctx.restore();
     });
   }
 
   updateCanvas(camera: THREE.Camera) {
     if (this.game.has_map_changed()) {
       this.updateMiniMap();
-    }
-
-    if (this.newBitmapImage) {
-      const ctx = this.islandsCanvas.getContext("2d")!;
-      ctx.save();
-      ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
-      ctx.scale(1, -1);
-      ctx.translate(0, -this.mapSizeInPixels);
-      ctx.drawImage(
-        this.newBitmapImage,
-        0,
-        0,
-        this.mapSizeInPixels,
-        this.mapSizeInPixels
-      );
-      ctx.restore();
-
-      const ctx2 = this.mapCanvas.getContext("2d")!;
-      ctx2.drawImage(this.islandsCanvas, 0, 0);
-
-      this.newBitmapImage = null;
     }
 
     const ctx = this.mapCanvas.getContext("2d")!;
