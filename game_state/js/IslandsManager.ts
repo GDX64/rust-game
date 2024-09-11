@@ -17,14 +17,37 @@ function getFlagPromise(country: string) {
   return allCountries[`./assets/flags/${country}.png`]();
 }
 
+const flagsTextures = new Map<string, THREE.Texture>();
+const flagsLoading = new Map<string, Promise<void>>();
+
+export function getFlagTexture(country: string) {
+  if (flagsTextures.has(country)) {
+    return flagsTextures.get(country);
+  }
+  if (flagsLoading.has(country)) {
+    return null;
+  }
+  const loading = getFlagPromise(country)
+    .then((url) => {
+      const texture = loader.load(url);
+      flagsTextures.set(country, texture);
+    })
+    .finally(() => {
+      flagsLoading.delete(country);
+    });
+  flagsLoading.set(country, loading);
+}
+
+export function whenFlagLoaded(country: string) {
+  return flagsLoading.get(country);
+}
+
 const loader = new THREE.TextureLoader();
 export class IslandsManager {
   flagSprites = new Map<number, THREE.Sprite>();
   lightHouseGroup = new THREE.Group();
   owners: IslandOwners;
   islandData: Map<number, IslandData>;
-  flagsTextures = new Map<string, THREE.Texture>();
-  flagsLoading = new Set<string>();
   needsUpdate = false;
 
   constructor(readonly game: GameWasmState, readonly scene: THREE.Scene) {
@@ -37,22 +60,13 @@ export class IslandsManager {
   }
 
   getFlagTexture(country: string) {
-    if (this.flagsTextures.has(country)) {
-      return this.flagsTextures.get(country);
+    const flag = getFlagTexture(country);
+    if (flag) {
+      return flag;
     }
-    if (this.flagsLoading.has(country)) {
-      return null;
-    }
-    this.flagsLoading.add(country);
-    getFlagPromise(country)
-      .then((url) => {
-        const texture = loader.load(url);
-        this.flagsTextures.set(country, texture);
-        this.needsUpdate = true;
-      })
-      .finally(() => {
-        this.flagsLoading.delete(country);
-      });
+    whenFlagLoaded(country)?.then(() => {
+      this.needsUpdate = true;
+    });
   }
 
   loadLighthouse() {
