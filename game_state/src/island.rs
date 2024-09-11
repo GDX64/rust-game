@@ -36,6 +36,7 @@ pub struct Island {
     pub id: u64,
     pub center: V2D,
     pub light_house: V2D,
+    pub tile_size: f64,
 }
 
 impl Island {
@@ -53,7 +54,7 @@ impl Island {
         (min_x, min_y, max_x, max_y)
     }
 
-    pub fn new(tiles: BTreeSet<IslandTile>, number: u64) -> Self {
+    pub fn new(tiles: BTreeSet<IslandTile>, number: u64, tile_size: f64) -> Self {
         let mut x = 0.0;
         let mut y = 0.0;
         for tile in tiles.iter() {
@@ -68,6 +69,7 @@ impl Island {
             id: number,
             center,
             light_house: (0.0, 0.0).into(),
+            tile_size,
         }
     }
 
@@ -140,9 +142,11 @@ impl Island {
             .map(|(x, y)| {
                 let half_width = width as f64 / 2.0;
                 let half_height = height as f64 / 2.0;
+                let x = (x as f64) * self.tile_size;
+                let y = (y as f64) * self.tile_size;
                 return (
-                    x as f64 + self.center.y - half_width,
-                    y as f64 + self.center.y - half_height,
+                    x + self.center.x - half_width,
+                    y + self.center.y - half_height,
                 );
             })
             .collect()
@@ -183,7 +187,7 @@ mod test {
             [1, 1, 1], // 1
             [0, 1, 0], // 2
         ]);
-        let island = super::Island::new(tiles, 0);
+        let island = super::Island::new(tiles, 0, 1.0);
         let path = island.island_path();
         println!("{:?}", path);
     }

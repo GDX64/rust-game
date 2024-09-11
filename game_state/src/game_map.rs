@@ -246,7 +246,7 @@ impl WorldGrid {
                 } else {
                     let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
                     if set.len() > MIN_ISLAND_SIZE {
-                        let mut island = Island::new(set, islands_number);
+                        let mut island = Island::new(set, islands_number, self.tile_size);
                         let x = self.from_tile_unit(island.center.x as usize);
                         let y = self.from_tile_unit(island.center.y as usize);
                         island.center = V2D::new(x, y);

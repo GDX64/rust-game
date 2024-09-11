@@ -111,8 +111,6 @@ export class IslandsManager {
         const flag = this.getFlagTexture(ownerFlag);
         sprite.material.map = flag ?? null;
         sprite.material.needsUpdate = true;
-        const path = this.game.get_island_path(BigInt(island));
-        console.log(path);
       } else {
         sprite.material.map = null;
       }

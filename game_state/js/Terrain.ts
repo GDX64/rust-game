@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { playerColor } from "./PlayerStuff";
 import { Linscale } from "./Linscale";
 import { Subject } from "rxjs";
+import { IslandData } from "./RustWorldTypes";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
@@ -173,32 +174,34 @@ class MiniMap {
   }
 
   updateMiniMap() {
-    const terrain = this.game.uint_terrain();
-    const imgData = new Uint8ClampedArray(terrain.length * 4);
-    for (let i = 0; i < terrain.length; i++) {
-      const dataIndex = i * 4;
-      const terrainValue = terrain[i];
-      let color = 0;
-      let alpha = 150;
-      if (terrainValue === -1) {
-        color = 0;
-        alpha = 50;
-      } else if (terrainValue === -2) {
-        color = 0xffffff;
-      } else {
-        const threeColor = playerColor(terrainValue);
-        color = threeColor.getHex();
-      }
-      imgData[dataIndex] = color >> 16;
-      imgData[dataIndex + 1] = (color >> 8) & 0xff;
-      imgData[dataIndex + 2] = color & 0xff;
-      imgData[dataIndex + 3] = alpha;
-    }
-
-    const dim = Math.sqrt(terrain.length);
-    const imgDataArray = new ImageData(imgData, dim, dim);
-    createImageBitmap(imgDataArray).then((bitmap) => {
-      this.newBitmapImage = bitmap;
+    const islandData: IslandData[] = this.game.all_island_data();
+    const ctx = this.islandsCanvas.getContext("2d")!;
+    const mapSize = this.game.map_size();
+    const scaleX = Linscale.fromPoints(
+      -mapSize / 2,
+      0,
+      mapSize / 2,
+      this.mapSizeInPixels
+    );
+    const scaleY = Linscale.fromPoints(
+      mapSize / 2,
+      0,
+      -mapSize / 2,
+      this.mapSizeInPixels
+    );
+    islandData.forEach((island) => {
+      const path: [number, number][] = this.game.get_island_path(
+        BigInt(island.id)
+      );
+      ctx.beginPath();
+      console.log(path);
+      ctx.moveTo(scaleX.scale(path[0][0]), scaleY.scale(path[0][1]));
+      path.forEach(([x, y]) => {
+        ctx.lineTo(scaleX.scale(x), scaleY.scale(y));
+      });
+      ctx.closePath();
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
     });
   }
 
