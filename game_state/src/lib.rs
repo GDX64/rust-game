@@ -7,6 +7,7 @@ mod game_noise;
 mod game_server;
 mod hashgrid;
 mod interpolation;
+mod island;
 mod player;
 mod player_state;
 mod running_mode;
