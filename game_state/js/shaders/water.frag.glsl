@@ -24,13 +24,13 @@ vec3 get_displacement() {
   float t = time / 10.0;
   vec2 uv_offset1 = uv + vec2(t / 17.0, t / 29.0);
   vec2 uv_offset2 = uv + vec2(-t / 19.0, t / 32.0);
-  vec2 uv_offset3 = uv + vec2(t / 101.0, -t / 113.0);
-  vec2 uv_offset4 = uv + vec2(-t / 109.0, t / 97.0);
+  // vec2 uv_offset3 = uv + vec2(t / 101.0, -t / 113.0);
+  // vec2 uv_offset4 = uv + vec2(-t / 109.0, t / 97.0);
+  // vec4 normal3 = texture2D(normal_map, uv_offset3);
+  // vec4 normal4 = texture2D(normal_map, uv_offset4);
   vec4 normal1 = texture2D(normal_map, uv_offset1);
   vec4 normal2 = texture2D(normal_map, uv_offset2);
-  vec4 normal3 = texture2D(normal_map, uv_offset3);
-  vec4 normal4 = texture2D(normal_map, uv_offset4);
-  vec3 normal = normal1.xyz + normal2.xyz + normal3.xyz + normal4.xyz;
+  vec3 normal = normal1.xyz + normal2.xyz;
   normal.z = normal.z * z_gain;
   return normalize(normal);
 }
