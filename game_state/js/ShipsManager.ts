@@ -1,16 +1,17 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import boat from "./assets/boat.glb?url";
+import boat from "./assets/shipuv.glb?url";
 import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
 import { Bullet, ExplosionData, PlayerState, ShipData } from "./RustWorldTypes";
-import { flagColors } from "./PlayerStuff";
+import { flagColors, getFlagTexture } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
+const MAX_INSTANCES = 2_000;
 
 const up = new THREE.Vector3(0, 0, 1);
 const defaultColor = new THREE.Color(0x999999);
@@ -24,10 +25,13 @@ export class ShipsManager {
   );
   selected: number[] = [];
   outlines;
+
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
   private colorMap = new Map<number, THREE.Color>();
+  private sailsMap = new Map<number, THREE.InstancedMesh>();
+  private sailsGeometry: THREE.BufferGeometry | null = null;
 
   selectionRectangle: THREE.Mesh;
   aimCircle;
@@ -105,6 +109,32 @@ export class ShipsManager {
     this.loadModel();
   }
 
+  private sailMeshOfPlayer(playerID: number) {
+    const cachedSails = this.sailsMap.get(playerID);
+    if (cachedSails) {
+      return cachedSails;
+    }
+    if (!this.sailsGeometry) {
+      return null;
+    }
+    const flagTexture = getFlagTexture(
+      this.game.get_player_flag(BigInt(playerID))
+    );
+    if (!flagTexture) {
+      return null;
+    }
+    const sails = new THREE.InstancedMesh(
+      this.sailsGeometry,
+      new THREE.MeshLambertMaterial({ color: 0xaaaaaa, map: flagTexture }),
+      MAX_INSTANCES
+    );
+    sails.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    sails.frustumCulled = false;
+    this.sailsMap.set(playerID, sails);
+    this.scene.add(sails);
+    return sails;
+  }
+
   async loadModel() {
     const loader = new GLTFLoader();
     const obj = await new Promise<THREE.Group<THREE.Object3DEventMap>>(
@@ -113,27 +143,30 @@ export class ShipsManager {
           resolve(_obj.scene);
         })
     );
-    const material = new THREE.MeshPhongMaterial({
-      color: 0xffffff,
-      shininess: 20,
+
+    const material = new THREE.MeshLambertMaterial({
+      color: "#752900",
     });
 
-    const mesh = obj.children[0] as THREE.Mesh;
-
-    mesh.geometry.scale(200, 200, 200);
-    mesh.geometry.translate(0, -2, 3.5);
-    const instancedMesh = new THREE.InstancedMesh(
-      mesh.geometry,
+    const objChildren = obj.children[0] as THREE.Object3D;
+    const [sails, hull] = objChildren.children as THREE.Mesh[];
+    sails.geometry.applyMatrix4(sails.matrix).rotateX(Math.PI / 2);
+    hull.geometry.applyMatrix4(hull.matrix).rotateX(Math.PI / 2);
+    const scaleFactor = 2;
+    sails.geometry.scale(scaleFactor, scaleFactor, scaleFactor);
+    hull.geometry.scale(scaleFactor, scaleFactor, scaleFactor);
+    const instancedHulls = new THREE.InstancedMesh(
+      hull.geometry,
       material,
-      10000
+      MAX_INSTANCES
     );
-    // obj.scale.set(this.scale, this.scale, this.scale);
-    // obj.rotation.set(Math.PI / 2, 0, 0);
-    instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.boatMesh = instancedMesh;
+
+    instancedHulls.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.boatMesh = instancedHulls;
     this.boatMesh.frustumCulled = false;
     this.scene.add(this.boatMesh);
     this.scene.add(this.outlines);
+    this.sailsGeometry = sails.geometry;
   }
 
   createShip(x: number, y: number) {
@@ -225,6 +258,13 @@ export class ShipsManager {
     return color ?? defaultColor;
   }
 
+  private resestSailCounts() {
+    for (const sails of this.sailsMap.values()) {
+      sails.count = 0;
+      sails.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   tick(time: number) {
     if (!this.boatMesh) {
       return;
@@ -265,8 +305,14 @@ export class ShipsManager {
 
     const cameraPosition = this.camera.position;
 
+    this.resestSailCounts();
+
     for (let i = 0; i < ships.length; i++) {
       const ship = ships[i];
+      const sail = this.sailMeshOfPlayer(ship.player_id);
+      if (!sail) {
+        continue;
+      }
 
       const distanceToCamera =
         (ship.position[0] - cameraPosition.x) ** 2 +
@@ -279,13 +325,13 @@ export class ShipsManager {
 
       const drawIndex = boatsDrawn;
 
-      const isMine = ship.player_id === myID;
-      const meshToUse = this.boatMesh;
       this.calcBoatAngle(ship, matrix);
-      meshToUse.setMatrixAt(drawIndex, matrix);
-      const color = this.playerColor(ship.player_id);
-      meshToUse.setColorAt(drawIndex, color);
+      this.boatMesh.setMatrixAt(drawIndex, matrix);
+      sail.setMatrixAt(sail.count, matrix);
+      sail.count += 1;
+
       this.hpBar.updateBar(drawIndex, matrix, ship.hp);
+      const isMine = ship.player_id === myID;
       if (isMine && this.selected.includes(ship.id)) {
         this.outlines.setMatrixAt(outlineBoats, matrix);
         outlineBoats++;
