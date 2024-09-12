@@ -21,18 +21,18 @@ const flagsTextures = new Map<string, THREE.Texture>();
 const flagImages = new Map<string, HTMLImageElement>();
 const flagsLoading = new Map<string, Promise<void>>();
 
-export function getFlagImage(country: string) {
+export function getFlagImage(country: string): HTMLImageElement {
   if (flagImages.has(country)) {
-    return flagImages.get(country);
+    return flagImages.get(country)!;
   }
+  const img = new Image();
+  flagImages.set(country, img);
   getFlagPromise(country).then((url) => {
-    const img = new Image();
-    img.src = url;
     img.width = 100;
     img.height = 100;
-    flagImages.set(country, img);
+    img.src = url;
   });
-  return null;
+  return img;
 }
 
 export function getFlagTexture(country: string) {

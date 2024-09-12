@@ -131,7 +131,7 @@ class MiniMap {
   islandsCanvas;
   mapCanvas;
   mapClick$ = new Subject<{ x: number; y: number }>();
-  newBitmapImage: null | ImageBitmap = null;
+  needUpdate = false;
 
   mapSizeInPixels = Math.floor(
     window.innerWidth * minimapPercentage * devicePixelRatio
@@ -232,10 +232,14 @@ class MiniMap {
       if (owner != null) {
         const country = this.game.get_player_flag(BigInt(owner));
         const img = getFlagImage(country);
-        if (img) {
+        if (img.width) {
           ctx.clip();
           const imgSize = Math.max(width, height);
           ctx.drawImage(img, minX, minY, imgSize, imgSize);
+        } else {
+          img.onload = () => {
+            this.needUpdate = true;
+          };
         }
       } else {
         ctx.fillStyle = "#616161";
@@ -246,7 +250,7 @@ class MiniMap {
   }
 
   updateCanvas(camera: THREE.Camera) {
-    if (this.game.has_map_changed()) {
+    if (this.game.has_map_changed() || this.needUpdate) {
       this.updateMiniMap();
     }
 
