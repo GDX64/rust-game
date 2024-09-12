@@ -145,14 +145,14 @@ export class ShipsManager {
     );
 
     const material = new THREE.MeshLambertMaterial({
-      color: "#752900",
+      color: "#ffffff",
     });
 
     const objChildren = obj.children[0] as THREE.Object3D;
     const [sails, hull] = objChildren.children as THREE.Mesh[];
     sails.geometry.applyMatrix4(sails.matrix).rotateX(Math.PI / 2);
     hull.geometry.applyMatrix4(hull.matrix).rotateX(Math.PI / 2);
-    const scaleFactor = 2;
+    const scaleFactor = 2.2;
     sails.geometry.scale(scaleFactor, scaleFactor, scaleFactor);
     hull.geometry.scale(scaleFactor, scaleFactor, scaleFactor);
     const instancedHulls = new THREE.InstancedMesh(
@@ -328,6 +328,7 @@ export class ShipsManager {
       this.calcBoatAngle(ship, matrix);
       this.boatMesh.setMatrixAt(drawIndex, matrix);
       sail.setMatrixAt(sail.count, matrix);
+      this.boatMesh.setColorAt(drawIndex, this.playerColor(ship.player_id));
       sail.count += 1;
 
       this.hpBar.updateBar(drawIndex, matrix, ship.hp);

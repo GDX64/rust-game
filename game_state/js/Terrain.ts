@@ -254,6 +254,7 @@ class MiniMap {
   updateCanvas(camera: THREE.Camera) {
     if (this.game.has_map_changed() || this.needUpdate) {
       this.updateIslands();
+      this.needUpdate = false;
     }
 
     const ctx = this.mapCanvas.getContext("2d")!;
