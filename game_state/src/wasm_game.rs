@@ -320,7 +320,9 @@ impl GameWasmState {
     }
 
     pub fn get_player_flag(&self, id: u64) -> String {
-        get_flag_names()[id as usize % get_flag_names().len()].into()
+        let flags = get_flag_names();
+        let index = fastrand::Rng::with_seed(id).usize(0..flags.len());
+        get_flag_names()[index].into()
     }
 }
 
