@@ -145,7 +145,7 @@ export class ShipsManager {
     );
 
     const material = new THREE.MeshLambertMaterial({
-      color: "#ffffff",
+      color: "#9e9e9e",
     });
 
     const objChildren = obj.children[0] as THREE.Object3D;

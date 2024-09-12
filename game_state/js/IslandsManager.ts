@@ -5,6 +5,7 @@ import lighthouseUrl from "./assets/lighthouse.glb?url";
 import * as THREE from "three";
 import { getFlagTexture, whenFlagLoaded } from "./PlayerStuff";
 
+const NO_OWNER_COLOR = THREE.Color.NAMES.gray;
 export class IslandsManager {
   flagSprites = new Map<number, THREE.Sprite>();
   lightHouseGroup = new THREE.Group();
@@ -85,7 +86,7 @@ export class IslandsManager {
 
     const sprites = islandData.map((island) => {
       const material = new THREE.SpriteMaterial({
-        color: 0xffffff,
+        color: NO_OWNER_COLOR,
       });
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(50, 35, 1);
