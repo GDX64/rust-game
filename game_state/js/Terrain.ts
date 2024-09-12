@@ -7,7 +7,7 @@ import { getFlagImage } from "./IslandsManager";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
-const minimapPercentage = 0.15;
+const minimapPercentage = 0.25;
 
 export class Terrain {
   minimap;
@@ -133,12 +133,16 @@ class MiniMap {
   mapClick$ = new Subject<{ x: number; y: number }>();
   needUpdate = false;
 
-  mapSizeInPixels = Math.floor(
-    window.innerWidth * minimapPercentage * devicePixelRatio
-  );
+  mapSizeInPixels;
   constructor(private game: GameWasmState) {
     const mapCanvas = document.createElement("canvas");
     mapCanvas.classList.add("minimap-canvas");
+
+    this.mapSizeInPixels =
+      Math.min(window.innerWidth, window.innerHeight) *
+      minimapPercentage *
+      devicePixelRatio;
+
     mapCanvas.width = this.mapSizeInPixels;
     mapCanvas.height = this.mapSizeInPixels;
 
@@ -171,11 +175,9 @@ class MiniMap {
 
     this.islandsCanvas = islandsCanvas;
     this.mapCanvas = mapCanvas;
-
-    this.updateMiniMap();
   }
 
-  updateMiniMap() {
+  private updateIslands() {
     const islandData: IslandData[] = this.game.all_island_data();
     const ctx = this.islandsCanvas.getContext("2d")!;
     ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
@@ -251,7 +253,7 @@ class MiniMap {
 
   updateCanvas(camera: THREE.Camera) {
     if (this.game.has_map_changed() || this.needUpdate) {
-      this.updateMiniMap();
+      this.updateIslands();
     }
 
     const ctx = this.mapCanvas.getContext("2d")!;
@@ -276,10 +278,13 @@ class MiniMap {
     ctx.translate(xOnCanvas, yOnCanvas);
     ctx.rotate(rotationOnXY);
 
+    const ARROW_SIZE = 9;
+
+    const arrowSize = ARROW_SIZE * devicePixelRatio;
     ctx.beginPath();
-    ctx.moveTo(0, -3);
-    ctx.lineTo(10, 0);
-    ctx.lineTo(0, 3);
+    ctx.moveTo(0, -arrowSize / 3);
+    ctx.lineTo(arrowSize, 0);
+    ctx.lineTo(0, arrowSize / 3);
     ctx.fill();
     ctx.restore();
   }
