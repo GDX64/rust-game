@@ -98,7 +98,7 @@ impl Island {
         let (last_x, _) = border.last().unwrap();
         //scan bottom side
         for x in (*last_x + 1)..grid_width {
-            for y in 0..grid_height {
+            for y in (0..grid_height).rev() {
                 if grid[y][x] {
                     border.push((x, y));
                     break;
@@ -137,11 +137,11 @@ impl Island {
             border.truncate(index + 1);
         }
 
+        let half_width = (width as f64) * self.tile_size / 2.0;
+        let half_height = (height as f64) * self.tile_size / 2.0;
         border
             .into_iter()
             .map(|(x, y)| {
-                let half_width = width as f64 / 2.0;
-                let half_height = height as f64 / 2.0;
                 let x = (x as f64) * self.tile_size;
                 let y = (y as f64) * self.tile_size;
                 return (

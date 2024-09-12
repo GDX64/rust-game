@@ -231,7 +231,8 @@ class MiniMap {
         const img = getFlagImage(country);
         if (img) {
           ctx.clip();
-          ctx.drawImage(img, minX, minY, width, height);
+          const imgSize = Math.max(width, height);
+          ctx.drawImage(img, minX, minY, imgSize, imgSize);
         }
       } else {
         ctx.fillStyle = "#ffffff";
