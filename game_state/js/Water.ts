@@ -19,7 +19,6 @@ export class Water {
   constructor(
     private material: THREE.ShaderMaterial,
     private simpleMaterial: THREE.ShaderMaterial,
-    private simpleMesh: THREE.Mesh,
     private intersectionPlane: THREE.Mesh,
     private waterGroup: THREE.Group
   ) {}
@@ -210,7 +209,6 @@ export class Water {
     return new Water(
       waterShader,
       simpleWaterShader,
-      simplePlane,
       intersectionPlane,
       watergroup
     );
@@ -272,7 +270,7 @@ function waterCustomShader(
     vertexShader: vertShader,
     fragmentShader: fragShader,
     blending: THREE.NormalBlending,
-    transparent: true,
+    transparent: false,
     depthWrite: false,
     depthTest: true,
     uniforms: {
@@ -283,7 +281,7 @@ function waterCustomShader(
       map_size: { value: mapSize },
       normal_map: { value: normalTexture },
       scatter_color: { value: new THREE.Color("#f2b361") },
-      water_color: { value: new THREE.Color("#30b4ca") },
+      water_color: { value: new THREE.Color("#10658e") },
       scatter_factor: { value: 150 },
       amplitude: { value: 2 },
       sunPosition: { value: new THREE.Vector3(1, 1, 1) },
