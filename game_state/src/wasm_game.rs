@@ -296,7 +296,7 @@ impl GameWasmState {
         self.running_mode.id() as f64
     }
 
-    pub fn get_players(&self) -> String {
+    pub fn get_players(&self) -> JsValue {
         let player: Vec<PlayerState> = self
             .running_mode
             .server_state()
@@ -304,7 +304,7 @@ impl GameWasmState {
             .values()
             .cloned()
             .collect();
-        serde_json::to_string(&player).unwrap_or("[]".to_string())
+        serde_wasm_bindgen::to_value(&player).unwrap_or(JsValue::NULL)
     }
 
     pub fn get_island_path(&self, id: u64, error: f64) -> JsValue {

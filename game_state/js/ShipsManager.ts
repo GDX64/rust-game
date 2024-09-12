@@ -6,13 +6,14 @@ import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
-import { Bullet, ExplosionData, ShipData } from "./RustWorldTypes";
-import { playerColor } from "./PlayerStuff";
+import { Bullet, ExplosionData, PlayerState, ShipData } from "./RustWorldTypes";
+import { flagColors, playerColor } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
 
 const up = new THREE.Vector3(0, 0, 1);
+const defaultColor = new THREE.Color(0x999999);
 
 const TOO_FAR = 2_000;
 export class ShipsManager {
@@ -26,6 +27,8 @@ export class ShipsManager {
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
   private ships: ShipData[] = [];
+  private colorMap = new Map<number, THREE.Color>();
+
   selectionRectangle: THREE.Mesh;
   aimCircle;
   hpBar = new HPBar();
@@ -200,10 +203,33 @@ export class ShipsManager {
     this.game.move_selected_ships(x, y);
   }
 
+  private updatePlayerColors() {
+    const players: PlayerState[] = this.game.get_players();
+    players.forEach((player) => {
+      const cachedColor = this.colorMap.get(player.id);
+      if (cachedColor) {
+        return cachedColor;
+      }
+      const country = this.game.get_player_flag(BigInt(player.id));
+      const vibrant = flagColors(country);
+      if (vibrant) {
+        const color = new THREE.Color(vibrant);
+        this.colorMap.set(player.id, color);
+        return color;
+      }
+    });
+  }
+
+  playerColor(playerID: number) {
+    const color = this.colorMap.get(playerID);
+    return color ?? defaultColor;
+  }
+
   tick(time: number) {
     if (!this.boatMesh) {
       return;
     }
+    this.updatePlayerColors();
     this.islandsManager.tick();
     const ships: ShipData[] = this.game.get_all_ships();
     const bullets: Bullet[] = this.game.get_all_bullets();
@@ -257,7 +283,7 @@ export class ShipsManager {
       const meshToUse = this.boatMesh;
       this.calcBoatAngle(ship, matrix);
       meshToUse.setMatrixAt(drawIndex, matrix);
-      const color = playerColor(ship.player_id);
+      const color = this.playerColor(ship.player_id);
       meshToUse.setColorAt(drawIndex, color);
       this.hpBar.updateBar(drawIndex, matrix, ship.hp);
       if (isMine && this.selected.includes(ship.id)) {

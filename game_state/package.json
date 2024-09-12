@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/GDX64/tailwind-vite-jest#readme",
   "dependencies": {
+    "node-vibrant": "^3.2.1-alpha.1",
     "rxjs": "^7.8.1"
   }
 }

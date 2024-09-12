@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { Linscale } from "./Linscale";
 import { Subject } from "rxjs";
 import { IslandData, IslandOwners } from "./RustWorldTypes";
-import { getFlagImage } from "./IslandsManager";
+import { getFlagImage } from "./PlayerStuff";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;

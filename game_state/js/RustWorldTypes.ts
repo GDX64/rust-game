@@ -24,6 +24,11 @@ export type ExplosionData = {
   kind: ExplosionKind;
 };
 
+export type PlayerState = {
+  id: number;
+  name: string;
+};
+
 export type IslandData = {
   id: number;
   center: [number, number];

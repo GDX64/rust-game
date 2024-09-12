@@ -3,61 +3,8 @@ import { GameWasmState } from "../pkg/game_state";
 import { IslandData, IslandOwners } from "./RustWorldTypes";
 import lighthouseUrl from "./assets/lighthouse.glb?url";
 import * as THREE from "three";
+import { getFlagTexture, whenFlagLoaded } from "./PlayerStuff";
 
-const allCountries = import.meta.glob<string>("./assets/flags/*.png", {
-  query: "?url",
-  import: "default",
-});
-
-// const countryOptions = Object.keys(allCountries).map((key) => {
-//   return key.match(/flags\/(.*)\.png/)![1];
-// });
-
-function getFlagPromise(country: string) {
-  return allCountries[`./assets/flags/${country}.png`]();
-}
-
-const flagsTextures = new Map<string, THREE.Texture>();
-const flagImages = new Map<string, HTMLImageElement>();
-const flagsLoading = new Map<string, Promise<void>>();
-
-export function getFlagImage(country: string): HTMLImageElement {
-  if (flagImages.has(country)) {
-    return flagImages.get(country)!;
-  }
-  const img = new Image();
-  flagImages.set(country, img);
-  getFlagPromise(country).then((url) => {
-    img.width = 100;
-    img.height = 100;
-    img.src = url;
-  });
-  return img;
-}
-
-export function getFlagTexture(country: string) {
-  if (flagsTextures.has(country)) {
-    return flagsTextures.get(country);
-  }
-  if (flagsLoading.has(country)) {
-    return null;
-  }
-  const loading = getFlagPromise(country)
-    .then((url) => {
-      const texture = loader.load(url);
-      flagsTextures.set(country, texture);
-    })
-    .finally(() => {
-      flagsLoading.delete(country);
-    });
-  flagsLoading.set(country, loading);
-}
-
-export function whenFlagLoaded(country: string) {
-  return flagsLoading.get(country);
-}
-
-const loader = new THREE.TextureLoader();
 export class IslandsManager {
   flagSprites = new Map<number, THREE.Sprite>();
   lightHouseGroup = new THREE.Group();
