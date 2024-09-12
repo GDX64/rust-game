@@ -1,4 +1,5 @@
 use crate::game_map::V2D;
+use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -139,7 +140,8 @@ impl Island {
 
         let half_width = (width as f64) * self.tile_size / 2.0;
         let half_height = (height as f64) * self.tile_size / 2.0;
-        border
+
+        let border: Vec<_> = border
             .into_iter()
             .map(|(x, y)| {
                 let x = (x as f64) * self.tile_size;
@@ -149,7 +151,9 @@ impl Island {
                     y + self.center.y - half_height,
                 );
             })
-            .collect()
+            .collect();
+        let border = douglas_peucker(&border, self.tile_size * 10.0);
+        return border;
     }
 
     pub fn island_data(&self) -> IslandData {
@@ -191,4 +195,41 @@ mod test {
         let path = island.island_path();
         println!("{:?}", path);
     }
+}
+
+fn douglas_peucker(points: &[(f64, f64)], epsilon: f64) -> Vec<(f64, f64)> {
+    let mut dmax = 0.0;
+    let mut index = 0;
+    let end = points.len() - 1;
+    for i in 1..end {
+        let d = perpendicular_distance(&points[i], &points[0], &points[end]);
+        if d > dmax {
+            index = i;
+            dmax = d;
+        }
+    }
+    if dmax > epsilon {
+        let mut res1 = douglas_peucker(&points[..=index], epsilon);
+        let res2 = douglas_peucker(&points[index..], epsilon);
+        res1.pop();
+        res1.extend(res2);
+        return res1;
+    } else {
+        return vec![points[0], points[end]];
+    }
+}
+
+fn perpendicular_distance(point: &(f64, f64), start: &(f64, f64), end: &(f64, f64)) -> f64 {
+    let point = V2D::new(point.0, point.1);
+    let start = V2D::new(start.0, start.1);
+    let end = V2D::new(end.0, end.1);
+    let line = end - start;
+    let len = line.magnitude();
+    let line = line / len;
+    let point = point - start;
+    let projection = line.dot(point);
+    let projection = projection.max(0.0).min(len);
+    let projection = start + line * projection;
+    let distance = point - projection;
+    distance.magnitude()
 }

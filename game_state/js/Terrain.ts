@@ -1,10 +1,9 @@
 import { GameWasmState } from "../pkg/game_state";
 import * as THREE from "three";
-import { playerColor } from "./PlayerStuff";
 import { Linscale } from "./Linscale";
 import { Subject } from "rxjs";
 import { IslandData, IslandOwners } from "./RustWorldTypes";
-import { getFlagImage, getFlagTexture } from "./IslandsManager";
+import { getFlagImage } from "./IslandsManager";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
@@ -134,7 +133,9 @@ class MiniMap {
   mapClick$ = new Subject<{ x: number; y: number }>();
   newBitmapImage: null | ImageBitmap = null;
 
-  mapSizeInPixels = Math.floor(window.innerWidth * minimapPercentage);
+  mapSizeInPixels = Math.floor(
+    window.innerWidth * minimapPercentage * devicePixelRatio
+  );
   constructor(private game: GameWasmState) {
     const mapCanvas = document.createElement("canvas");
     mapCanvas.classList.add("minimap-canvas");
