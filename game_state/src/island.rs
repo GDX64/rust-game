@@ -74,7 +74,7 @@ impl Island {
         }
     }
 
-    pub fn island_path(&self) -> Vec<(f64, f64)> {
+    pub fn island_path(&self, error: f64) -> Vec<(f64, f64)> {
         let bounds = self.bounding_box();
         let width = bounds.2 - bounds.0 + 1;
         let height = bounds.3 - bounds.1 + 1;
@@ -152,7 +152,7 @@ impl Island {
                 );
             })
             .collect();
-        let border = douglas_peucker(&border, self.tile_size * 10.0);
+        let border = douglas_peucker(&border, error);
         return border;
     }
 
@@ -192,7 +192,7 @@ mod test {
             [0, 1, 0], // 2
         ]);
         let island = super::Island::new(tiles, 0, 1.0);
-        let path = island.island_path();
+        let path = island.island_path(0.1);
         println!("{:?}", path);
     }
 }

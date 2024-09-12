@@ -195,11 +195,12 @@ class MiniMap {
     );
 
     const owners: IslandOwners = this.game.island_owners();
-
+    const errorMargin = scaleX.inverseScale().alpha() * 20;
     islandData.forEach((island) => {
       ctx.save();
       const path: [number, number][] = this.game.get_island_path(
-        BigInt(island.id)
+        BigInt(island.id),
+        errorMargin
       );
       const owner = owners.get(island.id)?.owner;
       ctx.beginPath();
@@ -224,6 +225,7 @@ class MiniMap {
       const height = maxY - minY;
 
       ctx.closePath();
+      ctx.lineWidth = 4;
       ctx.strokeStyle = "#000000";
       ctx.stroke();
 
@@ -236,7 +238,7 @@ class MiniMap {
           ctx.drawImage(img, minX, minY, imgSize, imgSize);
         }
       } else {
-        ctx.fillStyle = "#ffffff";
+        ctx.fillStyle = "#616161";
         ctx.fill();
       }
       ctx.restore();

@@ -7,6 +7,14 @@ export class Linscale {
     return new Linscale(k, b);
   }
 
+  alpha() {
+    return this.k;
+  }
+
+  inverseScale() {
+    return new Linscale(1 / this.k, -this.b / this.k);
+  }
+
   scale(x: number) {
     return this.k * x + this.b;
   }

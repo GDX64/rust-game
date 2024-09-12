@@ -307,14 +307,14 @@ impl GameWasmState {
         serde_json::to_string(&player).unwrap_or("[]".to_string())
     }
 
-    pub fn get_island_path(&self, id: u64) -> JsValue {
+    pub fn get_island_path(&self, id: u64, error: f64) -> JsValue {
         let island =
             if let Some(island) = self.running_mode.server_state().game_map.islands.get(&id) {
                 island
             } else {
                 return JsValue::NULL;
             };
-        let path = island.island_path();
+        let path = island.island_path(error);
         let val = serde_wasm_bindgen::to_value(&path).unwrap_or_default();
         return val;
     }
