@@ -13,5 +13,4 @@ function runImage(){
 }
 
 buildDockerImage
-copyImageToServer
-runImageOnServer
+runImage
