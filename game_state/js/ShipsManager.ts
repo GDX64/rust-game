@@ -7,7 +7,7 @@ import { Water } from "./Water";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
 import { Bullet, ExplosionData, PlayerState, ShipData } from "./RustWorldTypes";
-import { flagColors, playerColor } from "./PlayerStuff";
+import { flagColors } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
@@ -311,7 +311,7 @@ export class ShipsManager {
 
       this.explosionManager.explodeData(
         explosion,
-        playerColor(explosion.player_id)
+        this.playerColor(explosion.player_id)
       );
     });
   }

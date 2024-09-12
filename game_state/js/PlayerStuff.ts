@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import Vibrant from "node-vibrant";
+import { extractColors } from "extract-colors";
 
 const P1 = new THREE.Color("#1b69cf");
 const P2 = new THREE.Color("#e43131");
@@ -44,11 +44,10 @@ export function flagColors(country: string) {
   loadingVibrant.add(country);
   getFlagPromise(country)
     .then((url) => {
-      debugger;
-      return new Vibrant(url, { useWorker: false }).getPalette();
+      return extractColors(url);
     })
     .then((pallet) => {
-      const color = pallet.Vibrant?.hex;
+      const color = pallet[0].hex;
       if (color) {
         vibrantColors.set(country, color);
       }
