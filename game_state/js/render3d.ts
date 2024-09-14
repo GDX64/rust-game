@@ -153,8 +153,8 @@ export class Render3D {
   private async startServer() {
     let position: [number, number];
     if (this.state.online) {
-      // const url = "https://archpelagus.glmachado.com/ws";
-      const url = "http://localhost:5000/ws";
+      const url = "https://archpelagus.glmachado.com/ws";
+      // const url = "http://localhost:5000/ws";
       const onlineData = OnlineClient.new(url);
       position = await onlineData.init();
       this.gameState.start_online(onlineData);
