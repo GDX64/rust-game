@@ -19,6 +19,7 @@ function runImage(){
 function uploadImage(){
     echo "Uploading docker image"
     sudo docker tag $imageName $tagName
+    sudo docker push $tagName
 }
 
 if [ "$1" == "run" ]; then
