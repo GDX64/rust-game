@@ -143,7 +143,7 @@ impl GameServer {
         let create_player_msg = StateMessage::CreatePlayer { id };
         self.add_to_frame(create_player_msg.clone());
 
-        let map_size = self.game_state.game_map.dim;
+        let map_size = self.game_state.game_map.dim * 0.8;
         let start_x = (self.rand_gen.f64() - 0.5) * map_size;
         let start_y = (self.rand_gen.f64() - 0.5) * map_size;
 

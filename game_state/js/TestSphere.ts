@@ -14,14 +14,14 @@ export class TestSphere {
     const scene = new THREE.Scene();
     const renderer = new THREE.WebGLRenderer();
 
-    const geometry = new THREE.SphereGeometry(5, 8, 8);
+    const geometry = new THREE.SphereGeometry(5, 64, 64);
 
     const texture = new THREE.TextureLoader().load(textureURL);
     const mesh = new THREE.Mesh(
       geometry,
       new THREE.MeshLambertMaterial({
         color: 0xffffff,
-        flatShading: true,
+        flatShading: false,
         map: texture,
       })
     );
