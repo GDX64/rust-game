@@ -169,7 +169,7 @@ impl WorldGen {
     }
 
     fn width_decay_value(&self, x: f64, y: f64) -> f64 {
-        let r = (x * x + y * y).sqrt();
+        let r = x.abs().max(y.abs());
         let half_width = self.config.width / 2.0;
         let e0 = half_width * 0.9;
         let e1 = half_width * 1.0;
