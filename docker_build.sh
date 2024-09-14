@@ -8,7 +8,7 @@ function buildDockerImage(){
 function runImage(){
     ## stop all docker containers running
     sudo docker stop $(docker ps -a -q)
-    sudo docker load -i ~/deploys/img.tar
+    sudo docker load -i ./img.tar
     sudo docker run -d -p 5000:5000 $imageName
 }
 
