@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GameWasmState, OnlineClient } from "../pkg/game_state";
+import { GameWasmState, LocalClient, OnlineClient } from "../pkg/game_state";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -106,11 +106,7 @@ export class Render3D {
       "removeBot"
     );
     this.gui.add(this.state, "online").onChange((val) => {
-      if (val) {
-        this.startRemoteServer();
-      } else {
-        this.gameState.start_local_server();
-      }
+      this.startServer();
     });
     this.gameState.change_error(0);
     this.gui.add(this.state, "shootError", 0, 0.1).onChange((val) => {
@@ -154,20 +150,26 @@ export class Render3D {
     });
   }
 
-  private async startRemoteServer() {
-    const url = "https://game.glmachado.com/ws";
-    // const url = "http://localhost:5000/ws";
-    const onlineData = OnlineClient.new(url);
-    await onlineData.init();
-    this.gameState.start_online(onlineData);
+  private async startServer() {
+    let position: [number, number];
+    if (this.state.online) {
+      const url = "https://game.glmachado.com/ws";
+      // const url = "http://localhost:5000/ws";
+      const onlineData = OnlineClient.new(url);
+      position = await onlineData.init();
+      this.gameState.start_online(onlineData);
+    } else {
+      const localClient = LocalClient.new();
+      position = await localClient.init();
+      this.gameState.start_local_server(localClient);
+    }
+
+    this.cameraControls.displaceCamera(position[0], position[1]);
   }
 
   async init(el: HTMLElement) {
-    if (this.state.online) {
-      await this.startRemoteServer();
-    } else {
-      this.gameState.start_local_server();
-    }
+    await this.startServer();
+
     this.gameState.change_error(this.state.shootError);
 
     setInterval(() => this.saveState(), 1_000);

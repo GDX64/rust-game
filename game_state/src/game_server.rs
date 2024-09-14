@@ -18,7 +18,7 @@ pub enum GameMessage {
     AddBot,
     AddBotShipAt(f64, f64),
     RemoveBot,
-    MyID(u64),
+    PlayerCreated { x: f64, y: f64, id: u64 },
     AskBroadcast { player: u64 },
     None,
 }
@@ -126,7 +126,8 @@ impl GameServer {
                 let state = self.game_state.state_message();
                 self.send_message_to_player(player, GameMessage::FrameMessage(vec![state]));
             }
-            GameMessage::MyID(_) => {}
+            // Those messages should not be received in the server
+            GameMessage::PlayerCreated { .. } => {}
             GameMessage::None => {}
         };
     }
@@ -142,11 +143,23 @@ impl GameServer {
         let create_player_msg = StateMessage::CreatePlayer { id };
         self.add_to_frame(create_player_msg.clone());
 
-        let my_id = GameMessage::MyID(id);
-        self.send_message_to_player(id, my_id);
+        let map_size = self.game_state.game_map.dim;
+        let start_x = (self.rand_gen.f64() - 0.5) * map_size;
+        let start_y = (self.rand_gen.f64() - 0.5) * map_size;
 
-        for _ in 0..100 {
+        self.send_message_to_player(
+            id,
+            GameMessage::PlayerCreated {
+                x: start_x,
+                y: start_y,
+                id,
+            },
+        );
+
+        for _ in 0..20 {
             let mut ship = ShipState::default();
+            ship.position.0 = start_x;
+            ship.position.1 = start_y;
             ship.player_id = id;
             self.add_to_frame(StateMessage::CreateShip { ship });
         }
@@ -206,7 +219,7 @@ impl GameServer {
         self.flush_send_buffers();
     }
 
-    fn flush_send_buffers(&mut self) {
+    pub fn flush_send_buffers(&mut self) {
         let player_ids: Vec<u64> = self.players.keys().cloned().collect();
         let mut player_errors = vec![];
         for id in player_ids {

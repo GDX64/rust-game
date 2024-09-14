@@ -3,7 +3,7 @@ pub use crate::game_server::*;
 use crate::get_flag_names;
 use crate::player::Player;
 use crate::player_state::PlayerState;
-use crate::running_mode::{OnlineClient, RunningMode};
+use crate::running_mode::{LocalClient, OnlineClient, RunningMode};
 pub use crate::server_state::*;
 use crate::world_gen::WorldGenConfig;
 use cgmath::Vector2;
@@ -20,8 +20,9 @@ pub struct GameWasmState {
 #[wasm_bindgen]
 impl GameWasmState {
     pub fn new() -> Self {
+        let client = LocalClient::new();
         Self {
-            running_mode: RunningMode::start_local(),
+            running_mode: RunningMode::start_local(client),
             player: Player::new(0),
             current_time: 0.0,
         }
@@ -90,8 +91,8 @@ impl GameWasmState {
         serde_wasm_bindgen::to_value(&explosions).unwrap_or_default()
     }
 
-    pub fn start_local_server(&mut self) {
-        self.running_mode = RunningMode::start_local();
+    pub fn start_local_server(&mut self, client: LocalClient) {
+        self.running_mode = RunningMode::start_local(client);
         self.player = Player::new(self.running_mode.id());
     }
 

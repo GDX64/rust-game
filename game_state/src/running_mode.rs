@@ -1,7 +1,10 @@
+use core::panic;
+
 use crate::wasm_game::{ServerState, StateMessage, TICK_TIME};
 use crate::ws_channel::WSChannel;
 use crate::{game_server, wasm_game::GameMessage};
 use futures::channel::mpsc::{channel, Receiver};
+use futures::StreamExt;
 use log::info;
 use wasm_bindgen::prelude::*;
 
@@ -33,21 +36,22 @@ impl OnlineClient {
         }
     }
 
-    pub async fn init(&mut self) {
+    pub async fn init(&mut self) -> JsValue {
         while let Some(msg) = self.ws.next().await {
             let msg = GameMessage::from_arr_bytes(&msg);
             for msg in msg.into_iter() {
                 match msg {
-                    GameMessage::MyID(id) => {
+                    GameMessage::PlayerCreated { id, x, y } => {
                         info!("My ID is: {}", id);
                         self.id = id;
                         self.send(GameMessage::AskBroadcast { player: id });
-                        return ();
+                        return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
                     }
                     _ => {}
                 }
             }
         }
+        panic!("Failed to connect to server");
     }
 
     fn flush_send_buffer(&mut self) {
@@ -99,13 +103,15 @@ impl Client for OnlineClient {
     }
 }
 
+#[wasm_bindgen]
 pub struct LocalClient {
     game: game_server::GameServer,
     receiver: Receiver<Vec<u8>>,
-    pub state: ServerState,
+    state: ServerState,
     id: u64,
 }
 
+#[wasm_bindgen]
 impl LocalClient {
     pub fn new() -> LocalClient {
         let (sender, receiver) = channel(100);
@@ -118,6 +124,24 @@ impl LocalClient {
             state: ServerState::new(),
             id: player_id,
         }
+    }
+
+    pub async fn init(&mut self) -> JsValue {
+        self.game.flush_send_buffers();
+        while let Some(msg) = self.receiver.next().await {
+            let game_message = GameMessage::from_arr_bytes(&msg);
+            for msg in game_message.into_iter() {
+                match msg {
+                    GameMessage::PlayerCreated { id, x, y } => {
+                        self.id = id;
+                        return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
+                    }
+                    _ => {}
+                }
+            }
+        }
+        log::error!("Failed to connect to server");
+        panic!("Failed to connect to server");
     }
 }
 
@@ -155,8 +179,8 @@ impl RunningMode {
         }
     }
 
-    pub fn start_local() -> RunningMode {
-        RunningMode::Local(LocalClient::new())
+    pub fn start_local(client: LocalClient) -> RunningMode {
+        RunningMode::Local(client)
     }
 
     pub fn tick(&mut self, dt: f64) {
@@ -206,7 +230,8 @@ mod test {
 
     #[test]
     fn running_mode() {
-        let mut local = super::RunningMode::start_local();
+        let client = super::LocalClient::new();
+        let mut local = super::RunningMode::start_local(client);
         local.send_game_message(GameMessage::AddBot);
         local.send_game_message(GameMessage::AddBot);
         for _ in 0..1000 {

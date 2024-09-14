@@ -68,6 +68,12 @@ export class CameraControl {
     this.position.updateTo(v);
   }
 
+  displaceCamera(x: number, y: number) {
+    const current = this.position.to.clone();
+    const newPos = current.clone().add(new THREE.Vector3(x, y, 0));
+    this.changeCameraPosition(newPos);
+  }
+
   changeCameraPosition(v: V3) {
     const diff = v.clone().sub(this.position.to);
     this.changePosition(v);

@@ -15,6 +15,8 @@ use crate::{
 const MIN_ISLAND_SIZE: usize = 50;
 
 pub struct WorldGrid {
+    /// This is the total size of the grid in meters.
+    /// Thre grid area is dim*dim
     pub dim: f64,
     pub tiles_dim: usize,
     pub tile_size: f64,
