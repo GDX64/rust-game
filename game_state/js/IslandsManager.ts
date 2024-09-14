@@ -89,6 +89,7 @@ export class IslandsManager {
         color: NO_OWNER_COLOR,
       });
       const sprite = new THREE.Sprite(material);
+      sprite.rotateZ(Math.PI / 2);
       sprite.scale.set(50, 35, 1);
       sprite.position.set(island.light_house[0], island.light_house[1], 100);
       return { sprite, island: island.id };
