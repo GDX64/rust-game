@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
     "dev:backend": "cd backend && cargo run",
-    "dev:front": "cd front && npm run dev",
-    "dev:game_state": "cd game_state && wasm-pack build --target web"
+    "dev:game_state": "cd game_state && npm run dev"
   },
   "repository": {
     "type": "git",
