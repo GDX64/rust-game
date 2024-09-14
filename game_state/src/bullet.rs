@@ -114,7 +114,6 @@ mod test {
     fn verify_hits_target(initial: (f64, f64), target: (f64, f64)) -> bool {
         let bullet = Bullet::maybe_from_target(initial.into(), target.into()).unwrap();
         let hit = bullet.final_pos();
-        println!("{:?}", hit);
         return hit.distance((target.0, target.1, 0.0).into()) < BLAST_RADIUS;
     }
 

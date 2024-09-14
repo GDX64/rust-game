@@ -204,7 +204,6 @@ impl WorldGrid {
                 }
                 if tile.is_land() {
                     tile.mark_visited();
-                    println!("x, y {}, {}", x, y);
                     tile.island_number = Some(island);
 
                     let island_tile = IslandTile::new(tile.height(), x, y);
