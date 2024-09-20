@@ -144,22 +144,18 @@ export class CameraControl {
     if (this.keys.q || this.keys.e) {
       const amount = this.keys.q ? 1 : -1;
       this.rotateAroundZ(amount);
-      return;
     }
     if (this.keys.W || this.keys.S) {
       const sign = this.keys.W ? 1 : -1;
       this.moveCameraOnZ(sign);
-      return;
     }
     if (this.keys["w"] || this.keys["s"]) {
       const sign = this.keys.w ? 1 : -1;
       this.moveForward(sign);
-      return;
     }
     if (this.keys["a"] || this.keys["d"]) {
       const sign = this.keys.a ? 1 : -1;
       this.moveSideways(sign);
-      return;
     }
   }
 
