@@ -15,7 +15,7 @@ function runImage(){
     ## stop all docker containers running
     sudo docker stop $(sudo docker ps -a -q)
     sudo docker pull $tagName
-    sudo docker run -d -p 5000:5000 $imageName
+    sudo docker run -d -p 5000:5000 $tagName
 }
 
 function uploadImage(){
