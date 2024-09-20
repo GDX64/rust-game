@@ -11,7 +11,7 @@ import { flagColors, getFlagTexture } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
-const MAX_INSTANCES = 2_000;
+const MAX_INSTANCES = 200;
 
 const up = new THREE.Vector3(0, 0, 1);
 const defaultColor = new THREE.Color(0x999999);

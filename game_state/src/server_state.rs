@@ -7,7 +7,7 @@ use crate::{
     player_state::PlayerState,
     world_gen::{self},
 };
-use cgmath::InnerSpace;
+use cgmath::{InnerSpace, MetricSpace};
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -248,6 +248,7 @@ pub struct IslandDynamicData {
     pub take_progress: f64,
     pub production_progress: f64,
     pub id: u64,
+    pub lighthouse: (f64, f64),
 }
 
 #[derive(Debug, Clone)]
@@ -334,6 +335,7 @@ impl ServerState {
                     take_progress: 0.0,
                     production_progress: 0.0,
                     id: island.id,
+                    lighthouse: island.light_house,
                 },
             );
         }
@@ -387,19 +389,6 @@ impl ServerState {
             game_constants: self.game_constants.clone(),
             island_dynamic: self.island_dynamic.clone(),
         }
-    }
-
-    fn is_ship_near_lighthouse(&self, ship: &ShipState, island_data: &[IslandData]) -> Option<u64> {
-        let tile_size = self.game_map.tile_size;
-        for island in island_data.iter() {
-            let lt_pos: V2D = island.light_house.into();
-            let ship_pos: V2D = ship.position.into();
-            let distance = (lt_pos - ship_pos).magnitude();
-            if distance < tile_size * 2.0 {
-                return Some(island.id);
-            }
-        }
-        return None;
     }
 
     fn tick(&mut self, dt: f64) {
@@ -490,11 +479,17 @@ impl ServerState {
 
     fn tick_handle_island_takes(&mut self, dt: f64) {
         let progress = dt / ISLAND_TAKE_TIME;
-        let all_island_data = self.game_map.all_island_data();
-        let all_island_data = all_island_data.as_slice();
-        for ship in self.ship_collection.values() {
-            if let Some(island) = self.is_ship_near_lighthouse(ship, all_island_data) {
-                if let Some(island) = self.island_dynamic.get_mut(&island) {
+        let min_distance = self.game_map.tile_size * 2.0;
+        self.island_dynamic.values_mut().for_each(|island| {
+            let island_pos: V2D = island.lighthouse.into();
+            self.hash_grid
+                .query_near(&island_pos, min_distance)
+                .filter_map(|entity| {
+                    return entity
+                        .as_boat()
+                        .and_then(|(key, _)| self.ship_collection.get(&key));
+                })
+                .for_each(|ship| {
                     if island.owner != Some(ship.player_id) {
                         island.take_progress -= progress;
                         if island.take_progress <= 0.0 {
@@ -505,9 +500,8 @@ impl ServerState {
                         island.take_progress += progress;
                     }
                     island.take_progress = island.take_progress.min(1.0).max(0.0);
-                }
-            }
-        }
+                });
+        })
     }
 
     fn tick_handle_ship_production(&mut self, dt: f64) {

@@ -1,3 +1,5 @@
+use cgmath::MetricSpace;
+
 use crate::{game_map::V2D, wasm_game::ShipKey};
 
 #[derive(Clone)]
@@ -10,6 +12,15 @@ pub struct HashEntity {
 pub enum HashEntityKind {
     Boat(ShipKey),
     Lighthouse(u64),
+}
+
+impl HashEntity {
+    pub fn as_boat(&self) -> Option<(ShipKey, V2D)> {
+        if let HashEntityKind::Boat(key) = self.entity {
+            return Some((key, self.position));
+        }
+        return None;
+    }
 }
 
 #[derive(Clone)]
@@ -58,13 +69,19 @@ impl HashGrid {
         Some(())
     }
 
-    pub fn query_near<'a>(&'a self, v: &V2D) -> impl Iterator<Item = &'a HashEntity> {
+    pub fn query_near<'a>(
+        &'a self,
+        v: &V2D,
+        distance: f64,
+    ) -> impl Iterator<Item = &'a HashEntity> {
+        let v = *v;
         let entities = self
-            .near_buckets(v)
+            .near_buckets(&v)
             .into_iter()
             .flat_map(|bucket| self.entities.get(bucket as usize))
             .flat_map(|bucket| bucket)
-            .flat_map(|bucket| bucket);
+            .flat_map(|bucket| bucket)
+            .filter(move |entity| entity.position.distance(v) < distance);
         return entities;
     }
 
@@ -106,7 +123,7 @@ mod test {
 
         grid.insert(e2);
 
-        let iter = grid.query_near(&((0.0, 0.0).into()));
+        let iter = grid.query_near(&((0.0, 0.0).into()), 100.0);
         let count = iter.count();
         assert_eq!(count, 2);
 
@@ -121,7 +138,7 @@ mod test {
         grid.insert(e3);
         grid.insert(e4);
 
-        let iter = grid.query_near(&((0.0, 0.0).into()));
+        let iter = grid.query_near(&((0.0, 0.0).into()), 100.0);
         let count = iter.count();
         assert_eq!(count, 3);
     }

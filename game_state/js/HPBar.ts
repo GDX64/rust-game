@@ -4,6 +4,8 @@ const RED = new THREE.Color(1, 0, 0);
 const GREEN = new THREE.Color(0, 1, 0);
 const YELLOW = new THREE.Color(1, 1, 0);
 
+const MAX_INSTANCES = 1_000;
+
 function getHPColor(hp: number) {
   if (hp > 50) {
     return GREEN;
@@ -27,7 +29,7 @@ export class HPBar {
       vertexShader,
       colorWrite: true,
     });
-    const hpBar = new THREE.InstancedMesh(geometry, material, 10_000);
+    const hpBar = new THREE.InstancedMesh(geometry, material, MAX_INSTANCES);
     //I need to do this so that threejs initializes the instanceColors
     hpBar.setColorAt(0, GREEN);
     hpBar.frustumCulled = false;

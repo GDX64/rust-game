@@ -173,7 +173,6 @@ impl Player {
     }
 
     pub fn auto_shoot(&mut self, game_state: &ServerState) {
-        let max_bullet_distance = Bullet::max_distance();
         let mut shot_already = vec![];
         let mut rng = self.rng.clone();
         let pairs = self
@@ -181,7 +180,7 @@ impl Player {
             .filter_map(|ship| {
                 let enemies = game_state
                     .hash_grid
-                    .query_near(&ship.position.into())
+                    .query_near(&ship.position.into(), Bullet::max_distance())
                     .filter_map(|entity| {
                         if let HashEntityKind::Boat(key) = entity.entity {
                             if key.player_id != self.id {
@@ -197,12 +196,8 @@ impl Player {
                     if shot_already.contains(&key) || rng.f32() > 0.1 {
                         continue;
                     }
-                    let ship_pos: V2D = ship.position.into();
-                    let distance = (enemy_pos - ship_pos).magnitude();
-                    if distance < max_bullet_distance {
-                        shot_already.push(key);
-                        return Some((ship.id, enemy_pos));
-                    }
+                    shot_already.push(key);
+                    return Some((ship.id, enemy_pos));
                 }
                 return None;
             })
