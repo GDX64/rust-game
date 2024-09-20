@@ -55,7 +55,7 @@ impl Player {
     }
 
     pub fn move_selected_ships(&mut self, game_state: &ServerState, x: f64, y: f64) {
-        let formation = unit_box_formation(self.selected_ships.len(), x, y);
+        let formation = unit_spiral_formation(self.selected_ships.len(), x, y, game_state);
         self.selected_ships
             .clone()
             .iter()
@@ -142,20 +142,6 @@ impl Player {
         }
     }
 
-    fn rand_enemies<'a>(&mut self, game_state: &'a ServerState) -> Vec<&'a ShipState> {
-        let mut enemies = self.enemies(game_state).collect::<Vec<_>>();
-        self.rng.shuffle(&mut enemies);
-        enemies
-    }
-
-    fn enemies<'a>(&self, game_state: &'a ServerState) -> impl Iterator<Item = &'a ShipState> {
-        let id = self.id;
-        game_state
-            .ship_collection
-            .values()
-            .filter(move |ship| ship.player_id != id)
-    }
-
     pub fn select_all(&mut self, game_state: &ServerState) {
         self.selected_ships = self.player_ships(game_state).map(|ship| ship.id).collect();
     }
@@ -180,7 +166,7 @@ impl Player {
             .filter_map(|ship| {
                 let enemies = game_state
                     .hash_grid
-                    .query_near(&ship.position.into(), Bullet::max_distance())
+                    .query_near(ship.position.into(), Bullet::max_distance())
                     .filter_map(|entity| {
                         if let HashEntityKind::Boat(key) = entity.entity {
                             if key.player_id != self.id {

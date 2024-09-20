@@ -69,12 +69,7 @@ impl HashGrid {
         Some(())
     }
 
-    pub fn query_near<'a>(
-        &'a self,
-        v: &V2D,
-        distance: f64,
-    ) -> impl Iterator<Item = &'a HashEntity> {
-        let v = *v;
+    pub fn query_near<'a>(&'a self, v: V2D, distance: f64) -> impl Iterator<Item = &'a HashEntity> {
         let entities = self
             .near_buckets(&v)
             .into_iter()
@@ -123,7 +118,7 @@ mod test {
 
         grid.insert(e2);
 
-        let iter = grid.query_near(&((0.0, 0.0).into()), 100.0);
+        let iter = grid.query_near((0.0, 0.0).into(), 100.0);
         let count = iter.count();
         assert_eq!(count, 2);
 
@@ -138,7 +133,7 @@ mod test {
         grid.insert(e3);
         grid.insert(e4);
 
-        let iter = grid.query_near(&((0.0, 0.0).into()), 100.0);
+        let iter = grid.query_near((0.0, 0.0).into(), 100.0);
         let count = iter.count();
         assert_eq!(count, 3);
     }

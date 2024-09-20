@@ -415,11 +415,18 @@ impl ServerState {
 
             let pos: V3D = bullet.target.into();
 
-            for (_id, ship) in self.ship_collection.iter_mut() {
-                let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
-                let distance = (ship_pos - pos).magnitude();
-                ship.hp -= calc_damage(distance);
-            }
+            self.hash_grid
+                .query_near((pos.x, pos.y).into(), BLAST_RADIUS)
+                .filter_map(|entity| {
+                    return entity.as_boat();
+                })
+                .for_each(|(key, _)| {
+                    if let Some(ship) = self.ship_collection.get_mut(&key) {
+                        let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
+                        let distance = (ship_pos - pos).magnitude();
+                        ship.hp -= calc_damage(distance);
+                    }
+                });
 
             let explosion = Explosion {
                 position: (pos.x, pos.y),
@@ -483,7 +490,7 @@ impl ServerState {
         self.island_dynamic.values_mut().for_each(|island| {
             let island_pos: V2D = island.lighthouse.into();
             self.hash_grid
-                .query_near(&island_pos, min_distance)
+                .query_near(island_pos, min_distance)
                 .filter_map(|entity| {
                     return entity
                         .as_boat()
