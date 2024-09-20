@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 const MAX_BOTS: usize = 7;
+const START_SHIPS: usize = 120;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 pub const TICK_TIME: f64 = 1.0 / 60.0;
 
@@ -156,7 +157,7 @@ impl GameServer {
             },
         );
 
-        for _ in 0..20 {
+        for _ in 0..START_SHIPS {
             let mut ship = ShipState::default();
             ship.position.0 = start_x;
             ship.position.1 = start_y;

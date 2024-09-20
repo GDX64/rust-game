@@ -1,6 +1,5 @@
-use cgmath::{InnerSpace, Vector2, Vector3};
-use hierarchical_pathfinding::{prelude::ManhattanNeighborhood, PathCache, PathCacheConfig};
-use pathfinding::prelude::astar;
+use cgmath::{Vector2, Vector3};
+use hierarchical_pathfinding::{prelude::MooreNeighborhood, PathCache, PathCacheConfig};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::{self, Debug, Formatter},
@@ -14,6 +13,7 @@ use crate::{
 };
 
 const MIN_ISLAND_SIZE: usize = 50;
+const LAND_WALK_COST: isize = -1;
 
 impl Default for WorldGrid {
     fn default() -> Self {
@@ -121,7 +121,7 @@ pub struct WorldGrid {
     pub tile_size: f64,
     pub data: Vec<Tile>,
     pub islands: BTreeMap<u64, Island>,
-    pub path_cache: Option<PathCache<ManhattanNeighborhood>>,
+    pub path_cache: Option<PathCache<MooreNeighborhood>>,
 }
 
 impl WorldGrid {
@@ -281,8 +281,8 @@ impl WorldGrid {
             |(x, y)| {
                 return self.walk_cost(x, y);
             }, // get the cost for walking over a Tile
-            ManhattanNeighborhood::new(tiles_dim, tiles_dim), // the Neighborhood
-            PathCacheConfig::with_chunk_size(3), // config
+            MooreNeighborhood::new(tiles_dim, tiles_dim), // the Neighborhood
+            PathCacheConfig::with_chunk_size(70), // config
         );
         self.path_cache = Some(path_cache);
     }
@@ -410,8 +410,8 @@ impl WorldGrid {
 
     fn walk_cost(&self, x: usize, y: usize) -> isize {
         self.get_usize(x, y)
-            .map(|tile| if tile.is_water() { 1 } else { 10_000 })
-            .unwrap_or(10_000)
+            .map(|tile| if tile.is_water() { 1 } else { LAND_WALK_COST })
+            .unwrap_or(LAND_WALK_COST)
     }
 
     pub fn find_path(&self, initial: impl Into<V2D>, fin: impl Into<V2D>) -> Option<Vec<V2D>> {
@@ -420,8 +420,13 @@ impl WorldGrid {
         if self.can_go_straight(&initial, &fin) {
             return Some(vec![initial.into(), fin.into()]);
         }
+
         let initial = Vector2::new(self.tile_unit(initial.x), self.tile_unit(initial.y));
         let fin = Vector2::new(self.tile_unit(fin.x), self.tile_unit(fin.y));
+        let is_target_water = self.get_usize(fin.x as usize, fin.y as usize)?.is_water();
+        if !is_target_water {
+            return None;
+        }
 
         let path_cache = self.path_cache.as_ref()?;
         let path = path_cache.find_path(initial.into(), fin.into(), |(x, y)| {
