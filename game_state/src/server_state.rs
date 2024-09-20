@@ -7,7 +7,7 @@ use crate::{
     player_state::PlayerState,
     world_gen::{self},
 };
-use cgmath::{InnerSpace, MetricSpace};
+use cgmath::InnerSpace;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
@@ -22,8 +22,8 @@ const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
 const SHIP_PRODUCTION_TIME: f64 = 10.0;
 const ISLAND_TAKE_TIME: f64 = 1.0;
-const MAX_PLAYER_SHIPS: usize = 200;
-pub const PLAYER_START_SHIPS: usize = 200;
+const MAX_PLAYER_SHIPS: usize = 100;
+pub const PLAYER_START_SHIPS: usize = 20;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameConstants {

@@ -11,7 +11,8 @@ import { flagColors, getFlagTexture } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
-const MAX_INSTANCES = 200;
+const MAX_SHIPS = 100;
+const MAX_PLAYERS = 10;
 
 const up = new THREE.Vector3(0, 0, 1);
 const defaultColor = new THREE.Color(0x999999);
@@ -126,7 +127,7 @@ export class ShipsManager {
     const sails = new THREE.InstancedMesh(
       this.sailsGeometry,
       new THREE.MeshLambertMaterial({ color: 0xaaaaaa, map: flagTexture }),
-      MAX_INSTANCES
+      MAX_SHIPS
     );
     sails.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     sails.frustumCulled = false;
@@ -158,7 +159,7 @@ export class ShipsManager {
     const instancedHulls = new THREE.InstancedMesh(
       hull.geometry,
       material,
-      MAX_INSTANCES
+      MAX_SHIPS * MAX_PLAYERS
     );
 
     instancedHulls.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -304,8 +305,6 @@ export class ShipsManager {
     const myID = this.game.my_id();
     let outlineBoats = 0;
     let boatsDrawn = 0;
-
-    const cameraPosition = this.camera.position;
 
     this.resestSailCounts();
 
