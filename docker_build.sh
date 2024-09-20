@@ -2,6 +2,8 @@ imageName="br_server"
 userName="gdx64"
 tagName=$userName/$imageName
 
+source ~/.bashrc
+
 function buildDockerImage(){
     echo "Building docker image"
     sudo docker build --platform linux/amd64 -t $imageName .
