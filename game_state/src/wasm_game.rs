@@ -6,9 +6,11 @@ use crate::player_state::PlayerState;
 use crate::running_mode::{LocalClient, OnlineClient, RunningMode};
 pub use crate::server_state::*;
 use crate::world_gen::WorldGenConfig;
-use cgmath::Vector2;
+use cgmath::{MetricSpace, Vector2};
 use core::panic;
 use wasm_bindgen::prelude::*;
+
+const TOO_FAR: f64 = 1_500.0;
 
 #[wasm_bindgen]
 pub struct GameWasmState {
@@ -81,12 +83,16 @@ impl GameWasmState {
         self.player.auto_shoot(self.running_mode.server_state());
     }
 
-    pub fn get_all_explosions(&self) -> JsValue {
+    pub fn get_all_explosions(&self, x: f64, y: f64) -> JsValue {
         let explosions = self
             .running_mode
             .server_state()
             .explosions
             .values()
+            .filter(|explosion| {
+                let distance = V2D::from(explosion.position).distance(V2D::new(x, y));
+                distance < TOO_FAR
+            })
             .collect::<Vec<_>>();
         serde_wasm_bindgen::to_value(&explosions).unwrap_or_default()
     }
@@ -134,12 +140,16 @@ impl GameWasmState {
             .selec_ship(id as u64, &self.running_mode.server_state());
     }
 
-    pub fn get_all_bullets(&self) -> JsValue {
+    pub fn get_all_bullets(&self, x: f64, y: f64) -> JsValue {
         let bullets = self
             .running_mode
             .server_state()
             .get_bullets()
             .into_iter()
+            .filter(|b| {
+                let distance = V2D::from((b.position.0, b.position.1)).distance(V2D::new(x, y));
+                distance < TOO_FAR
+            })
             .map(|b| b.snapshot())
             .collect::<Vec<_>>();
         serde_wasm_bindgen::to_value(&bullets).unwrap_or_default()
@@ -166,8 +176,17 @@ impl GameWasmState {
         self.running_mode.send_game_message(GameMessage::RemoveBot)
     }
 
-    pub fn get_all_ships(&self) -> JsValue {
-        let ships: Vec<ShipState> = self.running_mode.server_state().get_ships();
+    pub fn get_all_ships(&self, x: f64, y: f64) -> JsValue {
+        let ships: Vec<&ShipState> = self
+            .running_mode
+            .server_state()
+            .ship_collection
+            .values()
+            .filter(|&state| {
+                let distance = V2D::from(state.position).distance(V2D::new(x, y));
+                distance < TOO_FAR
+            })
+            .collect();
         serde_wasm_bindgen::to_value(&ships).unwrap_or_default()
     }
 

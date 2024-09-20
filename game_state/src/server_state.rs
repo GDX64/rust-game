@@ -536,10 +536,6 @@ impl ServerState {
         self.flags.map_changed = false;
     }
 
-    pub fn get_ships(&self) -> Vec<ShipState> {
-        self.ship_collection.values().cloned().collect()
-    }
-
     pub fn get_bullets(&self) -> Vec<&Bullet> {
         self.bullets.values().collect()
     }

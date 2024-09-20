@@ -16,7 +16,6 @@ const MAX_INSTANCES = 2_000;
 const up = new THREE.Vector3(0, 0, 1);
 const defaultColor = new THREE.Color(0x999999);
 
-const TOO_FAR = 2_000;
 export class ShipsManager {
   boatMesh: THREE.InstancedMesh = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1),
@@ -272,8 +271,10 @@ export class ShipsManager {
     }
     this.updatePlayerColors();
     this.islandsManager.tick();
-    const ships: ShipData[] = this.game.get_all_ships();
-    const bullets: Bullet[] = this.game.get_all_bullets();
+    const cameraX = this.camera.position.x;
+    const cameraY = this.camera.position.y;
+    const ships: ShipData[] = this.game.get_all_ships(cameraX, cameraY);
+    const bullets: Bullet[] = this.game.get_all_bullets(cameraX, cameraY);
     this.selected = this.game.get_selected_ships();
 
     this.bulletModel.count = bullets.length;
@@ -315,15 +316,6 @@ export class ShipsManager {
         continue;
       }
 
-      const distanceToCamera =
-        (ship.position[0] - cameraPosition.x) ** 2 +
-        (ship.position[1] - cameraPosition.y) ** 2;
-      const isTooFar = distanceToCamera > TOO_FAR ** 2;
-
-      if (isTooFar) {
-        continue;
-      }
-
       const drawIndex = boatsDrawn;
 
       this.calcBoatAngle(ship, matrix);
@@ -347,16 +339,12 @@ export class ShipsManager {
 
     //==== explosions
 
-    const explosions: ExplosionData[] = this.game.get_all_explosions();
+    const explosions: ExplosionData[] = this.game.get_all_explosions(
+      cameraX,
+      cameraY
+    );
     this.explosionManager.tick(time);
     explosions.forEach((explosion) => {
-      const explosionDistanceToCamera =
-        (explosion.position[0] - cameraPosition.x) ** 2 +
-        (explosion.position[1] - cameraPosition.y) ** 2;
-      if (explosionDistanceToCamera > TOO_FAR ** 2) {
-        return;
-      }
-
       this.explosionManager.explodeData(
         explosion,
         this.playerColor(explosion.player_id)
