@@ -13,13 +13,14 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-const BOAT_ACC: f64 = 30.0;
+const BOAT_SPEED: f64 = 30.0;
 
 #[derive(Debug)]
 pub struct PlayerShip {
     path: Vec<V2D>,
     id: u64,
     should_remove: bool,
+    target: Option<V2D>,
 }
 
 pub struct Player {
@@ -87,6 +88,7 @@ impl Player {
             path,
             id: ship_id,
             should_remove: false,
+            target: None,
         };
 
         self.moving_ships.insert(ship_id, ship);
@@ -262,7 +264,7 @@ impl Player {
                 continue;
             };
             loop {
-                if let Some(next) = path.first() {
+                if let Some(&next) = path.first() {
                     let position: V2D = ship.position.into();
                     let direction = next - position;
                     if direction.magnitude() < 1.0 {
@@ -271,7 +273,7 @@ impl Player {
                             if let Err(e) = self.actions.send(StateMessage::MoveShip {
                                 player_id: self.id,
                                 id: ship.id,
-                                acceleration: (0.0, 0.0),
+                                speed: (0.0, 0.0),
                             }) {
                                 log::error!("Error sending message: {:?}", e)
                             }
@@ -281,11 +283,15 @@ impl Player {
                             continue;
                         }
                     };
-                    let acceleration = direction.normalize() * BOAT_ACC;
+                    if player_ship.target == Some(next) {
+                        break;
+                    }
+                    player_ship.target = Some(next);
+                    let speed = direction.normalize() * BOAT_SPEED;
                     if let Err(e) = self.actions.send(StateMessage::MoveShip {
                         player_id: self.id,
                         id: ship.id,
-                        acceleration: acceleration.into(),
+                        speed: speed.into(),
                     }) {
                         log::error!("Error sending message: {:?}", e)
                     }

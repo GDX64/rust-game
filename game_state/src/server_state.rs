@@ -53,7 +53,6 @@ pub struct ShipState {
     pub position: (f64, f64),
     pub speed: (f64, f64),
     pub orientation: (f64, f64),
-    pub acceleration: (f64, f64),
     pub id: u64,
     pub player_id: u64,
     pub cannon_times: [f64; 3],
@@ -81,7 +80,6 @@ impl Default for ShipState {
             position: (0.0, 0.0),
             speed: (0.0, 0.0),
             orientation: (1.0, 0.0),
-            acceleration: (0.0, 0.0),
             id: 0,
             player_id: 0,
             cannon_times: [0.0, 0.0, 0.0],
@@ -188,7 +186,7 @@ pub enum StateMessage {
         ship: ShipState,
     },
     MoveShip {
-        acceleration: (f64, f64),
+        speed: (f64, f64),
         id: u64,
         player_id: u64,
     },
@@ -444,15 +442,16 @@ impl ServerState {
         self.ship_collection.retain(|_id, ship| {
             let position: V2D = ship.position.into();
             let speed: V2D = ship.speed.into();
-            let acc: V2D = ship.acceleration.into();
-            let speed = speed + acc * dt;
             let speed = if speed.magnitude() > BOAT_SPEED {
                 speed.normalize() * BOAT_SPEED
             } else {
                 speed
             };
             if speed.magnitude() > 0.001 {
-                ship.orientation = speed.normalize().into();
+                let orientation: V2D = ship.orientation.into();
+                let diff = orientation - speed.normalize();
+                let new_orientation = orientation - diff * dt * 5.0;
+                ship.orientation = new_orientation.into();
             }
             let position = position + speed * dt;
 
@@ -622,15 +621,12 @@ impl ServerState {
             }
             StateMessage::MoveShip {
                 id,
-                acceleration,
+                speed,
                 player_id,
                 ..
             } => {
                 if let Some(ship) = self.ship_collection.get_mut(&ShipKey { id, player_id }) {
-                    ship.acceleration = acceleration;
-                    if acceleration.0 == 0.0 && acceleration.1 == 0.0 {
-                        ship.speed = (0.0, 0.0);
-                    }
+                    ship.speed = speed;
                 }
             }
             StateMessage::Shoot {
