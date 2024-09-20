@@ -13,7 +13,7 @@ function buildDockerImage(){
 function runImage(){
     echo "Running docker image"
     ## stop all docker containers running
-    sudo docker stop $(docker ps -a -q)
+    sudo docker stop $(sudo docker ps -a -q)
     sudo docker pull $tagName
     sudo docker run -d -p 5000:5000 $imageName
 }
