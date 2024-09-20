@@ -3,7 +3,6 @@ use cgmath::MetricSpace;
 use crate::{game_map::V2D, island::Island, player::Player, wasm_game::ServerState};
 
 enum BotState {
-    Idle,
     WaitingShips,
     Conquering(Island),
     Reiforcing(Island),
@@ -23,7 +22,7 @@ impl BotPlayer {
     pub fn new(id: u64) -> Self {
         Self {
             player: Player::new(id),
-            bot_state: BotState::Idle,
+            bot_state: BotState::WaitingShips,
             time_to_next_action: 0.0,
         }
     }
@@ -50,15 +49,6 @@ impl BotPlayer {
         }
 
         match &self.bot_state {
-            BotState::Idle => {
-                let max_size = game_state.game_map.dim;
-                let x = (self.player.rng.f64() - 0.5) * max_size / 2.0;
-                let y = (self.player.rng.f64() - 0.5) * max_size / 2.0;
-                for _ in 0..20 {
-                    self.player.create_ship(x, y)
-                }
-                self.bot_state = BotState::WaitingShips;
-            }
             BotState::WaitingShips => {
                 if ships_number > 0 {
                     let closest_island = self.closes_island_not_mine(game_state)?;

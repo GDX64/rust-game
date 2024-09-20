@@ -5,7 +5,7 @@ use crate::{
     hashgrid::{HashEntity, HashEntityKind, HashGrid},
     island::IslandData,
     player_state::PlayerState,
-    world_gen::{self, WorldGen},
+    world_gen::{self},
 };
 use cgmath::InnerSpace;
 use log::info;
@@ -22,7 +22,8 @@ const CANON_RELOAD_TIME: f64 = 5.0;
 const SHIP_SIZE: f64 = 10.0;
 const SHIP_PRODUCTION_TIME: f64 = 10.0;
 const ISLAND_TAKE_TIME: f64 = 1.0;
-const MAX_PLAYER_SHIPS: usize = 120;
+const MAX_PLAYER_SHIPS: usize = 200;
+pub const PLAYER_START_SHIPS: usize = 200;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameConstants {

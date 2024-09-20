@@ -1,14 +1,13 @@
 use crate::{
     bot_player::BotPlayer,
-    wasm_game::{ServerState, ShipState, StateMessage},
+    wasm_game::{ServerState, ShipState, StateMessage, PLAYER_START_SHIPS},
 };
 use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const MAX_BOTS: usize = 7;
-const START_SHIPS: usize = 120;
+const MAX_BOTS: usize = 12;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 pub const TICK_TIME: f64 = 1.0 / 60.0;
 
@@ -46,7 +45,7 @@ pub struct GameServer {
     player_id_counter: u64,
     bots: Vec<BotPlayer>,
     frame_inputs: Vec<StateMessage>,
-    rand_gen: fastrand::Rng,
+    rng: fastrand::Rng,
     frames: u64,
 }
 
@@ -57,7 +56,7 @@ impl GameServer {
             players: HashMap::new(),
             player_id_counter: 0,
             bots: vec![],
-            rand_gen: fastrand::Rng::with_seed(0),
+            rng: fastrand::Rng::with_seed(0),
             frames: 0,
             frame_inputs: vec![],
         }
@@ -67,7 +66,13 @@ impl GameServer {
         if self.bots.len() > MAX_BOTS {
             return;
         }
-        let bot = BotPlayer::new(self.next_player_id());
+        let mut bot = BotPlayer::new(self.next_player_id());
+        let max_size = self.game_state.game_map.dim;
+        let x = (self.rng.f64() - 0.5) * max_size / 2.0;
+        let y = (self.rng.f64() - 0.5) * max_size / 2.0;
+        for _ in 0..PLAYER_START_SHIPS {
+            bot.player.create_ship(x, y)
+        }
         self.add_to_frame(StateMessage::CreatePlayer { id: bot.player.id });
         self.bots.push(bot);
     }
@@ -145,8 +150,8 @@ impl GameServer {
         self.add_to_frame(create_player_msg.clone());
 
         let map_size = self.game_state.game_map.dim * 0.8;
-        let start_x = (self.rand_gen.f64() - 0.5) * map_size;
-        let start_y = (self.rand_gen.f64() - 0.5) * map_size;
+        let start_x = (self.rng.f64() - 0.5) * map_size;
+        let start_y = (self.rng.f64() - 0.5) * map_size;
 
         self.send_message_to_player(
             id,
@@ -157,7 +162,7 @@ impl GameServer {
             },
         );
 
-        for _ in 0..START_SHIPS {
+        for _ in 0..PLAYER_START_SHIPS {
             let mut ship = ShipState::default();
             ship.position.0 = start_x;
             ship.position.1 = start_y;
