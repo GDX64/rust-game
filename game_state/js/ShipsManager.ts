@@ -119,10 +119,11 @@ export class ShipsManager {
     }
     const flagTexture = getFlagTexture(
       this.game.get_player_flag(BigInt(playerID))
-    );
+    )?.clone();
     if (!flagTexture) {
       return null;
     }
+    flagTexture.flipY = false;
     const sails = new THREE.InstancedMesh(
       this.sailsGeometry,
       new THREE.MeshLambertMaterial({ color: 0xaaaaaa, map: flagTexture }),

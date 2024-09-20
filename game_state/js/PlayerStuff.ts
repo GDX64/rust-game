@@ -82,7 +82,6 @@ export function getFlagTexture(country: string) {
   const loading = getFlagPromise(country)
     .then((url) => {
       const texture = loader.load(url);
-      texture.flipY = false;
       flagsTextures.set(country, texture);
     })
     .finally(() => {
