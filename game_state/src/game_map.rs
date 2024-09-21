@@ -252,8 +252,9 @@ impl WorldGrid {
                     let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
                     if set.len() > MIN_ISLAND_SIZE {
                         let mut island = Island::new(set, islands_number, self.tile_size);
-                        let x = self.from_tile_unit(island.center.x as usize);
-                        let y = self.from_tile_unit(island.center.y as usize);
+                        let center = island.calc_center();
+                        let x = self.from_tile_unit(center.x as usize);
+                        let y = self.from_tile_unit(center.y as usize);
                         island.center = V2D::new(x, y);
                         let light_house = self.find_lighthouse_place(&island);
                         if let Some(light_house) = light_house {

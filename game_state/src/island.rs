@@ -1,7 +1,7 @@
-use crate::game_map::V2D;
+use crate::{game_map::V2D, spiral_search::moore_neighborhood};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct IslandData {
@@ -56,90 +56,122 @@ impl Island {
     }
 
     pub fn new(tiles: BTreeSet<IslandTile>, number: u64, tile_size: f64) -> Self {
-        let mut x = 0.0;
-        let mut y = 0.0;
-        for tile in tiles.iter() {
-            x += tile.x as f64;
-            y += tile.y as f64;
-        }
-        x /= tiles.len() as f64;
-        y /= tiles.len() as f64;
-        let center = V2D::new(x, y);
         Self {
             tiles,
             id: number,
-            center,
+            center: (0.0, 0.0).into(),
             light_house: (0.0, 0.0).into(),
             tile_size,
         }
     }
 
+    pub fn calc_center(&mut self) -> V2D {
+        let mut x = 0.0;
+        let mut y = 0.0;
+        for tile in self.tiles.iter() {
+            x += tile.x as f64;
+            y += tile.y as f64;
+        }
+        x /= self.tiles.len() as f64;
+        y /= self.tiles.len() as f64;
+        let center = V2D::new(x, y);
+        center
+    }
+
     pub fn island_path(&self, error: f64) -> Vec<(f64, f64)> {
         let bounds = self.bounding_box();
-        let width = bounds.2 - bounds.0 + 1;
-        let height = bounds.3 - bounds.1 + 1;
-        let grid_width = width as usize;
-        let grid_height = height as usize;
-        let mut grid = vec![vec![false; grid_width]; grid_height];
+        let grid_width = bounds.2 - bounds.0 + 1;
+        let grid_height = bounds.3 - bounds.1 + 1;
+        let grid_width = grid_width as usize;
+        let grid_height = grid_height as usize;
+        let mut land_grid = vec![vec![false; grid_width]; grid_height];
         for tile in self.tiles.iter() {
-            grid[(tile.y - bounds.1) as usize][(tile.x - bounds.0) as usize] = true;
+            land_grid[(tile.y - bounds.1) as usize][(tile.x - bounds.0) as usize] = true;
         }
-        let mut border = Vec::new();
+        let mut coast_grid = vec![vec![false; grid_width]; grid_height];
 
         //scan left side
         for y in 0..grid_height {
             for x in 0..grid_width {
-                if grid[y][x] {
-                    border.push((x, y));
+                if land_grid[y][x] {
+                    coast_grid[y][x] = true;
                     break;
                 }
             }
         }
 
-        let (last_x, _) = border.last().unwrap();
         //scan bottom side
-        for x in (*last_x + 1)..grid_width {
+        for x in 0..grid_width {
             for y in (0..grid_height).rev() {
-                if grid[y][x] {
-                    border.push((x, y));
+                if land_grid[y][x] {
+                    coast_grid[y][x] = true;
                     break;
                 }
             }
         }
 
-        let (_, last_y) = border.last().unwrap();
-        for y in (0..*last_y).rev() {
+        for y in (0..grid_height).rev() {
             for x in (0..grid_width).rev() {
-                if grid[y][x] {
-                    border.push((x, y));
+                if land_grid[y][x] {
+                    coast_grid[y][x] = true;
                     break;
                 }
             }
         }
 
-        let (last_x, _) = border.last().unwrap();
-        for x in (0..*last_x).rev() {
+        for x in (0..grid_width).rev() {
             for y in 0..grid_height {
-                if grid[y][x] {
-                    border.push((x, y));
+                if land_grid[y][x] {
+                    coast_grid[y][x] = true;
                     break;
                 }
             }
         }
 
-        let first = border.first().cloned();
-        let repeated = border
-            .iter()
-            .skip(1)
-            .enumerate()
-            .find(|(_, &val)| Some(val) == first);
-
-        if let Some((index, _)) = repeated {
-            border.truncate(index + 1);
+        let mut x = 0i32;
+        let mut y = 0i32;
+        for cx in 0..grid_width {
+            if coast_grid[0][cx] {
+                x = cx as i32;
+                break;
+            }
+        }
+        //now we walk the coast in a clockwise direction
+        let mut history = Vec::new();
+        let mut border = Vec::new();
+        border.push((x, y));
+        'outer: loop {
+            for (nx, ny) in moore_neighborhood(x as i32, y as i32).into_iter() {
+                if nx < 0 || ny < 0 {
+                    continue;
+                }
+                let is_coast = *coast_grid
+                    .get(ny as usize)
+                    .and_then(|v| v.get(nx as usize))
+                    .unwrap_or(&false);
+                if is_coast && !border.contains(&(nx, ny)) {
+                    history.push((x, y));
+                    x = nx;
+                    y = ny;
+                    border.push((x, y));
+                    continue 'outer;
+                } else {
+                    continue;
+                }
+            }
+            match history.pop() {
+                Some((hx, hy)) => {
+                    x = hx;
+                    y = hy;
+                }
+                None => {
+                    break;
+                }
+            }
         }
 
-        let half_width = (width as f64) * self.tile_size / 2.0;
-        let half_height = (height as f64) * self.tile_size / 2.0;
+        let half_width = (grid_width as f64) * self.tile_size / 2.0;
+        let half_height = (grid_height as f64) * self.tile_size / 2.0;
 
         let border: Vec<_> = border
             .into_iter()
@@ -187,9 +219,10 @@ mod test {
     fn test() {
         let tiles = make_a_grid([
             //0  1  2
-            [0, 1, 0], // 0
-            [1, 1, 1], // 1
-            [0, 1, 0], // 2
+            [0, 1, 0, 0], // 0
+            [1, 1, 1, 1], // 1
+            [0, 1, 0, 0], // 2
+            [0, 1, 0, 0], // 2
         ]);
         let island = super::Island::new(tiles, 0, 1.0);
         let path = island.island_path(0.1);

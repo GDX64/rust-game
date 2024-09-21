@@ -32,4 +32,6 @@ pub fn get_flag_names() -> &'static FlagSet {
 pub fn start() {
     //setup logger
     console_log::init_with_level(log::Level::Debug).expect("error initializing logger");
+    use std::panic;
+    panic::set_hook(Box::new(console_error_panic_hook::hook));
 }
