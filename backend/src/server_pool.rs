@@ -1,6 +1,6 @@
 use anyhow::Result;
 use game_state::GameServer;
-use std::{collections::HashMap, error::Error};
+use std::{collections::HashMap, time::Duration};
 
 const MAX_SERVERS: usize = 3;
 
@@ -26,8 +26,25 @@ impl ServerPool {
     }
 
     pub fn tick(&mut self, time: f64) {
-        for (_, server) in self.servers.iter_mut() {
-            server.tick(time);
+        let elapsed = measure_time(|| {
+            for (_, server) in self.servers.iter_mut() {
+                let elapsed = measure_time(|| {
+                    server.tick(time);
+                });
+                if elapsed.as_millis() > 16 {
+                    let server_name = server.name.as_str();
+                    log::warn!(
+                        "Tick of server {server_name} took longer than a frame time: {}ms",
+                        elapsed.as_millis()
+                    );
+                }
+            }
+        });
+        if elapsed.as_millis() > 16 {
+            log::warn!(
+                "Tick took longer than a frame time: {}ms",
+                elapsed.as_millis()
+            );
         }
     }
 
@@ -59,4 +76,12 @@ impl ServerPool {
         self.servers.insert(server_id.to_string(), server);
         return Ok(());
     }
+}
+
+fn measure_time(func: impl FnOnce()) -> Duration {
+    let time_start = std::time::Instant::now();
+    func();
+    let time_end = std::time::Instant::now();
+    let elapsed = time_end - time_start;
+    return elapsed;
 }

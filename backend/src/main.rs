@@ -36,13 +36,17 @@ impl Apps {
 type AppState = Apps;
 
 fn init_logger() {
-    use env_logger::Env;
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    env_logger::builder()
+        .target(env_logger::Target::Stdout)
+        .filter_level(log::LevelFilter::Info)
+        .init();
 }
 
 #[tokio::main]
 async fn main() {
     init_logger();
+    log::info!("Starting Axum Server");
+
     let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
