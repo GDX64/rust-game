@@ -1,4 +1,7 @@
-use crate::{game_map::V2D, spiral_search::moore_neighborhood};
+use crate::{
+    game_map::V2D,
+    spiral_search::{manhattan_neighborhood, moore_neighborhood},
+};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashSet};
@@ -90,52 +93,34 @@ impl Island {
         }
         let mut coast_grid = vec![vec![false; grid_width]; grid_height];
 
-        //scan left side
-        for y in 0..grid_height {
-            for x in 0..grid_width {
-                if land_grid[y][x] {
-                    coast_grid[y][x] = true;
-                    break;
+        for y in 0..grid_height as i32 {
+            for x in 0..grid_width as i32 {
+                let is_land = land_grid[y as usize][x as usize];
+                if !is_land {
+                    continue;
                 }
+                let is_coast = manhattan_neighborhood(x, y).into_iter().any(|(x, y)| {
+                    if x < 0 || y < 0 {
+                        return true;
+                    }
+                    let is_land = land_grid.get(y as usize).and_then(|v| v.get(x as usize));
+                    match is_land {
+                        Some(true) => {
+                            return false;
+                        }
+                        _ => {
+                            return true;
+                        }
+                    }
+                });
+                coast_grid[y as usize][x as usize] = is_coast;
             }
         }
 
-        //scan bottom side
-        for x in 0..grid_width {
-            for y in (0..grid_height).rev() {
-                if land_grid[y][x] {
-                    coast_grid[y][x] = true;
-                    break;
-                }
-            }
-        }
-
-        for y in (0..grid_height).rev() {
-            for x in (0..grid_width).rev() {
-                if land_grid[y][x] {
-                    coast_grid[y][x] = true;
-                    break;
-                }
-            }
-        }
-
-        for x in (0..grid_width).rev() {
-            for y in 0..grid_height {
-                if land_grid[y][x] {
-                    coast_grid[y][x] = true;
-                    break;
-                }
-            }
-        }
-
-        let mut x = 0i32;
+        let mut x = (0..grid_width)
+            .find(|i| coast_grid[0][*i])
+            .expect("no coast found") as i32;
         let mut y = 0i32;
-        for cx in 0..grid_width {
-            if coast_grid[0][cx] {
-                x = cx as i32;
-                break;
-            }
-        }
         //now we walk the coast in a clockwise direction
         let mut history = Vec::new();
         let mut border = Vec::new();
