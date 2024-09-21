@@ -1,31 +1,35 @@
 use axum::{
-    extract::{ws::Message, State, WebSocketUpgrade},
+    extract::{ws::Message, Query, State, WebSocketUpgrade},
     response::IntoResponse,
     routing::get,
     Router,
 };
 use futures::{channel::mpsc::channel, SinkExt};
 use futures_util::StreamExt;
-use game_state::{GameServer, TICK_TIME};
+use game_state::TICK_TIME;
+use server_pool::ServerPool;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tower_http::services::ServeDir;
-
-const ARTIFIAL_DELAY: bool = false;
+mod server_pool;
 
 #[derive(Clone)]
 struct Apps {
-    game_server: Arc<Mutex<GameServer>>,
+    game_server: Arc<Mutex<ServerPool>>,
 }
 
 impl Apps {
     fn new() -> Apps {
+        let mut pool = ServerPool::new();
+        pool.create_server("default")
+            .expect("Failed to create default server");
+
         Apps {
-            game_server: Arc::new(Mutex::new(GameServer::new())),
+            game_server: Arc::new(Mutex::new(pool)),
         }
     }
 
-    fn get_game_server(&self) -> MutexGuard<GameServer> {
-        self.game_server.lock().unwrap()
+    fn get_game_server(&self) -> MutexGuard<ServerPool> {
+        self.game_server.lock().expect("Failed to lock game server")
     }
 }
 
@@ -44,8 +48,12 @@ async fn main() {
     let backend_app = Router::new()
         .route("/", get(|| async { "Sanity Check" }))
         .route("/ws", get(ws_handler))
+        .route("/create_server", get(create_server_handler))
+        .route("/get_server_list", get(get_server_list_handler))
+        .route("/remove_server", get(remove_server_handler))
         .nest_service("/static", ServeDir::new("./dist"))
         .with_state(state.clone());
+
     let local_set = tokio::task::LocalSet::new();
     let tick_task = local_set.run_until(async {
         tokio::task::spawn_local(async move {
@@ -65,20 +73,27 @@ async fn main() {
     let (_r1, _r2) = tokio::join!(async { game_axum.await }, async { tick_task.await });
 }
 
-async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoResponse {
+#[derive(serde::Deserialize)]
+struct WsQuery {
+    server_id: String,
+    player_name: String,
+}
+
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    params: Query<WsQuery>,
+    state: State<AppState>,
+) -> impl IntoResponse {
+    let server_id = params.server_id.clone();
+    let player_name = params.player_name.clone();
+    log::info!("Connecting {player_name} Player to server {server_id}");
     let res = ws.on_upgrade(move |ws| {
-        println!("new ws connection received");
         return async move {
             let (mut send, mut receive) = ws.split();
             let (player_send, mut player_receive) = channel(100);
 
-            let mut rng = fastrand::Rng::with_seed(0);
-
             tokio::spawn(async move {
                 while let Some(msg) = player_receive.next().await {
-                    if ARTIFIAL_DELAY && rng.f64() > 0.95 {
-                        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
-                    }
                     match send.send(Message::Binary(msg)).await {
                         Ok(_) => {}
                         Err(_) => {
@@ -87,15 +102,37 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
                     }
                 }
             });
-            let id = { state.get_game_server().new_connection(player_send) };
+            let id = {
+                if let Some(server) = state.get_game_server().get_server(&server_id) {
+                    server.new_connection(player_send)
+                } else {
+                    log::warn!("Server {server_id} not found, disconnecting player {player_name}");
+                    return;
+                }
+            };
+            log::info!("Player {player_name} connected to server {server_id} with id {id}");
             loop {
                 let msg = receive.next().await;
                 match msg {
                     Some(Ok(Message::Binary(msg))) => {
-                        state.get_game_server().on_message(msg);
+                        match state.get_game_server().get_server(&server_id) {
+                            Some(server) => {
+                                server.on_message(msg);
+                            }
+                            None => {
+                                log::warn!("Server {server_id} not found, disconnecting player");
+                                return;
+                            }
+                        }
                     }
                     _ => {
-                        state.get_game_server().disconnect_player(id);
+                        log::info!("Player {id} disconnected");
+                        state
+                            .get_game_server()
+                            .get_server(&server_id)
+                            .map(|server| {
+                                server.disconnect_player(id);
+                            });
                         return;
                     }
                 }
@@ -103,4 +140,48 @@ async fn ws_handler(ws: WebSocketUpgrade, state: State<AppState>) -> impl IntoRe
         };
     });
     res
+}
+
+#[derive(serde::Deserialize)]
+struct CreateServerParams {
+    server_id: String,
+}
+
+async fn create_server_handler(
+    params: Query<CreateServerParams>,
+    state: State<AppState>,
+) -> impl IntoResponse {
+    match state.get_game_server().create_server(&params.server_id) {
+        Ok(_) => {
+            let server_id = params.server_id.clone();
+            log::info!("Server {server_id} created");
+            return "Server created".to_string();
+        }
+        Err(e) => {
+            log::error!("Failed to create server: {e}");
+            return format!("Failed to create server: {}", e);
+        }
+    }
+}
+
+async fn get_server_list_handler(state: State<AppState>) -> impl IntoResponse {
+    let servers = state.get_game_server().get_server_info();
+    return axum::Json(servers);
+}
+
+async fn remove_server_handler(
+    params: Query<CreateServerParams>,
+    state: State<AppState>,
+) -> impl IntoResponse {
+    match state.get_game_server().remove_server(&params.server_id) {
+        Ok(_) => {
+            let server_id = params.server_id.clone();
+            log::info!("Server {server_id} removed");
+            return "Server removed".to_string();
+        }
+        Err(e) => {
+            log::error!("Failed to remove server: {e}");
+            return format!("Failed to remove server: {}", e);
+        }
+    }
 }

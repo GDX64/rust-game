@@ -47,6 +47,7 @@ pub struct GameServer {
     frame_inputs: Vec<StateMessage>,
     rng: fastrand::Rng,
     frames: u64,
+    pub name: String,
 }
 
 impl GameServer {
@@ -59,7 +60,12 @@ impl GameServer {
             rng: fastrand::Rng::with_seed(0),
             frames: 0,
             frame_inputs: vec![],
+            name: "default".to_string(),
         }
+    }
+
+    pub fn get_player_count(&self) -> usize {
+        self.players.len() + self.bots.len()
     }
 
     fn add_bot(&mut self) {
