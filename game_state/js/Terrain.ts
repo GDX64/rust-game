@@ -197,7 +197,7 @@ class MiniMap {
     );
 
     const owners: IslandOwners = this.game.island_owners();
-    const errorMargin = scaleX.inverseScale().alpha() * 20;
+    const errorMargin = scaleX.inverseScale().alpha();
     islandData.forEach((island) => {
       ctx.save();
       const path: [number, number][] = this.game.get_island_path(
@@ -223,8 +223,8 @@ class MiniMap {
         maxY = Math.max(maxY, scaledY);
       });
 
-      const width = maxX - minX;
-      const height = maxY - minY;
+      const islandWidth = maxX - minX;
+      const islandHeight = maxY - minY;
 
       ctx.closePath();
       ctx.lineWidth = 2;
@@ -236,8 +236,15 @@ class MiniMap {
         const img = getFlagImage(country);
         if (img.width) {
           ctx.clip();
-          const imgSize = Math.max(width, height);
-          ctx.drawImage(img, minX, minY, imgSize, imgSize);
+          const drawHeight = Math.max(islandWidth, islandHeight);
+          const aspectRatio = img.width / img.height;
+          ctx.drawImage(
+            img,
+            minX,
+            minY,
+            Math.floor(drawHeight * aspectRatio),
+            drawHeight
+          );
         } else {
           img.onload = () => {
             this.needUpdate = true;

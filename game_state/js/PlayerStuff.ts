@@ -66,7 +66,6 @@ export function getFlagImage(country: string): HTMLImageElement {
   flagImages.set(country, img);
   getFlagPromise(country).then((url) => {
     img.width = 100;
-    img.height = 100;
     img.src = url;
   });
   return img;
