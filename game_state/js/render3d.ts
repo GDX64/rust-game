@@ -45,7 +45,7 @@ export class Render3D {
   readonly camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
-    0.1,
+    2,
     5_000
   );
   readonly PLANE_WIDTH = this.gameState.map_size();
@@ -153,8 +153,10 @@ export class Render3D {
   private async startServer() {
     let position: [number, number];
     if (this.state.online) {
-      const url = "https://archpelagus.glmachado.com/ws";
-      // const url = "http://localhost:5000/ws";
+      // const url = "https://archpelagus.glmachado.com/ws";
+      //server id and user_name
+      const url =
+        "http://localhost:5000/ws?server_id=default&player_name=gdx64";
       const onlineData = OnlineClient.new(url);
       position = await onlineData.init();
       this.gameState.start_online(onlineData);
