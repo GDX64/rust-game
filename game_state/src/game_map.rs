@@ -256,15 +256,8 @@ impl WorldGrid {
                         let x = self.from_tile_unit(center.x as usize);
                         let y = self.from_tile_unit(center.y as usize);
                         island.center = V2D::new(x, y);
-                        let light_house = self.find_lighthouse_place(&island);
-                        if let Some(light_house) = light_house {
-                            island.light_house = light_house;
-                            if let Some(tile) = self.get_mut(light_house.x, light_house.y) {
-                                *tile = Tile::new(TileKind::Lighthouse, 0.0);
-                            }
-                            island_map.insert(islands_number, island);
-                            islands_number += 1;
-                        }
+                        island_map.insert(islands_number, island);
+                        islands_number += 1;
                     }
                 }
             }
@@ -272,7 +265,22 @@ impl WorldGrid {
 
         self.islands = island_map;
         self.fill_coast();
+        self.fill_light_houses();
         self.calc_path_cache();
+    }
+
+    fn fill_light_houses(&mut self) {
+        let mut islands = std::mem::take(&mut self.islands);
+        for island in islands.values_mut() {
+            let light_house = self.find_lighthouse_place(&island);
+            if let Some(light_house) = light_house {
+                island.light_house = light_house;
+                if let Some(tile) = self.get_mut(light_house.x, light_house.y) {
+                    *tile = Tile::new(TileKind::Lighthouse, 0.0);
+                }
+            }
+        }
+        self.islands = islands;
     }
 
     fn calc_path_cache(&mut self) {

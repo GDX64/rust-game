@@ -90,43 +90,48 @@ export class MiniMap {
     );
 
     const errorMargin = scaleX.inverseScale().alpha() * 10;
-    const mapData = islandData.map((island) => {
-      const p2d = new Path2D();
-      const path: [number, number][] = this.game.get_island_path(
-        BigInt(island.id),
-        errorMargin
-      );
-      const x = scaleX.scale(path[0][0]);
-      const y = scaleY.scale(path[0][1]);
-      p2d.moveTo(x, y);
-      let minX = x;
-      let minY = y;
-      let maxX = x;
-      let maxY = y;
-      path.slice(1).forEach(([x, y]) => {
-        const scaledX = scaleX.scale(x);
-        const scaledY = scaleY.scale(y);
-        p2d.lineTo(scaledX, scaledY);
-        minX = Math.min(minX, scaledX);
-        minY = Math.min(minY, scaledY);
-        maxX = Math.max(maxX, scaledX);
-        maxY = Math.max(maxY, scaledY);
-      });
+    const mapData = islandData
+      .map((island) => {
+        const p2d = new Path2D();
+        const path: null | [number, number][] = this.game.get_island_path(
+          BigInt(island.id),
+          errorMargin
+        );
+        if (!path || path.length < 2) {
+          return null;
+        }
+        const x = scaleX.scale(path[0][0]);
+        const y = scaleY.scale(path[0][1]);
+        p2d.moveTo(x, y);
+        let minX = x;
+        let minY = y;
+        let maxX = x;
+        let maxY = y;
+        path.slice(1).forEach(([x, y]) => {
+          const scaledX = scaleX.scale(x);
+          const scaledY = scaleY.scale(y);
+          p2d.lineTo(scaledX, scaledY);
+          minX = Math.min(minX, scaledX);
+          minY = Math.min(minY, scaledY);
+          maxX = Math.max(maxX, scaledX);
+          maxY = Math.max(maxY, scaledY);
+        });
 
-      const islandWidth = maxX - minX;
-      const islandHeight = maxY - minY;
+        const islandWidth = maxX - minX;
+        const islandHeight = maxY - minY;
 
-      p2d.closePath();
-      const shape: IslandShape = {
-        path: p2d,
-        width: islandWidth,
-        height: islandHeight,
-        x: minX,
-        y: minY,
-        id: island.id,
-      };
-      return [island.id, shape] as const;
-    });
+        p2d.closePath();
+        const shape: IslandShape = {
+          path: p2d,
+          width: islandWidth,
+          height: islandHeight,
+          x: minX,
+          y: minY,
+          id: island.id,
+        };
+        return [island.id, shape] as const;
+      })
+      .filter((x): x is [number, IslandShape] => x != null);
 
     return new Map(mapData);
   }
