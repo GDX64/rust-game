@@ -3,6 +3,7 @@ use crate::{
     spiral_search::{manhattan_neighborhood, moore_neighborhood},
 };
 use cgmath::InnerSpace;
+use futures::stream_select;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeSet, HashSet};
 
@@ -83,15 +84,40 @@ impl Island {
 
     pub fn island_path(&self, error: f64) -> Vec<(f64, f64)> {
         let bounds = self.bounding_box();
-        let grid_width = bounds.2 - bounds.0 + 1;
-        let grid_height = bounds.3 - bounds.1 + 1;
+        let padding = 2;
+        let grid_width = bounds.2 - bounds.0 + 1 + padding * 2;
+        let grid_height = bounds.3 - bounds.1 + 1 + padding * 2;
         let grid_width = grid_width as usize;
         let grid_height = grid_height as usize;
         let mut land_grid = vec![vec![false; grid_width]; grid_height];
-        for tile in self.tiles.iter() {
-            land_grid[(tile.y - bounds.1) as usize][(tile.x - bounds.0) as usize] = true;
-        }
+        let mut sea_grid = vec![vec![false; grid_width]; grid_height];
         let mut coast_grid = vec![vec![false; grid_width]; grid_height];
+
+        for tile in self.tiles.iter() {
+            let y = tile.y - bounds.1;
+            let x = tile.x - bounds.0;
+            land_grid[(y + padding) as usize][(x + padding) as usize] = true;
+        }
+
+        //flood fill the sea
+        let mut stack = BTreeSet::new();
+        stack.insert((0, 0));
+        while let Some((x, y)) = stack.pop_first() {
+            if x >= grid_width || y >= grid_height {
+                continue;
+            }
+            if sea_grid[y][x] {
+                continue;
+            }
+            if land_grid[y][x] {
+                continue;
+            }
+            sea_grid[y][x] = true;
+            stack.insert((x + 1, y));
+            stack.insert((x.checked_sub(1).unwrap_or(0), y));
+            stack.insert((x, y + 1));
+            stack.insert((x, y.checked_sub(1).unwrap_or(0)));
+        }
 
         for y in 0..grid_height as i32 {
             for x in 0..grid_width as i32 {
@@ -103,10 +129,10 @@ impl Island {
                     if x < 0 || y < 0 {
                         return true;
                     }
-                    let is_land = land_grid.get(y as usize).and_then(|v| v.get(x as usize));
-                    match is_land {
-                        Some(true) => {
-                            return false;
+                    let is_sea = sea_grid.get(y as usize).and_then(|v| v.get(x as usize));
+                    match is_sea {
+                        Some(is_sea) => {
+                            return *is_sea;
                         }
                         _ => {
                             return true;
@@ -117,10 +143,11 @@ impl Island {
             }
         }
 
+        let y_search = padding as usize;
         let mut x = (0..grid_width)
-            .find(|i| coast_grid[0][*i])
+            .find(|i| coast_grid[y_search][*i])
             .expect("no coast found") as i32;
-        let mut y = 0i32;
+        let mut y = y_search as i32;
         //now we walk the coast in a clockwise direction
         let mut history = Vec::new();
         let mut border = Vec::new();
