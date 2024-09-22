@@ -6,8 +6,9 @@
     "pkg/**/*"
   ],
   "scripts": {
-    "dev": "npm run build && vite",
+    "dev": "npm run build-dev && vite",
     "build": "wasm-pack build --target bundler --release",
+    "build-dev": "wasm-pack build --target bundler --profiling",
     "buildjs": "vite build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

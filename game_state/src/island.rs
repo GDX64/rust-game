@@ -162,12 +162,20 @@ impl Island {
 
         let mut border = Vec::new();
         border.push((x, y));
+        let mut history = Vec::new();
         loop {
             if let Some((nx, ny)) = can_go(x, y, &border) {
+                history.push((x, y));
                 x = nx;
                 y = ny;
                 border.push((x, y));
             } else {
+                history.truncate(5);
+                if let Some((hx, hy)) = history.pop() {
+                    x = hx;
+                    y = hy;
+                    continue;
+                }
                 log::info!("breaking out of loop {x},{y} -> {border:?}");
                 break;
             }
