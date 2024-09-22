@@ -9,7 +9,7 @@ use futures_util::StreamExt;
 use game_state::TICK_TIME;
 use server_pool::ServerPool;
 use std::sync::{Arc, Mutex, MutexGuard};
-use tower_http::services::ServeDir;
+use tower_http::{compression::CompressionLayer, services::ServeDir};
 mod server_pool;
 
 #[derive(Clone)]
@@ -56,6 +56,7 @@ async fn main() {
         .route("/get_server_list", get(get_server_list_handler))
         .route("/remove_server", get(remove_server_handler))
         .nest_service("/static", ServeDir::new("./dist"))
+        .layer(CompressionLayer::new().gzip(true))
         .with_state(state.clone());
 
     let local_set = tokio::task::LocalSet::new();
