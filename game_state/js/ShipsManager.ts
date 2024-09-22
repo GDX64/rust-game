@@ -369,7 +369,7 @@ export class ShipsManager {
       ship.position.y
     );
     const xyAngle =
-      Math.atan2(ship.orientation.x, ship.orientation.y) + Math.PI / 2;
+      Math.atan2(ship.orientation.y, ship.orientation.x) + Math.PI / 2;
     const quaternion = new THREE.Quaternion().setFromUnitVectors(up, normal);
     matrix.makeRotationZ(xyAngle);
     matrix.multiplyMatrices(
