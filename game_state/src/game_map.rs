@@ -283,6 +283,15 @@ impl WorldGrid {
         self.islands = islands;
     }
 
+    pub fn is_forbidden_land(&self, x: f64, y: f64) -> bool {
+        let x = self.tile_unit(x);
+        let y = self.tile_unit(y);
+        if let Some(tile) = self.get_usize(x, y) {
+            return tile.is_land();
+        }
+        return false;
+    }
+
     fn calc_path_cache(&mut self) {
         let tiles_dim = self.tiles_dim;
         let path_cache = PathCache::new(

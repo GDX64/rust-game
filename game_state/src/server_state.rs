@@ -453,6 +453,10 @@ impl ServerState {
             ship.position = position.into();
             ship.speed = speed.into();
 
+            if self.game_map.is_forbidden_land(position.x, position.y) {
+                ship.hp = 0.0;
+            }
+
             if ship.hp > 0.0 {
                 return true;
             }
