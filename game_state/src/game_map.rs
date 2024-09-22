@@ -12,7 +12,7 @@ use crate::{
     spiral_search::SpiralSearch,
 };
 
-const MIN_ISLAND_SIZE: usize = 50;
+const MIN_ISLAND_SIZE: usize = 300;
 const LAND_WALK_COST: isize = -1;
 
 impl Default for WorldGrid {

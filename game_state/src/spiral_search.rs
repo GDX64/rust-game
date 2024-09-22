@@ -117,5 +117,5 @@ pub fn moore_neighborhood(x: i32, y: i32) -> [(i32, i32); 8] {
 }
 
 pub fn manhattan_neighborhood(x: i32, y: i32) -> [(i32, i32); 4] {
-    [(x + 1, y), (x, y + 1), (x - 1, y), (x, y - 1)]
+    [(x, y + 1), (x + 1, y), (x, y - 1), (x - 1, y)]
 }

@@ -121,64 +121,59 @@ impl Island {
 
         for y in 0..grid_height as i32 {
             for x in 0..grid_width as i32 {
-                let is_land = land_grid[y as usize][x as usize];
-                if !is_land {
-                    continue;
-                }
-                let is_coast = manhattan_neighborhood(x, y).into_iter().any(|(x, y)| {
-                    if x < 0 || y < 0 {
-                        return true;
-                    }
-                    let is_sea = sea_grid.get(y as usize).and_then(|v| v.get(x as usize));
-                    match is_sea {
-                        Some(is_sea) => {
-                            return *is_sea;
+                let mut has_land = false;
+                let mut has_sea = false;
+                [(x, y), (x + 1, y), (x + 1, y + 1), (x, y + 1)]
+                    .into_iter()
+                    .for_each(|(x, y)| {
+                        if x >= grid_width as i32 || y >= grid_height as i32 {
+                            has_sea = true;
+                            return;
                         }
-                        _ => {
-                            return true;
-                        }
-                    }
-                });
-                coast_grid[y as usize][x as usize] = is_coast;
+                        let is_land = land_grid[y as usize][x as usize];
+                        let is_sea = sea_grid[y as usize][x as usize];
+                        has_land |= is_land;
+                        has_sea |= is_sea;
+                    });
+                coast_grid[y as usize][x as usize] = has_land && has_sea;
             }
         }
 
-        let y_search = padding as usize;
+        print_grid(&coast_grid);
+
+        let y_search = grid_height / 2;
         let mut x = (0..grid_width)
             .find(|i| coast_grid[y_search][*i])
             .expect("no coast found") as i32;
         let mut y = y_search as i32;
         //now we walk the coast in a clockwise direction
-        let mut history = Vec::new();
-        let mut border = Vec::new();
-        border.push((x, y));
-        'outer: loop {
-            for (nx, ny) in moore_neighborhood(x as i32, y as i32).into_iter() {
-                if nx < 0 || ny < 0 {
+
+        let can_go = |x: i32, y: i32, border: &[(i32, i32)]| {
+            for (x, y) in manhattan_neighborhood(x, y) {
+                if x < 0 || y < 0 || border.contains(&(x, y)) {
                     continue;
                 }
                 let is_coast = *coast_grid
-                    .get(ny as usize)
-                    .and_then(|v| v.get(nx as usize))
+                    .get(y as usize)
+                    .and_then(|v| v.get(x as usize))
                     .unwrap_or(&false);
-                if is_coast && !border.contains(&(nx, ny)) {
-                    history.push((x, y));
-                    x = nx;
-                    y = ny;
-                    border.push((x, y));
-                    continue 'outer;
-                } else {
-                    continue;
+                if is_coast {
+                    return Some((x, y));
                 }
             }
-            match history.pop() {
-                Some((hx, hy)) => {
-                    x = hx;
-                    y = hy;
-                }
-                None => {
-                    break;
-                }
+            return None;
+        };
+
+        let mut border = Vec::new();
+        border.push((x, y));
+        loop {
+            if let Some((nx, ny)) = can_go(x, y, &border) {
+                x = nx;
+                y = ny;
+                border.push((x, y));
+            } else {
+                log::info!("breaking out of loop {x},{y} -> {border:?}");
+                break;
             }
         }
 
@@ -277,4 +272,21 @@ fn perpendicular_distance(point: &(f64, f64), start: &(f64, f64), end: &(f64, f6
     let projection = start + line * projection;
     let distance = point - projection;
     distance.magnitude()
+}
+
+fn print_grid(grid: &Vec<Vec<bool>>) {
+    let str: String = grid
+        .iter()
+        .enumerate()
+        .map(|(i, v)| {
+            let mut line = v
+                .iter()
+                .map(|b| if *b { "X" } else { " " })
+                .collect::<String>();
+            line.push_str(i.to_string().as_str());
+            line.push('\n');
+            line
+        })
+        .collect();
+    log::info!("{}", str);
 }
