@@ -23,6 +23,7 @@ pub struct OnlineClient {
 pub trait Client {
     fn send(&mut self, msg: GameMessage);
     fn tick(&mut self, dt: f64);
+    fn get_id(&self) -> u64;
 }
 
 #[wasm_bindgen]
@@ -67,6 +68,10 @@ impl OnlineClient {
 impl Client for OnlineClient {
     fn send(&mut self, msg: GameMessage) {
         self.send_buffer.push(msg);
+    }
+
+    fn get_id(&self) -> u64 {
+        self.id
     }
 
     fn tick(&mut self, dt: f64) {
@@ -141,6 +146,7 @@ impl LocalClient {
                     GameMessage::PlayerCreated { id, x, y } => {
                         self.id = id;
                         self.start_position = V2D::new(x, y);
+                        log::info!("My ID is: {}", id);
                         return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
                     }
                     _ => {}
@@ -170,6 +176,10 @@ impl Client for LocalClient {
                 }
             }
         }
+    }
+
+    fn get_id(&self) -> u64 {
+        self.id
     }
 }
 

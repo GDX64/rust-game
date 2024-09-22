@@ -2,7 +2,7 @@ pub use crate::game_server::*;
 use crate::get_flag_names;
 use crate::player::Player;
 use crate::player_state::PlayerState;
-use crate::running_mode::{LocalClient, OnlineClient, RunningMode};
+use crate::running_mode::{Client, LocalClient, OnlineClient, RunningMode};
 pub use crate::server_state::*;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
@@ -23,15 +23,15 @@ pub struct GameWasmState {
 impl GameWasmState {
     pub fn new_online(client: OnlineClient) -> Self {
         Self {
+            player: Player::new(client.get_id()),
             running_mode: RunningMode::Online(client),
-            player: Player::new(0),
             current_time: 0.0,
         }
     }
     pub fn new_local(client: LocalClient) -> Self {
         Self {
+            player: Player::new(client.get_id()),
             running_mode: RunningMode::start_local(client),
-            player: Player::new(0),
             current_time: 0.0,
         }
     }
