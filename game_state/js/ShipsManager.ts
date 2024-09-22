@@ -11,7 +11,7 @@ import { flagColors, getFlagTexture } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
-const MAX_SHIPS = 100;
+const MAX_SHIPS = 120;
 const MAX_PLAYERS = 10;
 
 const up = new THREE.Vector3(0, 0, 1);
@@ -50,7 +50,11 @@ export class ShipsManager {
       shininess: 80,
     });
     this.islandsManager = new IslandsManager(game, scene);
-    this.bulletModel = new THREE.InstancedMesh(geometry, material, 10000);
+    this.bulletModel = new THREE.InstancedMesh(
+      geometry,
+      material,
+      MAX_PLAYERS * MAX_SHIPS
+    );
     this.bulletModel.frustumCulled = false;
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
@@ -68,7 +72,7 @@ export class ShipsManager {
     this.outlines = new THREE.InstancedMesh(
       outlineGeometry,
       outlineMaterial,
-      10000
+      MAX_SHIPS
     );
     this.outlines.frustumCulled = false;
     this.outlines.renderOrder = RenderOrder.OUTLINE;
