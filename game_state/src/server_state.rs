@@ -50,9 +50,9 @@ impl GameConstants {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ShipState {
-    pub position: (f64, f64),
-    pub speed: (f64, f64),
-    pub orientation: (f64, f64),
+    pub position: V2D,
+    pub speed: V2D,
+    pub orientation: V2D,
     pub id: u64,
     pub player_id: u64,
     pub cannon_times: [f64; 3],
@@ -77,9 +77,9 @@ impl ShipState {
 impl Default for ShipState {
     fn default() -> Self {
         Self {
-            position: (0.0, 0.0),
-            speed: (0.0, 0.0),
-            orientation: (1.0, 0.0),
+            position: (0.0, 0.0).into(),
+            speed: (0.0, 0.0).into(),
+            orientation: (1.0, 0.0).into(),
             id: 0,
             player_id: 0,
             cannon_times: [0.0, 0.0, 0.0],
@@ -115,7 +115,7 @@ impl ShipState {
         None
     }
 
-    pub fn shoot_at(&mut self, current_time: f64, target: (f64, f64)) -> Option<Bullet> {
+    pub fn shoot_at(&mut self, current_time: f64, target: V2D) -> Option<Bullet> {
         let cannon_index = self.find_available_cannon(current_time)?;
         let position: V2D = self.position.into();
         let ship_orientation = V2D::from(self.orientation);
@@ -171,7 +171,7 @@ pub enum StateMessage {
     Shoot {
         ship_id: u64,
         player_id: u64,
-        target: (f64, f64),
+        target: V2D,
     },
     SetPlayerName {
         name: String,
@@ -181,7 +181,7 @@ pub enum StateMessage {
         ship: ShipState,
     },
     MoveShip {
-        speed: (f64, f64),
+        speed: V2D,
         id: u64,
         player_id: u64,
     },
@@ -226,7 +226,7 @@ type ShipCollection = BTreeMap<ShipKey, ShipState>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Explosion {
-    pub position: (f64, f64),
+    pub position: V2D,
     pub id: u64,
     pub player_id: u64,
     pub time_created: f64,
@@ -241,7 +241,7 @@ pub struct IslandDynamicData {
     pub take_progress: f64,
     pub production_progress: f64,
     pub id: u64,
-    pub lighthouse: (f64, f64),
+    pub lighthouse: V2D,
 }
 
 #[derive(Debug, Clone)]
@@ -328,7 +328,7 @@ impl ServerState {
                     take_progress: 0.0,
                     production_progress: 0.0,
                     id: island.id,
-                    lighthouse: island.light_house,
+                    lighthouse: island.light_house.into(),
                 },
             );
         }
@@ -415,14 +415,14 @@ impl ServerState {
                 })
                 .for_each(|(key, _)| {
                     if let Some(ship) = self.ship_collection.get_mut(&key) {
-                        let ship_pos: V3D = (ship.position.0, ship.position.1, 0.0).into();
+                        let ship_pos: V3D = (ship.position.x, ship.position.y, 0.0).into();
                         let distance = (ship_pos - pos).magnitude();
                         ship.hp -= calc_damage(distance);
                     }
                 });
 
             let explosion = Explosion {
-                position: (pos.x, pos.y),
+                position: (pos.x, pos.y).into(),
                 id: artifact_gen.next(),
                 time_created: self.current_time,
                 player_id: bullet.player_id,
@@ -544,8 +544,8 @@ impl ServerState {
     fn is_ship_here(&self, x: f64, y: f64) -> bool {
         self.ship_collection.values().any(|ship| {
             let pos = ship.position;
-            let dx = pos.0 - x;
-            let dy = pos.1 - y;
+            let dx = pos.x - x;
+            let dy = pos.y - y;
             dx * dx + dy * dy < SHIP_SIZE * SHIP_SIZE
         })
     }
@@ -602,14 +602,14 @@ impl ServerState {
                 ship.id = self.next_artifact_id();
                 if let Some(place) =
                     self.game_map
-                        .spiral_search(ship.position.0, ship.position.1, |x, y, tile| {
+                        .spiral_search(ship.position.x, ship.position.y, |x, y, tile| {
                             if tile.can_go() {
                                 return !self.is_ship_here(x, y);
                             }
                             return false;
                         })
                 {
-                    ship.position = place;
+                    ship.position = place.into();
                     self.ship_collection
                         .insert(ShipKey::new(ship.id, ship.player_id), ship);
                 }
@@ -638,7 +638,7 @@ impl ServerState {
         }
     }
 
-    fn handle_shoot(&mut self, ship_id: u64, player_id: u64, target: (f64, f64)) -> Option<()> {
+    fn handle_shoot(&mut self, ship_id: u64, player_id: u64, target: V2D) -> Option<()> {
         let ship = self
             .ship_collection
             .get_mut(&ShipKey::new(ship_id, player_id))?;
@@ -658,7 +658,7 @@ impl ServerState {
 
         let bullet_pos = bullet.current_pos();
         let explosion = Explosion {
-            position: (bullet_pos.x, bullet_pos.y),
+            position: bullet_pos.truncate(),
             id: self.artifact_gen.next(),
             time_created: self.current_time,
             player_id: player_id,

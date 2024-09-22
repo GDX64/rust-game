@@ -170,8 +170,8 @@ impl GameServer {
 
         for _ in 0..PLAYER_START_SHIPS {
             let mut ship = ShipState::default();
-            ship.position.0 = start_x;
-            ship.position.1 = start_y;
+            ship.position.x = start_x;
+            ship.position.y = start_y;
             ship.player_id = id;
             self.add_to_frame(StateMessage::CreateShip { ship });
         }

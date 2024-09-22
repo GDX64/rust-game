@@ -1,24 +1,27 @@
 import { ExplosionKind } from "../pkg/game_state";
 
+type V2D = { x: number; y: number };
+type V3D = { x: number; y: number; z: number };
+
 export type ShipData = {
   player_id: number;
   id: number;
-  position: [number, number];
-  speed: [number, number];
-  acceleration: [number, number];
-  orientation: [number, number];
+  position: V2D;
+  speed: V2D;
+  acceleration: V2D;
+  orientation: V2D;
   hp: number;
 };
 
 export type Bullet = {
-  position: [number, number, number];
-  speed: [number, number, number];
+  position: V3D;
+  speed: V3D;
   id: number;
   player_id: number;
 };
 
 export type ExplosionData = {
-  position: [number, number];
+  position: V2D;
   id: number;
   player_id: number;
   kind: ExplosionKind;

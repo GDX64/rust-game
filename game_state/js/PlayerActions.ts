@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { ShipsManager } from "./ShipsManager";
 import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
-import { IslandData } from "./RustWorldTypes";
 import { Terrain } from "./Terrain";
 
 enum States {
@@ -112,11 +111,7 @@ export class PlayerActions {
       const endX = Math.max(startCamera.x, endCamera.x);
       const endY = Math.max(startCamera.y, endCamera.y);
       this.shipsManager.select((ship) => {
-        const shipPos = new THREE.Vector3(
-          ship.position[0],
-          ship.position[1],
-          0
-        );
+        const shipPos = new THREE.Vector3(ship.position.x, ship.position.y, 0);
         shipPos.applyMatrix4(invertedBasis);
         return (
           shipPos.x > startX &&

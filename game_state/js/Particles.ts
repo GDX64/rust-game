@@ -20,7 +20,7 @@ export class ExplosionManager {
   }
 
   explodeData(data: ExplosionData, color: THREE.Color) {
-    const position = new THREE.Vector3(data.position[0], data.position[1], 0);
+    const position = new THREE.Vector3(data.position.x, data.position.y, 0);
     if (this.explosions.has(data.id)) {
       return;
     }

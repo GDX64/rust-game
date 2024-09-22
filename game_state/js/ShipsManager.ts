@@ -194,7 +194,7 @@ export class ShipsManager {
   getBoatAt(x: number, y: number) {
     for (const ship of this.myShips()) {
       const distance = Math.sqrt(
-        (ship.position[0] - x) ** 2 + (ship.position[1] - y) ** 2
+        (ship.position.x - x) ** 2 + (ship.position.y - y) ** 2
       );
       if (distance < SHIP_SIZE) {
         return ship.id;
@@ -286,9 +286,9 @@ export class ShipsManager {
     const matrix = new THREE.Matrix4();
     for (let i = 0; i < bullets.length; i++) {
       matrix.setPosition(
-        bullets[i].position[0],
-        bullets[i].position[1],
-        bullets[i].position[2]
+        bullets[i].position.x,
+        bullets[i].position.y,
+        bullets[i].position.z
       );
       this.bulletModel.setMatrixAt(i, matrix);
     }
@@ -365,17 +365,17 @@ export class ShipsManager {
 
   private calcBoatAngle(ship: ShipData, matrix: THREE.Matrix4) {
     const [zPos, normal] = this.water.calcElevationAt(
-      ship.position[0],
-      ship.position[1]
+      ship.position.x,
+      ship.position.y
     );
     const xyAngle =
-      Math.atan2(ship.orientation[1], ship.orientation[0]) + Math.PI / 2;
+      Math.atan2(ship.orientation.x, ship.orientation.y) + Math.PI / 2;
     const quaternion = new THREE.Quaternion().setFromUnitVectors(up, normal);
     matrix.makeRotationZ(xyAngle);
     matrix.multiplyMatrices(
       new THREE.Matrix4().makeRotationFromQuaternion(quaternion),
       matrix
     );
-    matrix.setPosition(ship.position[0], ship.position[1], zPos);
+    matrix.setPosition(ship.position.x, ship.position.y, zPos);
   }
 }

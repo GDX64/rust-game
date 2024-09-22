@@ -124,7 +124,7 @@ impl Player {
         let msg = StateMessage::Shoot {
             ship_id,
             player_id: self.id,
-            target: (x, y),
+            target: (x, y).into(),
         };
         if let Err(err) = self.actions.send(msg).context(file!()) {
             error!("Error sending message: {}", err)
@@ -223,7 +223,7 @@ impl Player {
         let msg = StateMessage::CreateShip {
             ship: ShipState {
                 player_id: self.id,
-                position: (x, y),
+                position: (x, y).into(),
                 ..Default::default()
             },
         };
@@ -247,7 +247,7 @@ impl Player {
     pub fn number_of_idle_ships(&self, state: &ServerState) -> usize {
         return self
             .player_ships(state)
-            .filter(|ship| ship.speed.0 == 0.0 && ship.speed.1 == 0.0)
+            .filter(|ship| ship.speed.magnitude2() == 0.0)
             .count();
     }
 
@@ -273,7 +273,7 @@ impl Player {
                             if let Err(e) = self.actions.send(StateMessage::MoveShip {
                                 player_id: self.id,
                                 id: ship.id,
-                                speed: (0.0, 0.0),
+                                speed: (0.0, 0.0).into(),
                             }) {
                                 log::error!("Error sending message: {:?}", e)
                             }
