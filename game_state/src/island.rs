@@ -1,9 +1,7 @@
 use crate::utils::{
     marching_squares::{march_on_grid, Grid},
-    spiral_search::manhattan_neighborhood,
     vectors::V2D,
 };
-use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -82,7 +80,7 @@ impl Island {
         center
     }
 
-    pub fn island_path(&self, error: f64) -> Vec<(f64, f64)> {
+    pub fn island_path(&self, _error: f64) -> Vec<(f64, f64)> {
         let bounds = self.bounding_box();
         let padding = 2;
         let grid_width = bounds.2 - bounds.0 + 1 + padding * 2;
@@ -91,35 +89,12 @@ impl Island {
         let grid_width = grid_width as usize;
         let grid_height = grid_height as usize;
         let mut land_grid = Grid::new(size as usize, 0i16);
-        let mut sea_grid = Grid::new(size as usize, 0i16);
 
         for tile in self.tiles.iter() {
             let y = tile.y - bounds.1;
             let x = tile.x - bounds.0;
             land_grid.set((x + padding) as usize, (y + padding) as usize, 1);
         }
-
-        //flood fill the sea
-        // let mut stack = BTreeSet::new();
-        // stack.insert((0, 0));
-        // while let Some((x, y)) = stack.pop_first() {
-        //     if x >= grid_width || y >= grid_height {
-        //         continue;
-        //     }
-        //     if sea_grid.get_or_default(x, y) == 1 {
-        //         continue;
-        //     }
-        //     if land_grid.get_or_default(x, y) == 1 {
-        //         continue;
-        //     }
-        //     sea_grid.set(x, y, 1);
-        //     stack.insert((x + 1, y));
-        //     stack.insert((x.checked_sub(1).unwrap_or(0), y));
-        //     stack.insert((x, y + 1));
-        //     stack.insert((x, y.checked_sub(1).unwrap_or(0)));
-        // }
-
-        log::info!("{:?}", land_grid);
 
         let half_width = (grid_width as f64) * self.tile_size / 2.0;
         let half_height = (grid_height as f64) * self.tile_size / 2.0;

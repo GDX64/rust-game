@@ -284,6 +284,9 @@ impl WorldGrid {
     }
 
     pub fn is_forbidden_land(&self, x: f64, y: f64) -> bool {
+        if x.abs() > self.dim / 2.0 || y.abs() > self.dim / 2.0 {
+            return true;
+        }
         let x = self.tile_unit(x);
         let y = self.tile_unit(y);
         if let Some(tile) = self.get_usize(x, y) {
@@ -435,6 +438,9 @@ impl WorldGrid {
     pub fn find_path(&self, initial: impl Into<V2D>, fin: impl Into<V2D>) -> Option<Vec<V2D>> {
         let initial = initial.into();
         let fin = fin.into();
+        if fin.x.abs() > self.dim / 2.0 || fin.y.abs() > self.dim / 2.0 {
+            return None;
+        }
         if self.can_go_straight(&initial, &fin) {
             return Some(vec![initial.into(), fin.into()]);
         }
