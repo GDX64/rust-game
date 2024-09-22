@@ -21,13 +21,24 @@ pub struct GameWasmState {
 
 #[wasm_bindgen]
 impl GameWasmState {
-    pub fn new() -> Self {
-        let client = LocalClient::new();
+    pub fn new_online(client: OnlineClient) -> Self {
+        Self {
+            running_mode: RunningMode::Online(client),
+            player: Player::new(0),
+            current_time: 0.0,
+        }
+    }
+    pub fn new_local(client: LocalClient) -> Self {
         Self {
             running_mode: RunningMode::start_local(client),
             player: Player::new(0),
             current_time: 0.0,
         }
+    }
+
+    pub fn start_position(&self) -> JsValue {
+        let pos = self.running_mode.start_position();
+        serde_wasm_bindgen::to_value(&pos).unwrap_or_default()
     }
 
     pub fn action_shoot_at(&mut self, x: f64, y: f64) {

@@ -135,8 +135,6 @@ impl Island {
             }
         }
 
-        print_grid(&coast_grid);
-
         let y_search = grid_height / 2;
         let mut x = (0..grid_width)
             .find(|i| coast_grid[y_search][*i])
@@ -176,7 +174,8 @@ impl Island {
                     y = hy;
                     continue;
                 }
-                log::info!("breaking out of loop {x},{y} -> {border:?}");
+                // log::info!("breaking out of loop {x},{y} -> {border:?}");
+                //         print_grid(&coast_grid);
                 break;
             }
         }

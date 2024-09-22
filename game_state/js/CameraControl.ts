@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { V2D } from "./RustWorldTypes";
 
 type V3 = THREE.Vector3;
 class LerpBox {
@@ -20,6 +21,11 @@ class LerpBox {
     this.time = performance.now() / 1000;
   }
 
+  complete() {
+    this.from = this.to.clone();
+    this.time = performance.now() / 1000;
+  }
+
   evolve() {
     const time = performance.now() / 1000;
     let t = Math.min(1, (time - this.time) / this._duration);
@@ -37,10 +43,14 @@ export class CameraControl {
   target = new LerpBox().duration(0.166);
   position = new LerpBox().duration(0.166);
   private keys: Record<string, boolean> = {};
-  private time = 0;
-  constructor(public camera: THREE.Camera) {
+  constructor(public camera: THREE.Camera, start_position: V2D) {
     camera.position.z = 100;
-    camera.position.y = -150;
+    camera.position.y = start_position.y - 150;
+    camera.position.x = start_position.x;
+    this.target.updateTo(
+      new THREE.Vector3(start_position.x, start_position.y, 0)
+    );
+    this.target.complete();
     camera.up.set(0, 0, 1);
     camera.lookAt(this.target.to);
     this.position.updateTo(this.camera.position.clone());
@@ -51,13 +61,12 @@ export class CameraControl {
     return look.projectOnPlane(new THREE.Vector3(0, 0, 1));
   }
 
-  tick(time: number) {
+  tick(_time: number) {
     this.handlePressedKeys();
     const target = this.target.evolve();
     const position = this.position.evolve();
     this.camera.position.set(position.x, position.y, position.z);
     this.camera.lookAt(target);
-    this.time = time;
   }
 
   private changeTarget(v: V3) {

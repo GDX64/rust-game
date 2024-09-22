@@ -34,8 +34,6 @@ function defaultState() {
 }
 export class Render3D {
   gui = new GUI();
-  state = defaultState();
-  gameState = GameWasmState.new();
   planeMesh = new THREE.Mesh();
   readonly pathLine = new THREE.Line(
     new THREE.BufferGeometry(),
@@ -48,28 +46,37 @@ export class Render3D {
     2,
     5_000
   );
-  readonly PLANE_WIDTH = this.gameState.map_size();
-  readonly SEGMENTS_DENSITY = this.gameState.tile_size();
-  readonly PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
-  readonly water = Water.startWater(this.PLANE_WIDTH, this.gameState);
-  readonly shipsManager = new ShipsManager(
-    this.gameState,
-    this.scene,
-    this.water,
-    this.camera
-  );
+  readonly PLANE_WIDTH;
+  readonly SEGMENTS_DENSITY;
+  readonly PLANE_SEGMENTS;
+  readonly water;
+  readonly shipsManager;
 
-  outline = new OutlinePass(new THREE.Vector2(), this.scene, this.camera);
-
-  readonly terrain = Terrain.new(this.gameState);
+  readonly terrain;
   readonly playerActions;
   readonly canvas;
   readonly cameraControls;
 
-  constructor() {
-    this.loadState();
+  constructor(
+    public gameState: GameWasmState,
+    public state: ReturnType<typeof defaultState>
+  ) {
+    this.PLANE_WIDTH = this.gameState.map_size();
+    this.SEGMENTS_DENSITY = this.gameState.tile_size();
+    this.PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
+    this.water = Water.startWater(this.PLANE_WIDTH, this.gameState);
+    this.shipsManager = new ShipsManager(
+      this.gameState,
+      this.scene,
+      this.water,
+      this.camera
+    );
+    this.terrain = Terrain.new(this.gameState);
     this.canvas = document.createElement("canvas");
-    this.cameraControls = new CameraControl(this.camera);
+    this.cameraControls = new CameraControl(
+      this.camera,
+      this.gameState.start_position()
+    );
     this.playerActions = new PlayerActions(
       this.canvas,
       this.shipsManager,
@@ -106,7 +113,8 @@ export class Render3D {
       "removeBot"
     );
     this.gui.add(this.state, "online").onChange((val) => {
-      this.startServer();
+      this.saveState();
+      window.location.reload();
     });
     this.gameState.change_error(0);
     this.gui.add(this.state, "shootError", 0, 0.1).onChange((val) => {
@@ -116,13 +124,6 @@ export class Render3D {
 
   private saveState() {
     localStorage.setItem("state", JSON.stringify(this.state));
-  }
-
-  private loadState() {
-    const state = localStorage.getItem("state");
-    if (state) {
-      this.state = { ...this.state, ...JSON.parse(state) };
-    }
   }
 
   private addWaterColorControl() {
@@ -150,28 +151,35 @@ export class Render3D {
     });
   }
 
-  private async startServer() {
-    let position: [number, number];
-    if (this.state.online) {
+  static async new(element: HTMLElement) {
+    let state: any = localStorage.getItem("state");
+    if (state) {
+      state = { ...defaultState(), ...JSON.parse(state) };
+    } else {
+      state = defaultState();
+    }
+    const server = await this.startServer(state.online);
+    const render = new Render3D(server, state);
+    render.init(element);
+    return render;
+  }
+
+  static async startServer(online: boolean) {
+    if (online) {
       // const url = "https://archpelagus.glmachado.com/ws";
       //server id and user_name
       const url =
         "http://localhost:5000/ws?server_id=default&player_name=gdx64";
       const onlineData = OnlineClient.new(url);
-      position = await onlineData.init();
-      this.gameState.start_online(onlineData);
-    } else {
-      const localClient = LocalClient.new();
-      position = await localClient.init();
-      this.gameState.start_local_server(localClient);
+      await onlineData.init();
+      return GameWasmState.new_online(onlineData);
     }
-
-    this.cameraControls.displaceCamera(position[0], position[1]);
+    const localClient = LocalClient.new();
+    await localClient.init();
+    return GameWasmState.new_local(localClient);
   }
 
   async init(el: HTMLElement) {
-    await this.startServer();
-
     this.gameState.change_error(this.state.shootError);
 
     setInterval(() => this.saveState(), 1_000);
@@ -204,9 +212,7 @@ export class Render3D {
     renderer.setSize(window.innerWidth, window.innerHeight);
 
     this.cameraControls.addListeners();
-    const { composer, outline } = this.addPostProcessing(renderer);
-
-    this.outline = outline;
+    const { composer } = this.addPostProcessing(renderer);
 
     let lastTime = 0;
     renderer.setAnimationLoop((_time) => {

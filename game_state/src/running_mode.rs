@@ -1,5 +1,6 @@
 use core::panic;
 
+use crate::utils::vectors::V2D;
 use crate::wasm_game::{ServerState, StateMessage, TICK_TIME};
 use crate::ws_channel::WSChannel;
 use crate::{game_server, wasm_game::GameMessage};
@@ -16,6 +17,7 @@ pub struct OnlineClient {
     frame_acc: f64,
     frame_buffer: Vec<Vec<StateMessage>>,
     send_buffer: Vec<GameMessage>,
+    start_position: V2D,
 }
 
 pub trait Client {
@@ -33,6 +35,7 @@ impl OnlineClient {
             frame_acc: 0.0,
             frame_buffer: vec![],
             send_buffer: vec![],
+            start_position: V2D::new(0.0, 0.0),
         }
     }
 
@@ -44,6 +47,7 @@ impl OnlineClient {
                     GameMessage::PlayerCreated { id, x, y } => {
                         info!("My ID is: {}", id);
                         self.id = id;
+                        self.start_position = V2D::new(x, y);
                         self.send(GameMessage::AskBroadcast { player: id });
                         return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
                     }
@@ -109,6 +113,7 @@ pub struct LocalClient {
     receiver: Receiver<Vec<u8>>,
     state: ServerState,
     id: u64,
+    start_position: V2D,
 }
 
 #[wasm_bindgen]
@@ -123,6 +128,7 @@ impl LocalClient {
             receiver,
             state: ServerState::new(),
             id: player_id,
+            start_position: V2D::new(0.0, 0.0),
         }
     }
 
@@ -134,6 +140,7 @@ impl LocalClient {
                 match msg {
                     GameMessage::PlayerCreated { id, x, y } => {
                         self.id = id;
+                        self.start_position = V2D::new(x, y);
                         return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
                     }
                     _ => {}
@@ -176,6 +183,13 @@ impl RunningMode {
         match self {
             RunningMode::Local(data) => &data.state,
             RunningMode::Online(data) => &data.game_state,
+        }
+    }
+
+    pub fn start_position(&self) -> V2D {
+        match self {
+            RunningMode::Local(data) => data.start_position,
+            RunningMode::Online(data) => data.start_position,
         }
     }
 
