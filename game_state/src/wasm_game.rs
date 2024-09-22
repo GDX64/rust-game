@@ -147,7 +147,7 @@ impl GameWasmState {
             .get_bullets()
             .into_iter()
             .filter(|b| {
-                let distance = V2D::from((b.position.0, b.position.1)).distance(V2D::new(x, y));
+                let distance = b.position.truncate().distance(V2D::new(x, y));
                 distance < TOO_FAR
             })
             .map(|b| b.snapshot())

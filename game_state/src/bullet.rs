@@ -9,17 +9,17 @@ const MAX_SHOOT_ANGLE: f64 = 3.14 / 180.0 * 10.0;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Bullet {
-    pub position: (f64, f64, f64),
-    pub speed: (f64, f64, f64),
+    pub position: V3D,
+    pub speed: V3D,
     pub player_id: u64,
     pub bullet_id: u64,
-    pub target: (f64, f64, f64),
+    pub target: V3D,
     pub time: f64,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct BulletSnapShot {
-    pub position: (f64, f64, f64),
+    pub position: V3D,
     pub player_id: u64,
     pub bullet_id: u64,
 }
@@ -90,7 +90,7 @@ impl Bullet {
     }
 
     fn end_time(&self) -> f64 {
-        let z_speed = self.speed.2;
+        let z_speed = self.speed.z;
         let time = z_speed / GRAVITY * 2.0;
         return time;
     }
