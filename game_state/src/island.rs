@@ -1,11 +1,7 @@
-use crate::{
-    game_map::V2D,
-    spiral_search::{manhattan_neighborhood, moore_neighborhood},
-};
+use crate::{game_map::V2D, utils::spiral_search::manhattan_neighborhood};
 use cgmath::InnerSpace;
-use futures::stream_select;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashSet};
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct IslandData {

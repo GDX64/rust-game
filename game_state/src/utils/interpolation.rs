@@ -32,9 +32,8 @@ impl LinearInterpolation {
 
 #[cfg(test)]
 mod test {
+    use super::LinearInterpolation;
     use cgmath::Point2;
-
-    use crate::interpolation::LinearInterpolation;
 
     #[test]
     fn test_basic() {

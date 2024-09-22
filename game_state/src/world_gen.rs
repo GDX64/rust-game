@@ -2,10 +2,9 @@ use super::game_noise::GameNoise;
 use crate::{
     game_map::{Tile, TileKind, WorldGrid},
     game_noise::NoiseConfig,
-    interpolation::LinearInterpolation,
+    utils::interpolation::LinearInterpolation,
 };
 use cgmath::{Matrix3, Point2, SquareMatrix, Transform};
-use log::info;
 use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 #[derive(Clone)]

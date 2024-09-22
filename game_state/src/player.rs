@@ -2,7 +2,7 @@ use crate::{
     bullet::Bullet,
     game_map::V2D,
     hashgrid::HashEntityKind,
-    spiral_search::SpiralSearch,
+    utils::spiral_search::SpiralSearch,
     wasm_game::{ServerState, ShipKey, ShipState, StateMessage},
 };
 use anyhow::Context;

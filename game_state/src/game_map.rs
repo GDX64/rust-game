@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     island::{Island, IslandData, IslandTile},
-    spiral_search::SpiralSearch,
+    utils::spiral_search::SpiralSearch,
 };
 
 const MIN_ISLAND_SIZE: usize = 300;

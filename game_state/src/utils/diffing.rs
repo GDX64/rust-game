@@ -33,9 +33,8 @@ pub fn hashmap_diff<K: Hash + Eq + Clone, T: PartialEq + Clone>(
 
 #[cfg(test)]
 mod test {
+    use super::{hashmap_diff, Diff};
     use std::collections::HashMap;
-
-    use crate::diffing::{hashmap_diff, Diff};
 
     #[test]
     fn test_hashmaps() {

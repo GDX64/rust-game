@@ -1,6 +1,5 @@
 use crate::{
     bullet::Bullet,
-    diffing::Diff,
     game_map::{WorldGrid, V2D, V3D},
     hashgrid::{HashEntity, HashEntityKind, HashGrid},
     island::IslandData,
@@ -148,11 +147,6 @@ pub struct BroadCastState {
     artifact_gen: ArtifactGen,
     current_time: f64,
     rng_seed: u64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BroadcastStateDiff {
-    bullets: Vec<Diff<(u64, u64), Bullet>>,
 }
 
 impl BroadCastState {

@@ -7,7 +7,7 @@ import { getFlagImage } from "./PlayerStuff";
 
 const PLANE_WIDTH = 5_000; //1km
 const SEGMENTS_PER_KM = 50;
-const minimapPercentage = 1;
+const minimapPercentage = 0.25;
 
 export class Terrain {
   minimap;
