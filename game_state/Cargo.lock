@@ -424,6 +424,7 @@ dependencies = [
  "hierarchical_pathfinding",
  "js-sys",
  "log",
+ "marching-squares",
  "noise",
  "serde",
  "serde-wasm-bindgen",
@@ -644,6 +645,12 @@ checksum = "0fae87c125b03c1d2c0150c90365d7d6bcc53fb73a9acaef207d2d065860f062"
 dependencies = [
  "imgref",
 ]
+
+[[package]]
+name = "marching-squares"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01478a84ada790fd53e9fac9b9cc5651eebdbf1b5aadee6a00c084225b630c38"
 
 [[package]]
 name = "maybe-rayon"
