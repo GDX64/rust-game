@@ -199,7 +199,7 @@ export class Water {
     watergroup.add(simplePlane);
 
     const intersectionPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(width, width, 1, 1),
+      new THREE.PlaneGeometry(width * 2, width * 2, 1, 1),
       new THREE.MeshBasicMaterial({
         color: 0x000000,
         visible: false,

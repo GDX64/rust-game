@@ -289,7 +289,7 @@ impl WorldGrid {
         if let Some(tile) = self.get_usize(x, y) {
             return tile.is_land();
         }
-        return false;
+        return true;
     }
 
     fn calc_path_cache(&mut self) {
