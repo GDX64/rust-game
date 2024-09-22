@@ -1,7 +1,7 @@
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 
-use crate::game_map::{V2D, V3D};
+use crate::utils::vectors::{V2D, V3D};
 
 const BULLET_SPEED: f64 = 100.0;
 const GRAVITY: f64 = 9.81;

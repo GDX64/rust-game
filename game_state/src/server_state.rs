@@ -1,9 +1,10 @@
 use crate::{
     bullet::Bullet,
-    game_map::{WorldGrid, V2D, V3D},
+    game_map::WorldGrid,
     hashgrid::{HashEntity, HashEntityKind, HashGrid},
     island::IslandData,
     player_state::PlayerState,
+    utils::vectors::{V2D, V3D},
     world_gen::{self},
 };
 use cgmath::InnerSpace;

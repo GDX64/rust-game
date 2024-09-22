@@ -9,7 +9,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     island::{Island, IslandData, IslandTile},
-    utils::spiral_search::SpiralSearch,
+    utils::{spiral_search::SpiralSearch, vectors::V2D},
 };
 
 const MIN_ISLAND_SIZE: usize = 300;
@@ -468,9 +468,6 @@ impl Debug for WorldGrid {
         write!(f, "{}", s)
     }
 }
-
-pub type V2D = Vector2<f64>;
-pub type V3D = Vector3<f64>;
 
 mod grid_line {
     use cgmath::InnerSpace;

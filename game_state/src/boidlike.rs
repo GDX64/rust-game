@@ -1,6 +1,6 @@
 use cgmath::{InnerSpace, MetricSpace};
 
-use crate::game_map::V2D;
+use crate::utils::vectors::V2D;
 
 const NEAR: f64 = 40.0;
 const TOO_CLOSE: f64 = 20.0;

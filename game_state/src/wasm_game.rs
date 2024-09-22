@@ -1,10 +1,10 @@
-use crate::game_map::V2D;
 pub use crate::game_server::*;
 use crate::get_flag_names;
 use crate::player::Player;
 use crate::player_state::PlayerState;
 use crate::running_mode::{LocalClient, OnlineClient, RunningMode};
 pub use crate::server_state::*;
+use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
 use cgmath::{MetricSpace, Vector2};
 use core::panic;

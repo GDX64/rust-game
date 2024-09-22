@@ -1,8 +1,8 @@
 use crate::{
     bullet::Bullet,
-    game_map::V2D,
     hashgrid::HashEntityKind,
     utils::spiral_search::SpiralSearch,
+    utils::vectors::V2D,
     wasm_game::{ServerState, ShipKey, ShipState, StateMessage},
 };
 use anyhow::Context;

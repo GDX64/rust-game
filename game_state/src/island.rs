@@ -1,4 +1,4 @@
-use crate::{game_map::V2D, utils::spiral_search::manhattan_neighborhood};
+use crate::{utils::spiral_search::manhattan_neighborhood, utils::vectors::V2D};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
