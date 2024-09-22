@@ -1,4 +1,8 @@
-use crate::{utils::spiral_search::manhattan_neighborhood, utils::vectors::V2D};
+use crate::utils::{
+    marching_squares::{march_on_grid, Grid},
+    spiral_search::manhattan_neighborhood,
+    vectors::V2D,
+};
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -83,118 +87,59 @@ impl Island {
         let padding = 2;
         let grid_width = bounds.2 - bounds.0 + 1 + padding * 2;
         let grid_height = bounds.3 - bounds.1 + 1 + padding * 2;
+        let size = grid_width.max(grid_height);
         let grid_width = grid_width as usize;
         let grid_height = grid_height as usize;
-        let mut land_grid = vec![vec![false; grid_width]; grid_height];
-        let mut sea_grid = vec![vec![false; grid_width]; grid_height];
-        let mut coast_grid = vec![vec![false; grid_width]; grid_height];
+        let mut land_grid = Grid::new(size as usize, 0i16);
+        let mut sea_grid = Grid::new(size as usize, 0i16);
 
         for tile in self.tiles.iter() {
             let y = tile.y - bounds.1;
             let x = tile.x - bounds.0;
-            land_grid[(y + padding) as usize][(x + padding) as usize] = true;
+            land_grid.set((x + padding) as usize, (y + padding) as usize, 1);
         }
 
         //flood fill the sea
-        let mut stack = BTreeSet::new();
-        stack.insert((0, 0));
-        while let Some((x, y)) = stack.pop_first() {
-            if x >= grid_width || y >= grid_height {
-                continue;
-            }
-            if sea_grid[y][x] {
-                continue;
-            }
-            if land_grid[y][x] {
-                continue;
-            }
-            sea_grid[y][x] = true;
-            stack.insert((x + 1, y));
-            stack.insert((x.checked_sub(1).unwrap_or(0), y));
-            stack.insert((x, y + 1));
-            stack.insert((x, y.checked_sub(1).unwrap_or(0)));
-        }
+        // let mut stack = BTreeSet::new();
+        // stack.insert((0, 0));
+        // while let Some((x, y)) = stack.pop_first() {
+        //     if x >= grid_width || y >= grid_height {
+        //         continue;
+        //     }
+        //     if sea_grid.get_or_default(x, y) == 1 {
+        //         continue;
+        //     }
+        //     if land_grid.get_or_default(x, y) == 1 {
+        //         continue;
+        //     }
+        //     sea_grid.set(x, y, 1);
+        //     stack.insert((x + 1, y));
+        //     stack.insert((x.checked_sub(1).unwrap_or(0), y));
+        //     stack.insert((x, y + 1));
+        //     stack.insert((x, y.checked_sub(1).unwrap_or(0)));
+        // }
 
-        for y in 0..grid_height as i32 {
-            for x in 0..grid_width as i32 {
-                let mut has_land = false;
-                let mut has_sea = false;
-                [(x, y), (x + 1, y), (x + 1, y + 1), (x, y + 1)]
-                    .into_iter()
-                    .for_each(|(x, y)| {
-                        if x >= grid_width as i32 || y >= grid_height as i32 {
-                            has_sea = true;
-                            return;
-                        }
-                        let is_land = land_grid[y as usize][x as usize];
-                        let is_sea = sea_grid[y as usize][x as usize];
-                        has_land |= is_land;
-                        has_sea |= is_sea;
-                    });
-                coast_grid[y as usize][x as usize] = has_land && has_sea;
-            }
-        }
-
-        let y_search = grid_height / 2;
-        let mut x = (0..grid_width)
-            .find(|i| coast_grid[y_search][*i])
-            .expect("no coast found") as i32;
-        let mut y = y_search as i32;
-        //now we walk the coast in a clockwise direction
-
-        let can_go = |x: i32, y: i32, border: &[(i32, i32)]| {
-            for (x, y) in manhattan_neighborhood(x, y) {
-                if x < 0 || y < 0 || border.contains(&(x, y)) {
-                    continue;
-                }
-                let is_coast = *coast_grid
-                    .get(y as usize)
-                    .and_then(|v| v.get(x as usize))
-                    .unwrap_or(&false);
-                if is_coast {
-                    return Some((x, y));
-                }
-            }
-            return None;
-        };
-
-        let mut border = Vec::new();
-        border.push((x, y));
-        let mut history = Vec::new();
-        loop {
-            if let Some((nx, ny)) = can_go(x, y, &border) {
-                history.push((x, y));
-                x = nx;
-                y = ny;
-                border.push((x, y));
-            } else {
-                history.truncate(5);
-                if let Some((hx, hy)) = history.pop() {
-                    x = hx;
-                    y = hy;
-                    continue;
-                }
-                // log::info!("breaking out of loop {x},{y} -> {border:?}");
-                //         print_grid(&coast_grid);
-                break;
-            }
-        }
+        log::info!("{:?}", land_grid);
 
         let half_width = (grid_width as f64) * self.tile_size / 2.0;
         let half_height = (grid_height as f64) * self.tile_size / 2.0;
 
-        let border: Vec<_> = border
+        let lines = march_on_grid(
+            &land_grid,
+            self.tile_size as f32,
+            (self.center.x - half_width) as f32,
+            (self.center.y - half_height) as f32,
+        );
+
+        let border: Vec<_> = lines
             .into_iter()
-            .map(|(x, y)| {
-                let x = (x as f64) * self.tile_size;
-                let y = (y as f64) * self.tile_size;
-                return (
-                    x + self.center.x - half_width,
-                    y + self.center.y - half_height,
-                );
+            .max_by_key(|line| line.points.len())
+            .into_iter()
+            .flat_map(|points| points.points)
+            .map(|point| {
+                return (point.x as f64, point.y as f64);
             })
             .collect();
-        let border = douglas_peucker(&border, error);
         return border;
     }
 
@@ -238,58 +183,4 @@ mod test {
         let path = island.island_path(0.1);
         println!("{:?}", path);
     }
-}
-
-fn douglas_peucker(points: &[(f64, f64)], epsilon: f64) -> Vec<(f64, f64)> {
-    let mut dmax = 0.0;
-    let mut index = 0;
-    let end = points.len() - 1;
-    for i in 1..end {
-        let d = perpendicular_distance(&points[i], &points[0], &points[end]);
-        if d > dmax {
-            index = i;
-            dmax = d;
-        }
-    }
-    if dmax > epsilon {
-        let mut res1 = douglas_peucker(&points[..=index], epsilon);
-        let res2 = douglas_peucker(&points[index..], epsilon);
-        res1.pop();
-        res1.extend(res2);
-        return res1;
-    } else {
-        return vec![points[0], points[end]];
-    }
-}
-
-fn perpendicular_distance(point: &(f64, f64), start: &(f64, f64), end: &(f64, f64)) -> f64 {
-    let point = V2D::new(point.0, point.1);
-    let start = V2D::new(start.0, start.1);
-    let end = V2D::new(end.0, end.1);
-    let line = end - start;
-    let len = line.magnitude();
-    let line = line / len;
-    let point = point - start;
-    let projection = line.dot(point);
-    let projection = projection.max(0.0).min(len);
-    let projection = start + line * projection;
-    let distance = point - projection;
-    distance.magnitude()
-}
-
-fn print_grid(grid: &Vec<Vec<bool>>) {
-    let str: String = grid
-        .iter()
-        .enumerate()
-        .map(|(i, v)| {
-            let mut line = v
-                .iter()
-                .map(|b| if *b { "X" } else { " " })
-                .collect::<String>();
-            line.push_str(i.to_string().as_str());
-            line.push('\n');
-            line
-        })
-        .collect();
-    log::info!("{}", str);
 }

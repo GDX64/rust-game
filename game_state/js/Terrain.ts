@@ -197,7 +197,7 @@ class MiniMap {
     );
 
     const owners: IslandOwners = this.game.island_owners();
-    const errorMargin = scaleX.inverseScale().alpha();
+    const errorMargin = scaleX.inverseScale().alpha() * 10;
     islandData.forEach((island) => {
       ctx.save();
       const path: [number, number][] = this.game.get_island_path(

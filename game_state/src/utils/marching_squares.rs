@@ -4,16 +4,16 @@ use std::{
     ops::BitOrAssign,
 };
 
-trait GridMust: Clone + Copy + Default {}
+pub trait GridMust: Clone + Copy + Default {}
 
 impl<T: Clone + Copy + Default> GridMust for T {}
 
-struct Grid<T> {
+pub struct Grid<T> {
     size: usize,
     grid: Vec<T>,
 }
 
-struct FloatGrid<T> {
+pub struct FloatGrid<T> {
     size: f64,
     tile_size: f64,
     grid: Grid<T>,
@@ -116,7 +116,7 @@ impl<T: GridMust + Debug> Debug for Grid<T> {
     }
 }
 
-fn march_on_bool_grid<T: Into<i16> + GridMust>(
+pub fn march_on_grid<T: Into<i16> + GridMust>(
     grid: &Grid<T>,
     pixel_size: f32,
     top_x: f32,
@@ -139,7 +139,7 @@ fn march_on_bool_grid<T: Into<i16> + GridMust>(
 mod test {
     use tiny_skia::PathBuilder;
 
-    use crate::utils::marching_squares::{march_on_bool_grid, FloatGrid};
+    use crate::utils::marching_squares::{march_on_grid, FloatGrid};
 
     const CIRCLE_RADIUS: f64 = 40.0;
     #[test]
@@ -154,7 +154,7 @@ mod test {
         grid.indexes()
             .for_each(|(x, y)| grid.set(x, y, is_in_circle(x, y) as u8));
 
-        let marched = march_on_bool_grid(&grid.grid, 1.0, 0.0, 0.0);
+        let marched = march_on_grid(&grid.grid, 1.0, 0.0, 0.0);
 
         let mut skia_plot = tiny_skia::Pixmap::new(size, size).unwrap();
         for line in marched {
