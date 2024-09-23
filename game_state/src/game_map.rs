@@ -24,6 +24,7 @@ impl Default for WorldGrid {
             data: Vec::new(),
             islands: BTreeMap::new(),
             path_cache: None,
+            total_island_tiles: 0,
         }
     }
 }
@@ -122,6 +123,7 @@ pub struct WorldGrid {
     pub data: Vec<Tile>,
     pub islands: BTreeMap<u64, Island>,
     pub path_cache: Option<PathCache<MooreNeighborhood>>,
+    pub total_island_tiles: usize,
 }
 
 impl WorldGrid {
@@ -164,6 +166,7 @@ impl WorldGrid {
             data: vec![default; tiles_dim * tiles_dim],
             islands: BTreeMap::new(),
             path_cache: None,
+            total_island_tiles: 0,
         }
     }
 
@@ -267,6 +270,10 @@ impl WorldGrid {
         self.fill_coast();
         self.fill_light_houses();
         self.calc_path_cache();
+        self.total_island_tiles = 0;
+        self.islands.values().for_each(|island| {
+            self.total_island_tiles += island.tiles.len();
+        });
     }
 
     fn fill_light_houses(&mut self) {

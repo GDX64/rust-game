@@ -10,6 +10,7 @@ pub struct IslandData {
     pub id: u64,
     pub center: (f64, f64),
     pub light_house: (f64, f64),
+    pub tiles: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -123,6 +124,7 @@ impl Island {
             id: self.id,
             center: (self.center.x, self.center.y),
             light_house: (self.light_house.x, self.light_house.y),
+            tiles: self.tiles.len(),
         }
     }
 }

@@ -159,6 +159,7 @@ pub struct IslandDynamicData {
     pub production_progress: f64,
     pub id: u64,
     pub lighthouse: V2D,
+    pub tiles: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -248,6 +249,7 @@ impl ServerState {
                     production_progress: 0.0,
                     id: island.id,
                     lighthouse: island.light_house.into(),
+                    tiles: island.tiles,
                 },
             );
         }
@@ -415,12 +417,18 @@ impl ServerState {
                 .values()
                 .filter(|ship| ship.player_id == player.id)
                 .count();
-            player.islands = self
-                .island_dynamic
+            let mut island_tiles = 0;
+            let mut islands = 0;
+            self.island_dynamic
                 .values()
                 .filter(|island| island.owner == Some(player.id))
-                .count();
-            // player.percentage_of_map
+                .for_each(|island| {
+                    islands += 1;
+                    island_tiles += island.tiles;
+                });
+            player.islands = islands;
+            player.percentage_of_map =
+                (island_tiles as f64 / self.game_map.total_island_tiles as f64) * 100.0;
         });
     }
 
