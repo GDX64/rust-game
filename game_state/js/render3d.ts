@@ -170,10 +170,11 @@ export class Render3D {
 
   static async startServer(online: boolean) {
     if (online) {
-      // const url = "https://archpelagus.glmachado.com/ws";
-      //server id and user_name
       const url =
-        "http://localhost:5000/ws?server_id=default&player_name=gdx64";
+        "https://archpelagus.glmachado.com/ws?server_id=default&player_name=player";
+      //server id and user_name
+      // const url =
+      //   "http://localhost:5000/ws?server_id=default&player_name=gdx64";
       const onlineData = OnlineClient.new(url);
       await onlineData.init();
       return GameWasmState.new_online(onlineData);
