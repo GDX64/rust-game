@@ -99,22 +99,22 @@ export class Render3D {
       },
       "reset"
     );
-    this.gui.add(
-      {
-        addBot: () => {
-          this.gameState.add_bot();
-        },
-      },
-      "addBot"
-    );
-    this.gui.add(
-      {
-        removeBot: () => {
-          this.gameState.remove_bot();
-        },
-      },
-      "removeBot"
-    );
+    // this.gui.add(
+    //   {
+    //     addBot: () => {
+    //       this.gameState.add_bot();
+    //     },
+    //   },
+    //   "addBot"
+    // );
+    // this.gui.add(
+    //   {
+    //     removeBot: () => {
+    //       this.gameState.remove_bot();
+    //     },
+    //   },
+    //   "removeBot"
+    // );
     this.gui.add(this.state, "online").onChange((val) => {
       this.saveState();
       window.location.reload();

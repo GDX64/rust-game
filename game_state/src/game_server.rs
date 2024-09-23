@@ -8,7 +8,7 @@ use log::info;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-const MAX_BOTS: usize = 12;
+const MAX_BOTS: usize = 10;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 pub const TICK_TIME: f64 = 1.0 / 60.0;
 
@@ -58,7 +58,7 @@ impl GameServer {
             players: HashMap::new(),
             player_id_counter: 0,
             bots: vec![],
-            rng: fastrand::Rng::with_seed(0),
+            rng: fastrand::Rng::with_seed(1),
             frames: 0,
             frame_inputs: vec![],
             name: "default".to_string(),
@@ -155,6 +155,9 @@ impl GameServer {
             buffer: vec![],
             sender,
         };
+
+        let has_no_players = self.players.is_empty();
+
         self.players.insert(id, pair);
 
         let name = format!("Player {}", id);
@@ -180,6 +183,12 @@ impl GameServer {
             ship.position.y = start_y;
             ship.player_id = id;
             self.add_to_frame(StateMessage::CreateShip { ship });
+        }
+
+        if has_no_players {
+            for _ in 0..MAX_BOTS {
+                self.add_bot();
+            }
         }
 
         return id;
@@ -216,6 +225,7 @@ impl GameServer {
             .collect();
         for bot in dead_bots {
             self.remove_bot(bot);
+            self.add_bot();
         }
     }
 
