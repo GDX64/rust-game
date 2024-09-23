@@ -1,6 +1,5 @@
+use crate::{ship::ShipKey, utils::vectors::V2D};
 use cgmath::MetricSpace;
-
-use crate::{utils::vectors::V2D, wasm_game::ShipKey};
 
 #[derive(Clone)]
 pub struct HashEntity {

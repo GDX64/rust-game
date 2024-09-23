@@ -1,9 +1,11 @@
 use crate::{
     bullet::Bullet,
     game_map::WorldGrid,
-    hashgrid::{HashEntity, HashEntityKind, HashGrid},
+    hashgrid::HashGrid,
     island::IslandData,
     player_state::PlayerState,
+    ship::SHIP_SIZE,
+    ship::{ShipKey, ShipState},
     utils::vectors::{V2D, V3D},
     world_gen::{self},
 };
@@ -18,8 +20,6 @@ const TOTAL_HIT: f64 = 30.0;
 const BLAST_RADIUS: f64 = 20.0;
 const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
-const CANON_RELOAD_TIME: f64 = 5.0;
-const SHIP_SIZE: f64 = 10.0;
 const SHIP_PRODUCTION_TIME: f64 = 10.0;
 const ISLAND_TAKE_TIME: f64 = 1.0;
 const MAX_PLAYER_SHIPS: usize = 100;
@@ -48,47 +48,6 @@ impl GameConstants {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ShipState {
-    pub position: V2D,
-    pub speed: V2D,
-    pub orientation: V2D,
-    pub id: u64,
-    pub player_id: u64,
-    pub cannon_times: [f64; 3],
-    pub last_shoot_time: f64,
-    pub hp: f64,
-}
-
-impl ShipState {
-    pub fn key(&self) -> ShipKey {
-        ShipKey::new(self.id, self.player_id)
-    }
-
-    fn to_hash_entity(&self) -> HashEntity {
-        let key = self.key();
-        HashEntity {
-            entity: HashEntityKind::Boat(key),
-            position: self.position.into(),
-        }
-    }
-}
-
-impl Default for ShipState {
-    fn default() -> Self {
-        Self {
-            position: (0.0, 0.0).into(),
-            speed: (0.0, 0.0).into(),
-            orientation: (1.0, 0.0).into(),
-            id: 0,
-            player_id: 0,
-            cannon_times: [0.0, 0.0, 0.0],
-            last_shoot_time: 0.0,
-            hp: 100.0,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ArtifactGen {
     current_id: u64,
@@ -102,38 +61,6 @@ impl ArtifactGen {
     pub fn next(&mut self) -> u64 {
         self.current_id += 1;
         self.current_id
-    }
-}
-
-impl ShipState {
-    pub fn find_available_cannon(&self, current_time: f64) -> Option<usize> {
-        for (i, time) in self.cannon_times.iter().enumerate() {
-            if current_time - time > CANON_RELOAD_TIME {
-                return Some(i);
-            }
-        }
-        None
-    }
-
-    pub fn shoot_at(&mut self, current_time: f64, target: V2D) -> Option<Bullet> {
-        let cannon_index = self.find_available_cannon(current_time)?;
-        let position: V2D = self.position.into();
-        let ship_orientation = V2D::from(self.orientation);
-        let cannon_multiplier = (cannon_index as i32 - 1) as f64 * SHIP_SIZE / 2.0;
-        let cannon_pos = position + ship_orientation * cannon_multiplier;
-        self.mark_shoot_time(cannon_index, current_time);
-
-        let bullet = Bullet {
-            bullet_id: 0,
-            player_id: self.player_id,
-            ..Bullet::maybe_from_target(cannon_pos.into(), target.into())?
-        };
-        self.last_shoot_time = current_time;
-        return Some(bullet);
-    }
-
-    pub fn mark_shoot_time(&mut self, cannon: usize, current_time: f64) {
-        self.cannon_times[cannon] = current_time;
     }
 }
 
@@ -199,18 +126,6 @@ pub enum StateMessage {
     },
     Tick(f64),
     None,
-}
-
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
-pub struct ShipKey {
-    pub id: u64,
-    pub player_id: u64,
-}
-
-impl ShipKey {
-    pub fn new(id: u64, player_id: u64) -> Self {
-        Self { id, player_id }
-    }
 }
 
 #[wasm_bindgen]

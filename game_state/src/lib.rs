@@ -10,6 +10,7 @@ mod player;
 mod player_state;
 mod running_mode;
 mod server_state;
+mod ship;
 mod utils;
 mod wasm_game;
 mod world_gen;

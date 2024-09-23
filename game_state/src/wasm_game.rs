@@ -4,6 +4,7 @@ use crate::player::Player;
 use crate::player_state::PlayerState;
 use crate::running_mode::{Client, LocalClient, OnlineClient, RunningMode};
 pub use crate::server_state::*;
+use crate::ship::ShipState;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
 use cgmath::{MetricSpace, Vector2};

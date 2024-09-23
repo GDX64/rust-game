@@ -1,6 +1,7 @@
 use crate::{
     bot_player::BotPlayer,
-    wasm_game::{ServerState, ShipState, StateMessage, PLAYER_START_SHIPS},
+    ship::ShipState,
+    wasm_game::{ServerState, StateMessage, PLAYER_START_SHIPS},
 };
 use futures::channel::mpsc::Sender;
 use log::info;
