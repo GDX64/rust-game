@@ -2,9 +2,9 @@ import { GameWasmState } from "../pkg/game_state";
 import { getFlagImage } from "./PlayerStuff";
 import { PlayerInfo } from "./RustWorldTypes";
 
-const WIDTH = 300;
+const WIDTH = 270;
 const HEIGHT = 300;
-const UPDATE_TIME = 0.5; //seconds
+const UPDATE_TIME = 0.2; //seconds
 
 export class LeaderBoards {
   time = 0;
@@ -13,6 +13,8 @@ export class LeaderBoards {
     this.canvas.width = WIDTH * devicePixelRatio;
     this.canvas.height = HEIGHT * devicePixelRatio;
     this.canvas.classList.add("leaderboards-canvas");
+    this.canvas.style.width = WIDTH + "px";
+    this.canvas.style.height = HEIGHT + "px";
   }
 
   tick(dt: number) {
@@ -28,21 +30,30 @@ export class LeaderBoards {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.save();
     ctx.scale(devicePixelRatio, devicePixelRatio);
-    ctx.fillStyle = "#000000";
     //we need to use a monospace font
     ctx.font = "bold 14px monospace";
     const lineHeight = 20;
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
     const imageWidth = 20;
+    const imagePadding = 4;
+
+    const PADDING = 5;
+    const playersArr = [...players.values()];
+    ctx.fillStyle = "#00000088";
+    const totalHeight = (playersArr.length + 1) * lineHeight + 2 * PADDING;
+    ctx.fillRect(0, 0, WIDTH, totalHeight);
+    ctx.translate(PADDING, PADDING);
 
     ctx.textBaseline = "top";
+    ctx.fillStyle = "#ffffff";
     ctx.save();
-    ctx.translate(imageWidth, 0);
+    ctx.translate(imageWidth + imagePadding, 0);
     ctx.fillText(header(), 0, 0);
     ctx.restore();
 
     ctx.translate(0, lineHeight);
-    [...players.values()]
+
+    playersArr
       .sort((a, b) => b.percentage_of_map - a.percentage_of_map)
       .forEach((p, i) => {
         ctx.save();
@@ -50,7 +61,7 @@ export class LeaderBoards {
         const flag = getFlagImage(p.flag);
         const height = Math.round((flag.height / flag.width) * imageWidth);
         ctx.drawImage(flag, 0, 0, imageWidth, height);
-        ctx.translate(imageWidth, 0);
+        ctx.translate(imageWidth + imagePadding, 0);
         ctx.fillText(leaderboardsFormat(p), 0, 0);
         ctx.restore();
       });
@@ -61,14 +72,14 @@ export class LeaderBoards {
 const SHIPS_CHARS = 5;
 const NAME_CHARS = 8;
 const ISLAND_PERCENT_CHARS = 5;
-const ISLANDS_CHARS = 5;
+const ISLANDS_CHARS = 3;
 
 function header() {
   const name = "Name".padEnd(NAME_CHARS, " ");
   const ships = "Ships".padEnd(SHIPS_CHARS, " ");
   const islandPercent = "Map %".padEnd(ISLAND_PERCENT_CHARS, " ");
-  const islands = "Islands".padEnd(ISLANDS_CHARS, " ");
-  return `${name} | ${ships} | ${islandPercent} | ${islands}`;
+  const islands = "LHs".padEnd(ISLANDS_CHARS, " ");
+  return `${name} | ${ships} | ${islands} | ${islandPercent}`;
 }
 
 function leaderboardsFormat(player: PlayerInfo) {
@@ -79,5 +90,5 @@ function leaderboardsFormat(player: PlayerInfo) {
     " "
   );
   const islands = player.islands.toString().padEnd(ISLANDS_CHARS, " ");
-  return `${name} | ${ships} | ${islandPercent} | ${islands}`;
+  return `${name} | ${ships} | ${islands} | ${islandPercent}`;
 }

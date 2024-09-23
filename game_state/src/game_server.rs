@@ -80,7 +80,11 @@ impl GameServer {
         for _ in 0..PLAYER_START_SHIPS {
             bot.player.create_ship(x, y)
         }
-        self.add_to_frame(StateMessage::CreatePlayer { id: bot.player.id });
+        let name = format!("Bot {}", bot.player.id);
+        self.add_to_frame(StateMessage::CreatePlayer {
+            id: bot.player.id,
+            name,
+        });
         self.bots.push(bot);
     }
 
@@ -153,7 +157,8 @@ impl GameServer {
         };
         self.players.insert(id, pair);
 
-        let create_player_msg = StateMessage::CreatePlayer { id };
+        let name = format!("Player {}", id);
+        let create_player_msg = StateMessage::CreatePlayer { id, name };
         self.add_to_frame(create_player_msg.clone());
 
         let map_size = self.game_state.game_map.dim * 0.8;

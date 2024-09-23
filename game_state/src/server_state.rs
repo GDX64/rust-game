@@ -119,6 +119,7 @@ pub enum StateMessage {
     },
     CreatePlayer {
         id: u64,
+        name: String,
     },
     RemovePlayer {
         id: u64,
@@ -408,7 +409,7 @@ impl ServerState {
     }
 
     fn tick_handle_player_stats(&mut self) {
-        if self.frame % 30 != 0 {
+        if self.frame % 15 != 0 {
             return;
         }
         self.players.values_mut().for_each(|player| {
@@ -512,9 +513,8 @@ impl ServerState {
             StateMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
             }
-            StateMessage::CreatePlayer { id } => {
-                self.players
-                    .insert(id, PlayerState::new("Player".to_string(), id));
+            StateMessage::CreatePlayer { id, name } => {
+                self.players.insert(id, PlayerState::new(name, id));
             }
             StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);

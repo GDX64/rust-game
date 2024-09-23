@@ -123,6 +123,7 @@ export class Render3D {
     this.gui.add(this.state, "shootError", 0, 0.1).onChange((val) => {
       this.gameState.change_error(val);
     });
+    this.gui.close();
   }
 
   private saveState() {
