@@ -11,6 +11,7 @@ import { Water } from "./Water";
 import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
 import { PlayerActions } from "./PlayerActions";
+import { LeaderBoards } from "./LeaderBoards";
 
 function defaultState() {
   return {
@@ -51,6 +52,7 @@ export class Render3D {
   readonly PLANE_SEGMENTS;
   readonly water;
   readonly shipsManager;
+  readonly leaderboards;
 
   readonly terrain;
   readonly playerActions;
@@ -84,6 +86,7 @@ export class Render3D {
       this.water,
       this.terrain
     );
+    this.leaderboards = new LeaderBoards(this.gameState);
 
     //reset gui defaults
     this.gui.add(this.state, "fastSimulation");
@@ -195,6 +198,7 @@ export class Render3D {
     this.canvas.classList.add("main-canvas");
     el.appendChild(this.canvas);
     el.appendChild(this.terrain.minimap.mapCanvas);
+    el.appendChild(this.leaderboards.canvas);
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -233,6 +237,7 @@ export class Render3D {
       this.terrain.tick(this.camera);
       this.playerActions.tick();
       this.cameraControls.tick(time);
+      this.leaderboards.tick(dt);
       this.gameState.clear_flags();
       composer.render();
       lastTime = time;

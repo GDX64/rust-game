@@ -45,3 +45,13 @@ export type IslandOwners = Map<
     owner?: number;
   }
 >;
+
+export type PlayerInfo = {
+  id: number;
+  name: string;
+  flag: string;
+  percentage_of_map: number;
+  kills: number;
+  ships: number;
+  islands: number;
+};

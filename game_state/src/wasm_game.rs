@@ -95,6 +95,11 @@ impl GameWasmState {
         self.player.auto_shoot(self.running_mode.server_state());
     }
 
+    pub fn get_all_players(&self) -> JsValue {
+        let players = &self.running_mode.server_state().players;
+        serde_wasm_bindgen::to_value(players).unwrap_or_default()
+    }
+
     pub fn get_all_explosions(&self, x: f64, y: f64) -> JsValue {
         let explosions = self
             .running_mode
@@ -352,9 +357,11 @@ impl GameWasmState {
     }
 
     pub fn get_player_flag(&self, id: u64) -> String {
-        let flags = get_flag_names();
-        let index = fastrand::Rng::with_seed(id).usize(0..flags.len());
-        get_flag_names()[index].into()
+        if let Some(player) = self.running_mode.server_state().players.get(&id) {
+            player.flag.clone()
+        } else {
+            get_flag_names()[0].into()
+        }
     }
 }
 

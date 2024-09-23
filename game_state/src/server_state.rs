@@ -75,6 +75,7 @@ pub struct BroadCastState {
     artifact_gen: ArtifactGen,
     current_time: f64,
     rng_seed: u64,
+    frame: usize,
 }
 
 impl BroadCastState {
@@ -88,6 +89,7 @@ impl BroadCastState {
             artifact_gen: ArtifactGen::new(),
             current_time: 5.0,
             rng_seed: 0,
+            frame: 0,
             game_constants: GameConstants::default(),
         }
     }
@@ -179,6 +181,7 @@ pub struct ServerState {
     rng: fastrand::Rng,
     artifact_gen: ArtifactGen,
     pub flags: ServerFlags,
+    frame: usize,
 }
 
 impl ServerState {
@@ -203,6 +206,7 @@ impl ServerState {
             hash_grid,
             rng: fastrand::Rng::with_seed(0),
             flags: ServerFlags { map_changed: true },
+            frame: 0,
         };
         me.fill_island_dynamic();
         return me;
@@ -296,6 +300,7 @@ impl ServerState {
             rng_seed: self.rng.get_seed(),
             game_constants: self.game_constants.clone(),
             island_dynamic: self.island_dynamic.clone(),
+            frame: 0,
         }
     }
 
@@ -395,6 +400,28 @@ impl ServerState {
 
         self.tick_handle_island_takes(dt);
         self.tick_handle_ship_production(dt);
+        self.tick_handle_player_stats();
+
+        self.frame += 1;
+    }
+
+    fn tick_handle_player_stats(&mut self) {
+        if self.frame % 30 != 0 {
+            return;
+        }
+        self.players.values_mut().for_each(|player| {
+            player.ships = self
+                .ship_collection
+                .values()
+                .filter(|ship| ship.player_id == player.id)
+                .count();
+            player.islands = self
+                .island_dynamic
+                .values()
+                .filter(|island| island.owner == Some(player.id))
+                .count();
+            // player.percentage_of_map
+        });
     }
 
     fn tick_handle_island_takes(&mut self, dt: f64) {
@@ -478,13 +505,8 @@ impl ServerState {
                 self.handle_set_player_name(name, id);
             }
             StateMessage::CreatePlayer { id } => {
-                self.players.insert(
-                    id,
-                    PlayerState {
-                        name: "Player".to_string(),
-                        id,
-                    },
-                );
+                self.players
+                    .insert(id, PlayerState::new("Player".to_string(), id));
             }
             StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);
@@ -507,6 +529,7 @@ impl ServerState {
                 self.game_constants = state.game_constants;
                 self.island_dynamic = state.island_dynamic;
                 self.flags.map_changed = true;
+                self.frame = state.frame;
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {
