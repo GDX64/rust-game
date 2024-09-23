@@ -31,7 +31,4 @@ elif [ "$1" == "build" ]; then
     buildDockerImage
     uploadImage
     exit 0
-elif [ "$1" == "upload" ]; then
-    uploadImage
-    exit 0
 fi
