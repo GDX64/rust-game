@@ -1,4 +1,5 @@
 pub use crate::game_server::*;
+use crate::get_flag_names;
 use crate::player::Player;
 use crate::player_state::PlayerState;
 use crate::running_mode::{Client, LocalClient, OnlineClient, RunningMode};
@@ -6,12 +7,13 @@ pub use crate::server_state::*;
 use crate::ship::ShipState;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
-use crate::{get_flag_names, ship};
 use cgmath::{MetricSpace, Vector2};
-use core::panic;
+use core::{f64, panic};
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 const TOO_FAR: f64 = 1_500.0;
+const MAX_DIVIDE_ITERATIONS: usize = 3;
 
 #[wasm_bindgen]
 pub struct GameWasmState {
@@ -112,20 +114,74 @@ impl GameWasmState {
         return ships;
     }
 
-    pub fn get_all_center_of_player(&self, id: f64) -> Vec<f64> {
-        let ships = self
+    pub fn get_all_center_of_player(&self, id: f64) -> JsValue {
+        let ships: Vec<_> = self
             .running_mode
             .server_state()
             .ship_collection
             .values()
-            .filter(|ship| ship.player_id == id as u64);
-        let mut center: V2D = (0.0, 0.0).into();
-        for ship in ships.clone() {
-            center += ship.position;
+            .filter(|ship| ship.player_id == id as u64)
+            .collect();
+
+        #[derive(Serialize)]
+        struct FnResult {
+            center: (f64, f64),
+            count: usize,
         }
-        let count = ships.count() as f64;
-        center /= count;
-        return vec![center.x, center.y, count];
+
+        fn recursive_divide(ships: Vec<&ShipState>, i: usize) -> Vec<FnResult> {
+            if ships.is_empty() {
+                return vec![];
+            }
+            let mut center: V2D = (0.0, 0.0).into();
+            let first = ships[0];
+            let mut min = first.position;
+            let mut max = first.position;
+            for ship in ships.iter() {
+                min.x = min.x.min(ship.position.x);
+                min.y = min.y.min(ship.position.y);
+                max.x = max.x.max(ship.position.x);
+                max.y = max.y.max(ship.position.y);
+                center += ship.position;
+            }
+            center /= ships.len() as f64;
+            let width = max.x - min.x;
+            let height = max.y - min.y;
+            let limit = 200.0;
+            let is_on_limits = width < limit && height < limit;
+            if is_on_limits || i == 0 {
+                // log::info!()
+                return vec![FnResult {
+                    center: (center.x, center.y),
+                    count: ships.len(),
+                }];
+            }
+            let divide_on_x = width > height;
+            let mut left = vec![];
+            let mut right = vec![];
+            for ship in ships {
+                if divide_on_x {
+                    if ship.position.x < center.x {
+                        left.push(ship);
+                    } else {
+                        right.push(ship);
+                    }
+                } else {
+                    if ship.position.y < center.y {
+                        left.push(ship);
+                    } else {
+                        right.push(ship);
+                    }
+                }
+            }
+            let mut r1 = recursive_divide(left, i - 1);
+            let r2 = recursive_divide(right, i - 1);
+            r1.extend(r2);
+            return r1;
+        }
+
+        let result = recursive_divide(ships, MAX_DIVIDE_ITERATIONS);
+        serde_wasm_bindgen::to_value(&result).unwrap_or_default()
     }
 
     pub fn get_all_explosions(&self, x: f64, y: f64) -> JsValue {

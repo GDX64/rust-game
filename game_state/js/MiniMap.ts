@@ -221,23 +221,32 @@ export class MiniMap {
     ctx.fill();
     ctx.restore();
 
+    type Result = {
+      center: [number, number];
+      count: number;
+    };
+
     //draw boats
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
-    players.forEach((players) => {
-      let [x, y, count] = this.game.get_all_center_of_player(players.id);
-      ctx.beginPath();
-      x = scale.scale(x);
-      y = scale.scale(y);
-      const MAX_RADIUS = 10;
-      const MAX_RADIUS_COUNT = 100;
-      const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
-      ctx.globalAlpha = factor * 0.8;
-      const radius = MAX_RADIUS * factor;
-      ctx.ellipse(x - 1, y - 1, radius, radius, 0, 0, Math.PI * 2);
-      // ctx.fillStyle = "#ffffff";
-      ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
-      ctx.fill();
-    });
+    [...players.values()]
+      .flatMap((players) => {
+        const result: Result[] = this.game.get_all_center_of_player(players.id);
+        return result;
+      })
+      .forEach(({ center: [x, y], count }) => {
+        ctx.beginPath();
+        x = scale.scale(x);
+        y = scale.scale(y);
+        const MAX_RADIUS = 10;
+        const MAX_RADIUS_COUNT = 100;
+        const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
+        ctx.globalAlpha = factor * 0.8;
+        const radius = MAX_RADIUS * factor;
+        ctx.ellipse(x - 1, y - 1, radius, radius, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
+        ctx.fill();
+      });
     ctx.restore();
   }
 }
