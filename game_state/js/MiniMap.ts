@@ -1,13 +1,8 @@
-import { map, Subject } from "rxjs";
+import { Subject } from "rxjs";
 import { GameWasmState } from "../pkg/game_state";
 import { Linscale } from "./Linscale";
-import {
-  IslandData,
-  IslandOwners,
-  PlayerInfo,
-  ShipData,
-} from "./RustWorldTypes";
-import { flagColors, getFlagImage } from "./PlayerStuff";
+import { IslandData, IslandOwners, PlayerInfo } from "./RustWorldTypes";
+import { getFlagImage } from "./PlayerStuff";
 import * as THREE from "three";
 
 const minimapPercentage = 0.25;
@@ -197,21 +192,31 @@ export class MiniMap {
 
     //draw triangle for camera
     ctx.fillStyle = "#ffff00";
-    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
 
     ctx.save();
 
-    ctx.scale(1, -1);
-    ctx.translate(this.mapSizeInPixels / 2, -this.mapSizeInPixels / 2);
     const PLANE_WIDTH = this.game.map_size();
 
-    const scale = Linscale.fromPoints(0, 0, PLANE_WIDTH, this.mapSizeInPixels);
-    const xOnCanvas = scale.scale(cameraPosition.x);
-    const yOnCanvas = scale.scale(cameraPosition.y);
+    const scaleX = Linscale.fromPoints(
+      -PLANE_WIDTH / 2,
+      0,
+      PLANE_WIDTH / 2,
+      this.mapSizeInPixels
+    );
+    const scaleY = Linscale.fromPoints(
+      PLANE_WIDTH / 2,
+      0,
+      -PLANE_WIDTH / 2,
+      this.mapSizeInPixels
+    );
+    const xOnCanvas = scaleX.scale(cameraPosition.x);
+    const yOnCanvas = scaleY.scale(cameraPosition.y);
 
     ctx.save();
     ctx.translate(xOnCanvas, yOnCanvas);
-    ctx.rotate(rotationOnXY);
+
+    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
+    ctx.rotate(-rotationOnXY);
 
     const ARROW_SIZE = 9;
 
@@ -233,6 +238,7 @@ export class MiniMap {
     ctx.globalAlpha = 0.9;
     const MAX_RADIUS = 12;
     const MAX_RADIUS_COUNT = 100;
+    const flagAspectRatio = 0.67;
     ctx.strokeStyle = "#ffffff";
     [...players.values()].flatMap((players) => {
       const result: Result[] = this.game.get_all_center_of_player(players.id);
@@ -241,15 +247,17 @@ export class MiniMap {
       result.forEach(({ center: [x, y], count }) => {
         ctx.save();
         ctx.beginPath();
-        x = scale.scale(x);
-        y = scale.scale(y);
         const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
         const radius = MAX_RADIUS * factor;
-        ctx.ellipse(x - 1, y - 1, radius, radius, 0, 0, Math.PI * 2);
+        x = scaleX.scale(x) - radius;
+        y = scaleY.scale(y) - radius;
+        const width = radius * 2;
+        const height = Math.floor(width * flagAspectRatio);
+        ctx.rect(x, y, width, height);
         ctx.stroke();
         ctx.clip();
-        const l = radius * 2;
-        ctx.drawImage(texture, x - l, y - l, 2 * l, 2 * l);
+
+        ctx.drawImage(texture, x, y, width, height);
         ctx.restore();
         // ctx.fillStyle = "#ffffff";
         // ctx.fill();
