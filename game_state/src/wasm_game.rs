@@ -112,6 +112,21 @@ impl GameWasmState {
         return ships;
     }
 
+    pub fn get_all_center_of_player(&self, id: f64) -> Vec<f64> {
+        let ships = self
+            .running_mode
+            .server_state()
+            .ship_collection
+            .values()
+            .filter(|ship| ship.player_id == id as u64);
+        let mut center: V2D = (0.0, 0.0).into();
+        for ship in ships.clone() {
+            center += ship.position;
+        }
+        center /= ships.count() as f64;
+        return vec![center.x, center.y];
+    }
+
     pub fn get_all_explosions(&self, x: f64, y: f64) -> JsValue {
         let explosions = self
             .running_mode
