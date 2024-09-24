@@ -1,8 +1,13 @@
 import { Subject } from "rxjs";
 import { GameWasmState } from "../pkg/game_state";
 import { Linscale } from "./Linscale";
-import { IslandData, IslandOwners } from "./RustWorldTypes";
-import { getFlagImage } from "./PlayerStuff";
+import {
+  IslandData,
+  IslandOwners,
+  PlayerInfo,
+  ShipData,
+} from "./RustWorldTypes";
+import { flagColors, getFlagImage } from "./PlayerStuff";
 import * as THREE from "three";
 
 const minimapPercentage = 0.25;
@@ -198,9 +203,11 @@ export class MiniMap {
     ctx.translate(this.mapSizeInPixels / 2, -this.mapSizeInPixels / 2);
     const PLANE_WIDTH = this.game.map_size();
 
-    const xOnCanvas = (cameraPosition.x / PLANE_WIDTH) * this.mapSizeInPixels;
-    const yOnCanvas = (cameraPosition.y / PLANE_WIDTH) * this.mapSizeInPixels;
+    const scale = Linscale.fromPoints(0, 0, PLANE_WIDTH, this.mapSizeInPixels);
+    const xOnCanvas = scale.scale(cameraPosition.x);
+    const yOnCanvas = scale.scale(cameraPosition.y);
 
+    ctx.save();
     ctx.translate(xOnCanvas, yOnCanvas);
     ctx.rotate(rotationOnXY);
 
@@ -212,6 +219,23 @@ export class MiniMap {
     ctx.lineTo(arrowSize, 0);
     ctx.lineTo(0, arrowSize / 3);
     ctx.fill();
+    ctx.restore();
+
+    //draw boats
+    const players: Map<number, PlayerInfo> = this.game.get_all_players();
+    players.forEach((players) => {
+      const boats = this.game.get_all_ship_pos_of_player(players.id);
+      ctx.save();
+      ctx.beginPath();
+      for (let i = 0; i < boats.length; i += 2) {
+        const x = scale.scale(boats[i]);
+        const y = scale.scale(boats[i + 1]);
+        ctx.rect(x - 1, y - 1, 2, 2);
+      }
+      ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
+      ctx.fill();
+      ctx.restore();
+    });
     ctx.restore();
   }
 }

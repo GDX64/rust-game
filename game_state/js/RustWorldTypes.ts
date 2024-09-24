@@ -13,6 +13,8 @@ export type ShipData = {
   hp: number;
 };
 
+export type ShipPosByPlayer = Float64Array;
+
 export type Bullet = {
   position: V3D;
   speed: V3D;

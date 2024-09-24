@@ -1,5 +1,4 @@
 pub use crate::game_server::*;
-use crate::get_flag_names;
 use crate::player::Player;
 use crate::player_state::PlayerState;
 use crate::running_mode::{Client, LocalClient, OnlineClient, RunningMode};
@@ -7,6 +6,7 @@ pub use crate::server_state::*;
 use crate::ship::ShipState;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
+use crate::{get_flag_names, ship};
 use cgmath::{MetricSpace, Vector2};
 use core::panic;
 use wasm_bindgen::prelude::*;
@@ -98,6 +98,18 @@ impl GameWasmState {
     pub fn get_all_players(&self) -> JsValue {
         let players = &self.running_mode.server_state().players;
         serde_wasm_bindgen::to_value(players).unwrap_or_default()
+    }
+
+    pub fn get_all_ship_pos_of_player(&self, id: f64) -> Vec<f64> {
+        let ships = self
+            .running_mode
+            .server_state()
+            .ship_collection
+            .values()
+            .filter(|ship| ship.player_id == id as u64)
+            .flat_map(|ship| [ship.position.x, ship.position.y])
+            .collect::<Vec<_>>();
+        return ships;
     }
 
     pub fn get_all_explosions(&self, x: f64, y: f64) -> JsValue {
