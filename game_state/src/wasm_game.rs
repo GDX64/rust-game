@@ -157,17 +157,19 @@ impl GameWasmState {
                 }];
             }
             let divide_on_x = width > height;
+            let x_threshold = (min.x + max.x) / 2.0;
+            let y_threshold = (min.y + max.y) / 2.0;
             let mut left = vec![];
             let mut right = vec![];
             for ship in ships {
                 if divide_on_x {
-                    if ship.position.x < center.x {
+                    if ship.position.x < x_threshold {
                         left.push(ship);
                     } else {
                         right.push(ship);
                     }
                 } else {
-                    if ship.position.y < center.y {
+                    if ship.position.y < y_threshold {
                         left.push(ship);
                     } else {
                         right.push(ship);
