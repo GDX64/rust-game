@@ -120,7 +120,7 @@ export class PlayerActions {
           shipPos.y < endY
         );
       });
-      this.state = States.IDLE;
+      this.changeState(States.IDLE);
     }
   }
 
@@ -141,7 +141,7 @@ export class PlayerActions {
     this.shipsManager.aimCircle.visible = false;
     this.mouse.x = this.width / 2;
     this.mouse.y = this.height / 2;
-    this.state = States.IDLE;
+    this.changeState(States.IDLE);
   }
 
   onKeyUp(event: KeyboardEvent) {
@@ -149,7 +149,16 @@ export class PlayerActions {
     if (event.key === "Control") {
       this.canvas.style.cursor = "auto";
       this.shipsManager.aimCircle.visible = false;
-      this.state = States.IDLE;
+      this.changeState(States.IDLE);
+    }
+  }
+
+  private changeState(newState: States) {
+    this.state = newState;
+    if (newState === States.SHOOTING) {
+      this.terrain.minimap.hideMinimap();
+    } else {
+      this.terrain.minimap.showMinimap();
     }
   }
 
@@ -164,7 +173,7 @@ export class PlayerActions {
     if (event.ctrlKey) {
       this.canvas.style.cursor = "crosshair";
       this.shipsManager.aimCircle.visible = true;
-      this.state = States.SHOOTING;
+      this.changeState(States.SHOOTING);
     }
     if (event.key === "b") {
       const intersection = this.waterIntersection();
@@ -267,7 +276,7 @@ export class PlayerActions {
     } else {
       const boat = this.boatClicked();
       if (boat == null) {
-        this.state = States.SELECTING;
+        this.changeState(States.SELECTING);
         this.selectionStart.x = event.offsetX;
         this.selectionStart.y = event.offsetY;
         if (hasShift) {

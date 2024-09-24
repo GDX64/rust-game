@@ -5,7 +5,7 @@ import { IslandData, IslandOwners, PlayerInfo } from "./RustWorldTypes";
 import { getFlagImage } from "./PlayerStuff";
 import * as THREE from "three";
 
-const minimapPercentage = 0.25;
+const minimapPercentage = 0.33;
 
 type IslandShape = {
   path: Path2D;
@@ -175,6 +175,16 @@ export class MiniMap {
       }
       ctx.restore();
     });
+  }
+
+  hideMinimap() {
+    this.mapCanvas.style.opacity = "0.3";
+    this.mapCanvas.style.pointerEvents = "none";
+  }
+
+  showMinimap() {
+    this.mapCanvas.style.opacity = "1";
+    this.mapCanvas.style.pointerEvents = "auto";
   }
 
   updateCanvas(camera: THREE.Camera) {
