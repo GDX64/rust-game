@@ -223,18 +223,21 @@ export class MiniMap {
 
     //draw boats
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
     players.forEach((players) => {
-      const boats = this.game.get_all_ship_pos_of_player(players.id);
-      for (let i = 0; i < boats.length; i += 2) {
-        const x = scale.scale(boats[i]);
-        const y = scale.scale(boats[i + 1]);
-        ctx.rect(x - 1, y - 1, 2, 2);
-      }
-      // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
+      let [x, y, count] = this.game.get_all_center_of_player(players.id);
+      ctx.beginPath();
+      x = scale.scale(x);
+      y = scale.scale(y);
+      const MAX_RADIUS = 10;
+      const MAX_RADIUS_COUNT = 100;
+      const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
+      ctx.globalAlpha = factor * 0.8;
+      const radius = MAX_RADIUS * factor;
+      ctx.ellipse(x - 1, y - 1, radius, radius, 0, 0, Math.PI * 2);
+      // ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
+      ctx.fill();
     });
-    ctx.fill();
     ctx.restore();
   }
 }

@@ -123,8 +123,9 @@ impl GameWasmState {
         for ship in ships.clone() {
             center += ship.position;
         }
-        center /= ships.count() as f64;
-        return vec![center.x, center.y];
+        let count = ships.count() as f64;
+        center /= count;
+        return vec![center.x, center.y, count];
     }
 
     pub fn get_all_explosions(&self, x: f64, y: f64) -> JsValue {
