@@ -1,4 +1,4 @@
-import { Subject } from "rxjs";
+import { map, Subject } from "rxjs";
 import { GameWasmState } from "../pkg/game_state";
 import { Linscale } from "./Linscale";
 import {
@@ -33,10 +33,12 @@ export class MiniMap {
     const mapCanvas = document.createElement("canvas");
     mapCanvas.classList.add("minimap-canvas");
 
-    this.mapSizeInPixels =
-      Math.min(window.innerWidth, window.innerHeight) *
-      minimapPercentage *
-      devicePixelRatio;
+    const mapSize = Math.floor(
+      Math.min(window.innerWidth, window.innerHeight) * minimapPercentage
+    );
+    this.mapSizeInPixels = mapSize * devicePixelRatio;
+
+    mapCanvas.style.width = mapSize + "px";
 
     mapCanvas.width = this.mapSizeInPixels;
     mapCanvas.height = this.mapSizeInPixels;
@@ -244,7 +246,7 @@ export class MiniMap {
         const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
         const radius = MAX_RADIUS * factor;
         ctx.ellipse(x - 1, y - 1, radius, radius, 0, 0, Math.PI * 2);
-        // ctx.stroke();
+        ctx.stroke();
         ctx.clip();
         const l = radius * 2;
         ctx.drawImage(texture, x - l, y - l, 2 * l, 2 * l);

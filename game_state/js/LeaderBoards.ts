@@ -2,7 +2,7 @@ import { GameWasmState } from "../pkg/game_state";
 import { getFlagImage } from "./PlayerStuff";
 import { PlayerInfo } from "./RustWorldTypes";
 
-const WIDTH = 270;
+const WIDTH = 300;
 const HEIGHT = 300;
 const UPDATE_TIME = 0.2; //seconds
 
