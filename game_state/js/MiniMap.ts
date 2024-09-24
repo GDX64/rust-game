@@ -228,25 +228,31 @@ export class MiniMap {
 
     //draw boats
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
-    [...players.values()]
-      .flatMap((players) => {
-        const result: Result[] = this.game.get_all_center_of_player(players.id);
-        return result;
-      })
-      .forEach(({ center: [x, y], count }) => {
+    ctx.globalAlpha = 0.9;
+    const MAX_RADIUS = 12;
+    const MAX_RADIUS_COUNT = 100;
+    ctx.strokeStyle = "#ffffff";
+    [...players.values()].flatMap((players) => {
+      const result: Result[] = this.game.get_all_center_of_player(players.id);
+      // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
+      const texture = getFlagImage(players.flag);
+      result.forEach(({ center: [x, y], count }) => {
+        ctx.save();
         ctx.beginPath();
         x = scale.scale(x);
         y = scale.scale(y);
-        const MAX_RADIUS = 10;
-        const MAX_RADIUS_COUNT = 100;
         const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
-        ctx.globalAlpha = factor * 0.8;
         const radius = MAX_RADIUS * factor;
         ctx.ellipse(x - 1, y - 1, radius, radius, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff";
-        // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
-        ctx.fill();
+        // ctx.stroke();
+        ctx.clip();
+        const l = radius * 2;
+        ctx.drawImage(texture, x - l, y - l, 2 * l, 2 * l);
+        ctx.restore();
+        // ctx.fillStyle = "#ffffff";
+        // ctx.fill();
       });
+    });
     ctx.restore();
   }
 }

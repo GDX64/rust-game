@@ -147,7 +147,7 @@ impl GameWasmState {
             center /= ships.len() as f64;
             let width = max.x - min.x;
             let height = max.y - min.y;
-            let limit = 200.0;
+            let limit = 400.0;
             let is_on_limits = width < limit && height < limit;
             if is_on_limits || i == 0 {
                 // log::info!()
