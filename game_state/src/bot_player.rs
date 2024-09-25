@@ -57,6 +57,10 @@ impl BotPlayer {
                 }
             }
             BotState::Conquering(island) => {
+                if ships_number == 0 {
+                    self.bot_state = BotState::Dead;
+                    return None;
+                }
                 let island = island.clone();
                 let units_to_attack =
                     self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN / 2;
@@ -68,11 +72,12 @@ impl BotPlayer {
                         self.attack_island(game_state, &island);
                     }
                 }
-                if ships_number == 0 {
-                    self.bot_state = BotState::Dead;
-                }
             }
             BotState::Reiforcing(_island) => {
+                if ships_number == 0 {
+                    self.bot_state = BotState::Dead;
+                    return None;
+                }
                 let units_to_attack =
                     self.my_islands(game_state) * UNITS_PER_ISLAND_TO_ATTACK_AGAIN;
 
@@ -80,9 +85,6 @@ impl BotPlayer {
                     let closest_island = self.closes_island_not_mine(game_state)?;
                     self.attack_island(game_state, &closest_island);
                     self.bot_state = BotState::Conquering(closest_island);
-                }
-                if ships_number == 0 {
-                    self.bot_state = BotState::Dead;
                 }
             }
             BotState::Dead => {
