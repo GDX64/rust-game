@@ -10,6 +10,7 @@ pub struct PlayerState {
     pub islands: usize,
     pub ships: usize,
     pub kills: usize,
+    pub deaths: usize,
     pub flag: String,
 }
 
@@ -23,6 +24,7 @@ impl Default for PlayerState {
             ships: 0,
             kills: 0,
             flag: get_player_flag(0),
+            deaths: 0,
         }
     }
 }

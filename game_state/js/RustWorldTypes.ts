@@ -54,6 +54,7 @@ export type PlayerInfo = {
   flag: string;
   percentage_of_map: number;
   kills: number;
+  deaths: number;
   ships: number;
   islands: number;
 };

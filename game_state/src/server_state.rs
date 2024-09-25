@@ -341,6 +341,9 @@ impl ServerState {
                         let ship_pos: V3D = (ship.position.x, ship.position.y, 0.0).into();
                         let distance = (ship_pos - pos).magnitude();
                         ship.hp -= calc_damage(distance);
+                        if ship.hp <= 0.0 && ship.killed_by.is_none() {
+                            ship.killed_by = Some(bullet.player_id);
+                        }
                     }
                 });
 
@@ -382,6 +385,18 @@ impl ServerState {
 
             if ship.hp > 0.0 {
                 return true;
+            }
+
+            if let Some(killed_by) = ship.killed_by {
+                let player = self.players.get_mut(&killed_by);
+                if let Some(player) = player {
+                    player.kills += 1;
+                }
+            }
+
+            let ship_owner = self.players.get_mut(&ship.player_id);
+            if let Some(player) = ship_owner {
+                player.deaths += 1;
             }
 
             let explosion = Explosion {

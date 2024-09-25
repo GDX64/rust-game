@@ -31,6 +31,7 @@ pub struct ShipState {
     pub cannon_times: [f64; 3],
     pub last_shoot_time: f64,
     pub hp: f64,
+    pub killed_by: Option<u64>,
 }
 
 impl ShipState {
@@ -58,6 +59,7 @@ impl Default for ShipState {
             cannon_times: [0.0, 0.0, 0.0],
             last_shoot_time: 0.0,
             hp: 100.0,
+            killed_by: None,
         }
     }
 }
