@@ -4,6 +4,7 @@ import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 import { Terrain } from "./Terrain";
 import { LeaderBoards } from "./LeaderBoards";
+import { config } from "./config/Config";
 
 enum States {
   IDLE,
@@ -56,10 +57,11 @@ export class PlayerActions {
   }
 
   bindEvents() {
-    //add unload event
-    // window.onbeforeunload = () => {
-    //   return false;
-    // };
+    if (config.preventDefaults) {
+      window.onbeforeunload = () => {
+        return false;
+      };
+    }
 
     this.terrain.minimap.mapClick$.subscribe((point) => {
       this.camera.changeCameraPosition(
@@ -77,7 +79,9 @@ export class PlayerActions {
     document.addEventListener("keydown", this.onKeyDown.bind(this));
     document.addEventListener("keyup", this.onKeyUp.bind(this));
     document.addEventListener("kepress", (event) => {
-      // event.preventDefault()
+      if (config.preventDefaults) {
+        event.preventDefault();
+      }
     });
     document.addEventListener(
       "wheel",
@@ -147,7 +151,9 @@ export class PlayerActions {
   }
 
   onKeyUp(event: KeyboardEvent) {
-    // event.preventDefault();
+    if (config.preventDefaults) {
+      event.preventDefault();
+    }
     if (event.key === "Control") {
       this.canvas.style.cursor = "auto";
       this.shipsManager.aimCircle.visible = false;
@@ -167,7 +173,9 @@ export class PlayerActions {
   }
 
   onKeyDown(event: KeyboardEvent) {
-    // event.preventDefault();
+    if (config.preventDefaults) {
+      event.preventDefault();
+    }
     if (event.key === "c") {
       const intersection = this.waterIntersection();
       if (!intersection) return;

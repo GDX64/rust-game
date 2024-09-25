@@ -12,6 +12,7 @@ import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
 import { PlayerActions } from "./PlayerActions";
 import { LeaderBoards } from "./LeaderBoards";
+import { config } from "./config/Config";
 
 function defaultState() {
   return {
@@ -172,11 +173,7 @@ export class Render3D {
 
   static async startServer(online: boolean) {
     if (online) {
-      const url =
-        "https://archpelagus.glmachado.com/ws?server_id=default&player_name=player";
-      //server id and user_name
-      // const url =
-      //   "http://localhost:5000/ws?server_id=default&player_name=gdx64";
+      const url = `${config.serverURL}?server_id=default&player_name=player`;
       const onlineData = OnlineClient.new(url);
       await onlineData.init();
       return GameWasmState.new_online(onlineData);

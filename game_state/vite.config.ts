@@ -7,7 +7,7 @@ declare const process: any;
 export default defineConfig({
   plugins: [wasm()],
   define: {
-    FRONT_SERVER: `"${process.env.FRONT_SERVER ?? "ws://localhost:5000/ws"}"`,
+    IS_PROD: process.env.NODE_ENV === "production",
   },
   server: {
     open: true,
