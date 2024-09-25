@@ -14,6 +14,7 @@ use wasm_bindgen::prelude::*;
 
 const TOO_FAR: f64 = 1_500.0;
 const MAX_DIVIDE_ITERATIONS: usize = 3;
+const DIVISION_LIMIT: f64 = 200.0;
 
 #[wasm_bindgen]
 pub struct GameWasmState {
@@ -441,8 +442,7 @@ fn recursive_divide(ships: Vec<&ShipState>, i: usize) -> Vec<DivideResult> {
     center /= ships.len() as f64;
     let width = max.x - min.x;
     let height = max.y - min.y;
-    let limit = 400.0;
-    let is_on_limits = width < limit && height < limit;
+    let is_on_limits = width < DIVISION_LIMIT && height < DIVISION_LIMIT;
     if is_on_limits || i == 0 {
         // log::info!()
         return vec![DivideResult {
