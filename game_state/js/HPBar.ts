@@ -74,7 +74,7 @@ varying vec3 passColor;
 void main() {
 
 	vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4( 0.0, 0.0, 0.0, 1.0 );
-  vec4 pos4 = vec4( position, 1.0 );
+  vec4 pos4 = vec4( position, 0.0 );
 
   vec2 scale = vec2(1.0, 1.0);
 	scale.x = length( vec3( instanceMatrix[ 0 ].x, instanceMatrix[ 0 ].y, instanceMatrix[ 0 ].z ) );
