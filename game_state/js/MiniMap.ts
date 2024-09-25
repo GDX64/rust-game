@@ -40,12 +40,53 @@ export class MiniMap {
 
     mapCanvas.style.width = mapSize + "px";
     mapCanvas.style.transition = "opacity 0.3s";
+    // mapCanvas.style.border = "2px solid gray";
+    // mapCanvas.style.borderRadius = "5px";
+    mapCanvas.style.right = "3px";
+    mapCanvas.style.bottom = "3px";
 
     mapCanvas.width = this.mapSizeInPixels;
     mapCanvas.height = this.mapSizeInPixels;
+
+    const islandsCanvas = new OffscreenCanvas(
+      this.mapSizeInPixels,
+      this.mapSizeInPixels
+    );
+
+    this.islandsCanvas = islandsCanvas;
+    this.mapCanvas = mapCanvas;
+
+    this.islandShapes = this.buildShapes();
+    this.addCanvasEvents();
+  }
+
+  private addCanvasEvents() {
     const PLANE_WIDTH = this.game.map_size();
 
-    mapCanvas.onclick = (event: MouseEvent) => {
+    const mapCanvas = this.mapCanvas;
+
+    let isDragging = false;
+
+    document.onpointerup = (_event: PointerEvent) => {
+      isDragging = false;
+    };
+
+    document.onpointerleave = (_event: PointerEvent) => {
+      isDragging = false;
+    };
+
+    mapCanvas.onpointerdown = (event: PointerEvent) => {
+      isDragging = true;
+      emitMoveEvent(event);
+    };
+
+    mapCanvas.onpointermove = (event: PointerEvent) => {
+      if (isDragging) {
+        emitMoveEvent(event);
+      }
+    };
+
+    const emitMoveEvent = (event: MouseEvent) => {
       const { height, width } = mapCanvas.getBoundingClientRect();
       const miniMapToWorldX = Linscale.fromPoints(
         0,
@@ -66,16 +107,6 @@ export class MiniMap {
       const yWorld = miniMapToWorldY.scale(y);
       this.mapClick$.next({ x: xWorld, y: yWorld });
     };
-
-    const islandsCanvas = new OffscreenCanvas(
-      this.mapSizeInPixels,
-      this.mapSizeInPixels
-    );
-
-    this.islandsCanvas = islandsCanvas;
-    this.mapCanvas = mapCanvas;
-
-    this.islandShapes = this.buildShapes();
   }
 
   private buildShapes() {
