@@ -39,6 +39,7 @@ export class MiniMap {
     this.mapSizeInPixels = mapSize * devicePixelRatio;
 
     mapCanvas.style.width = mapSize + "px";
+    mapCanvas.style.transition = "opacity 0.3s";
 
     mapCanvas.width = this.mapSizeInPixels;
     mapCanvas.height = this.mapSizeInPixels;
@@ -260,9 +261,11 @@ export class MiniMap {
         ctx.save();
         ctx.beginPath();
         const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
-        const radius = MAX_RADIUS * factor;
+        const radius = Math.floor(MAX_RADIUS * factor);
         x = scaleX.scale(x) - radius;
         y = scaleY.scale(y) - radius;
+        x = Math.floor(x);
+        y = Math.floor(y);
         const width = radius * 2;
         const height = Math.floor(width * flagAspectRatio);
         ctx.rect(x, y, width, height);

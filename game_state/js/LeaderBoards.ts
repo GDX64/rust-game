@@ -15,6 +15,15 @@ export class LeaderBoards {
     this.canvas.classList.add("leaderboards-canvas");
     this.canvas.style.width = WIDTH + "px";
     this.canvas.style.height = HEIGHT + "px";
+    this.canvas.style.transition = "opacity 0.3s";
+  }
+
+  showLeaderBoards() {
+    this.canvas.style.opacity = "1";
+  }
+
+  hideLeaderBoards() {
+    this.canvas.style.opacity = "0.3";
   }
 
   tick(dt: number) {

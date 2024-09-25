@@ -3,6 +3,7 @@ import { ShipsManager } from "./ShipsManager";
 import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 import { Terrain } from "./Terrain";
+import { LeaderBoards } from "./LeaderBoards";
 
 enum States {
   IDLE,
@@ -22,7 +23,8 @@ export class PlayerActions {
     public shipsManager: ShipsManager,
     public camera: CameraControl,
     public water: Water,
-    public terrain: Terrain
+    public terrain: Terrain,
+    public leaderBoards: LeaderBoards
   ) {
     this.mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
@@ -156,9 +158,11 @@ export class PlayerActions {
   private changeState(newState: States) {
     this.state = newState;
     if (newState === States.SHOOTING) {
+      this.leaderBoards.hideLeaderBoards();
       this.terrain.minimap.hideMinimap();
     } else {
       this.terrain.minimap.showMinimap();
+      this.leaderBoards.showLeaderBoards();
     }
   }
 

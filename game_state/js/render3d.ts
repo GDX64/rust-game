@@ -79,14 +79,16 @@ export class Render3D {
       this.camera,
       this.gameState.start_position()
     );
+    this.leaderboards = new LeaderBoards(this.gameState);
+
     this.playerActions = new PlayerActions(
       this.canvas,
       this.shipsManager,
       this.cameraControls,
       this.water,
-      this.terrain
+      this.terrain,
+      this.leaderboards
     );
-    this.leaderboards = new LeaderBoards(this.gameState);
 
     //reset gui defaults
     this.gui.add(this.state, "fastSimulation");
