@@ -20,6 +20,7 @@ const SHIP_SIZE = 10;
 const MAX_SHIPS = 120;
 const MAX_PLAYERS = 10;
 const ARMY_FLAG_HEIGHT = 50;
+const FRAMES_UNTIL_CHECK_DEAD_PLAYERS = 3_000;
 
 const up = new THREE.Vector3(0, 0, 1);
 const defaultColor = new THREE.Color(0x999999);
@@ -280,7 +281,31 @@ export class ShipsManager {
     }
   }
 
-  getArmyFlag(player: number, i: number) {
+  private freeDeadPlayerResources() {
+    const alivePlayers: Map<number, PlayerState> = this.game.get_all_players();
+    this.armyFlags.forEach((flags, playerID) => {
+      if (!alivePlayers.has(playerID)) {
+        console.log("removing flags for player", playerID);
+        flags.forEach((flag) => {
+          flag.removeFromParent();
+          flag.material.dispose();
+        });
+        this.armyFlags.delete(playerID);
+      }
+    });
+    this.sailsMap.forEach((sails, playerID) => {
+      if (!alivePlayers.has(playerID)) {
+        console.log("removing sails for player", playerID);
+        sails.removeFromParent();
+        if (sails.material instanceof THREE.Material) {
+          sails.material.dispose();
+        }
+        this.sailsMap.delete(playerID);
+      }
+    });
+  }
+
+  private getArmyFlag(player: number, i: number) {
     let flags = this.armyFlags.get(player);
     if (!flags) {
       const flatTexture = getFlagTexture(
@@ -307,7 +332,7 @@ export class ShipsManager {
     return flags[i];
   }
 
-  tick(time: number) {
+  tick(time: number, frames: number) {
     if (!this.boatMesh) {
       return;
     }
@@ -414,6 +439,9 @@ export class ShipsManager {
         flag.position.set(center[0], center[1], ARMY_FLAG_HEIGHT);
       });
     });
+    if (frames % FRAMES_UNTIL_CHECK_DEAD_PLAYERS === 0) {
+      this.freeDeadPlayerResources();
+    }
   }
 
   auto_shoot() {

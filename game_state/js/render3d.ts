@@ -221,6 +221,7 @@ export class Render3D {
     const { composer } = this.addPostProcessing(renderer);
 
     let lastTime = 0;
+    let frames = 0;
     renderer.setAnimationLoop((_time) => {
       const time = _time / 1000;
       const dt = time - lastTime;
@@ -234,7 +235,7 @@ export class Render3D {
         this.gameState.tick(gameTime);
       }
       const gameTime = this.gameState.current_time;
-      this.shipsManager.tick(gameTime);
+      this.shipsManager.tick(gameTime, frames);
       this.water.tick(gameTime, this.camera);
       this.terrain.tick(this.camera);
       this.playerActions.tick();
@@ -243,6 +244,7 @@ export class Render3D {
       this.gameState.clear_flags();
       composer.render();
       lastTime = time;
+      frames++;
     });
 
     const helpersFolder = this.gui.addFolder("Helpers");
