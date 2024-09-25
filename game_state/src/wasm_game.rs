@@ -114,6 +114,25 @@ impl GameWasmState {
         return ships;
     }
 
+    pub fn get_all_center_of_player_around(&self, player: f64, x: f64, y: f64) -> JsValue {
+        let id = player as u64;
+        let ships: Vec<_> = self
+            .running_mode
+            .server_state()
+            .ship_collection
+            .values()
+            .filter(|ship| {
+                if ship.player_id != id {
+                    return false;
+                }
+                let distance = V2D::from(ship.position).distance(V2D::new(x, y));
+                return distance < TOO_FAR;
+            })
+            .collect();
+        let result = recursive_divide(ships, MAX_DIVIDE_ITERATIONS);
+        serde_wasm_bindgen::to_value(&result).unwrap_or_default()
+    }
+
     pub fn get_all_center_of_player(&self, id: f64) -> JsValue {
         let ships: Vec<_> = self
             .running_mode
@@ -122,65 +141,6 @@ impl GameWasmState {
             .values()
             .filter(|ship| ship.player_id == id as u64)
             .collect();
-
-        #[derive(Serialize)]
-        struct FnResult {
-            center: (f64, f64),
-            count: usize,
-        }
-
-        fn recursive_divide(ships: Vec<&ShipState>, i: usize) -> Vec<FnResult> {
-            if ships.is_empty() {
-                return vec![];
-            }
-            let mut center: V2D = (0.0, 0.0).into();
-            let first = ships[0];
-            let mut min = first.position;
-            let mut max = first.position;
-            for ship in ships.iter() {
-                min.x = min.x.min(ship.position.x);
-                min.y = min.y.min(ship.position.y);
-                max.x = max.x.max(ship.position.x);
-                max.y = max.y.max(ship.position.y);
-                center += ship.position;
-            }
-            center /= ships.len() as f64;
-            let width = max.x - min.x;
-            let height = max.y - min.y;
-            let limit = 400.0;
-            let is_on_limits = width < limit && height < limit;
-            if is_on_limits || i == 0 {
-                // log::info!()
-                return vec![FnResult {
-                    center: (center.x, center.y),
-                    count: ships.len(),
-                }];
-            }
-            let divide_on_x = width > height;
-            let x_threshold = (min.x + max.x) / 2.0;
-            let y_threshold = (min.y + max.y) / 2.0;
-            let mut left = vec![];
-            let mut right = vec![];
-            for ship in ships {
-                if divide_on_x {
-                    if ship.position.x < x_threshold {
-                        left.push(ship);
-                    } else {
-                        right.push(ship);
-                    }
-                } else {
-                    if ship.position.y < y_threshold {
-                        left.push(ship);
-                    } else {
-                        right.push(ship);
-                    }
-                }
-            }
-            let mut r1 = recursive_divide(left, i - 1);
-            let r2 = recursive_divide(right, i - 1);
-            r1.extend(r2);
-            return r1;
-        }
 
         let result = recursive_divide(ships, MAX_DIVIDE_ITERATIONS);
         serde_wasm_bindgen::to_value(&result).unwrap_or_default()
@@ -455,4 +415,63 @@ fn linear_scale_from_points(x0: f64, y0: f64, x1: f64, y1: f64) -> impl Fn(f64) 
     let m = (y1 - y0) / (x1 - x0);
     let b = y0 - m * x0;
     move |x| m * x + b
+}
+
+#[derive(Serialize)]
+struct DivideResult {
+    center: (f64, f64),
+    count: usize,
+}
+
+fn recursive_divide(ships: Vec<&ShipState>, i: usize) -> Vec<DivideResult> {
+    if ships.is_empty() {
+        return vec![];
+    }
+    let mut center: V2D = (0.0, 0.0).into();
+    let first = ships[0];
+    let mut min = first.position;
+    let mut max = first.position;
+    for ship in ships.iter() {
+        min.x = min.x.min(ship.position.x);
+        min.y = min.y.min(ship.position.y);
+        max.x = max.x.max(ship.position.x);
+        max.y = max.y.max(ship.position.y);
+        center += ship.position;
+    }
+    center /= ships.len() as f64;
+    let width = max.x - min.x;
+    let height = max.y - min.y;
+    let limit = 400.0;
+    let is_on_limits = width < limit && height < limit;
+    if is_on_limits || i == 0 {
+        // log::info!()
+        return vec![DivideResult {
+            center: (center.x, center.y),
+            count: ships.len(),
+        }];
+    }
+    let divide_on_x = width > height;
+    let x_threshold = (min.x + max.x) / 2.0;
+    let y_threshold = (min.y + max.y) / 2.0;
+    let mut left = vec![];
+    let mut right = vec![];
+    for ship in ships {
+        if divide_on_x {
+            if ship.position.x < x_threshold {
+                left.push(ship);
+            } else {
+                right.push(ship);
+            }
+        } else {
+            if ship.position.y < y_threshold {
+                left.push(ship);
+            } else {
+                right.push(ship);
+            }
+        }
+    }
+    let mut r1 = recursive_divide(left, i - 1);
+    let r2 = recursive_divide(right, i - 1);
+    r1.extend(r2);
+    return r1;
 }

@@ -57,3 +57,8 @@ export type PlayerInfo = {
   ships: number;
   islands: number;
 };
+
+export type CenterResults = {
+  center: [number, number];
+  count: number;
+};

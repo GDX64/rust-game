@@ -6,13 +6,20 @@ import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { RenderOrder } from "./RenderOrder";
 import { HPBar } from "./HPBar";
-import { Bullet, ExplosionData, PlayerState, ShipData } from "./RustWorldTypes";
+import {
+  Bullet,
+  CenterResults,
+  ExplosionData,
+  PlayerState,
+  ShipData,
+} from "./RustWorldTypes";
 import { flagColors, getFlagTexture } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
 
 const SHIP_SIZE = 10;
 const MAX_SHIPS = 120;
 const MAX_PLAYERS = 10;
+const ARMY_FLAG_HEIGHT = 50;
 
 const up = new THREE.Vector3(0, 0, 1);
 const defaultColor = new THREE.Color(0x999999);
@@ -28,10 +35,12 @@ export class ShipsManager {
 
   private explosionManager: ExplosionManager;
   private bulletModel: THREE.InstancedMesh;
+  private armyFlags = new Map<number, THREE.Sprite[]>();
   private ships: ShipData[] = [];
   private colorMap = new Map<number, THREE.Color>();
   private sailsMap = new Map<number, THREE.InstancedMesh>();
   private sailsGeometry: THREE.BufferGeometry | null = null;
+  private armyFlagsGroup = new THREE.Group();
 
   selectionRectangle: THREE.Mesh;
   aimCircle;
@@ -109,6 +118,7 @@ export class ShipsManager {
     this.scene.add(this.selectionRectangle);
     this.scene.add(this.aimCircle);
     this.hpBar.addToScene(scene);
+    this.scene.add(this.armyFlagsGroup);
 
     this.loadModel();
   }
@@ -270,6 +280,33 @@ export class ShipsManager {
     }
   }
 
+  getArmyFlag(player: number, i: number) {
+    let flags = this.armyFlags.get(player);
+    if (!flags) {
+      const flatTexture = getFlagTexture(
+        this.game.get_player_flag(BigInt(player))
+      );
+      if (!flatTexture) {
+        return null;
+      }
+      const material = new THREE.SpriteMaterial({ map: flatTexture });
+      const sprite = new THREE.Sprite(material);
+      this.armyFlagsGroup.add(sprite);
+      const hPerW = 0.67;
+      const width = 20;
+      sprite.scale.set(width, width * hPerW, 1);
+      flags = [sprite];
+      this.armyFlags.set(player, flags);
+    }
+    const thisFlag = flags[i];
+    if (!thisFlag) {
+      const clone = flags[0].clone();
+      flags.push(clone);
+      this.armyFlagsGroup.add(clone);
+    }
+    return flags[i];
+  }
+
   tick(time: number) {
     if (!this.boatMesh) {
       return;
@@ -312,6 +349,8 @@ export class ShipsManager {
 
     this.resestSailCounts();
 
+    const playersDrawn = new Set<number>();
+
     for (let i = 0; i < ships.length; i++) {
       const ship = ships[i];
       const sail = this.sailMeshOfPlayer(ship.player_id);
@@ -334,6 +373,8 @@ export class ShipsManager {
         outlineBoats++;
       }
       boatsDrawn++;
+
+      playersDrawn.add(ship.player_id);
     }
     this.boatMesh.count = boatsDrawn;
     this.outlines.count = outlineBoats;
@@ -352,6 +393,26 @@ export class ShipsManager {
         explosion,
         this.playerColor(explosion.player_id)
       );
+    });
+
+    // army flags
+
+    //mark all as invisible
+    this.armyFlagsGroup.children.forEach((sprite) => {
+      sprite.visible = false;
+    });
+
+    playersDrawn.forEach((player) => {
+      const results: CenterResults[] =
+        this.game.get_all_center_of_player_around(player, cameraX, cameraY);
+      results.forEach(({ center }, i) => {
+        const flag = this.getArmyFlag(player, i);
+        if (!flag) {
+          return;
+        }
+        flag.visible = true;
+        flag.position.set(center[0], center[1], ARMY_FLAG_HEIGHT);
+      });
     });
   }
 

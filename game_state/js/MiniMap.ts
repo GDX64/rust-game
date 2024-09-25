@@ -1,7 +1,12 @@
 import { Subject } from "rxjs";
 import { GameWasmState } from "../pkg/game_state";
 import { Linscale } from "./Linscale";
-import { IslandData, IslandOwners, PlayerInfo } from "./RustWorldTypes";
+import {
+  CenterResults,
+  IslandData,
+  IslandOwners,
+  PlayerInfo,
+} from "./RustWorldTypes";
 import { getFlagImage } from "./PlayerStuff";
 import * as THREE from "three";
 
@@ -238,11 +243,6 @@ export class MiniMap {
     ctx.fill();
     ctx.restore();
 
-    type Result = {
-      center: [number, number];
-      count: number;
-    };
-
     //draw boats
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
     ctx.globalAlpha = 0.9;
@@ -251,7 +251,9 @@ export class MiniMap {
     const flagAspectRatio = 0.67;
     ctx.strokeStyle = "#ffffff";
     [...players.values()].flatMap((players) => {
-      const result: Result[] = this.game.get_all_center_of_player(players.id);
+      const result: CenterResults[] = this.game.get_all_center_of_player(
+        players.id
+      );
       // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
       const texture = getFlagImage(players.flag);
       result.forEach(({ center: [x, y], count }) => {
