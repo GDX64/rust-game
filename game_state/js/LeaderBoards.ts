@@ -76,7 +76,7 @@ export class LeaderBoards {
     ctx.translate(0, lineHeight);
 
     playersArr
-      .sort((a, b) => b.percentage_of_map - a.percentage_of_map)
+      .sort((a, b) => b.kills - a.kills)
       .forEach((p, i) => {
         ctx.save();
         ctx.translate(0, lineHeight * i);
