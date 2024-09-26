@@ -1,6 +1,6 @@
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
 import { GameWasmState } from "../pkg/game_state";
-import { IslandDynamicData, IslandOwners } from "./RustWorldTypes";
+import { IslandData, IslandOwners } from "./RustWorldTypes";
 import lighthouseUrl from "./assets/lighthouse.glb?url";
 import * as THREE from "three";
 import { getFlagTexture, whenFlagLoaded } from "./PlayerStuff";
@@ -10,7 +10,7 @@ export class IslandsManager {
   flagSprites = new Map<number, THREE.Sprite>();
   lightHouseGroup = new THREE.Group();
   owners: IslandOwners;
-  islandData: Map<number, IslandDynamicData>;
+  islandData: Map<number, IslandData>;
   needsUpdate = false;
 
   constructor(readonly game: GameWasmState, readonly scene: THREE.Scene) {
@@ -73,16 +73,16 @@ export class IslandsManager {
         const ownerFlag = this.game.get_player_flag(BigInt(owner));
         const flag = this.getFlagTexture(ownerFlag);
         sprite.material.map = flag ?? null;
-        sprite.material.needsUpdate = true;
       } else {
         sprite.material.map = null;
       }
+      sprite.material.needsUpdate = true;
     }
   }
 
   makeFlags() {
     const owners: IslandOwners = this.game.island_owners();
-    const islandData: IslandDynamicData[] = this.game.all_island_data();
+    const islandData: IslandData[] = this.game.all_island_data();
 
     const sprites = islandData.map((island) => {
       const material = new THREE.SpriteMaterial({
