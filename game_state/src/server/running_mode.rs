@@ -1,9 +1,9 @@
 use core::panic;
 
+use super::game_server;
 use crate::utils::vectors::V2D;
-use crate::wasm_game::{ServerState, StateMessage, TICK_TIME};
+use crate::wasm_game::{GameMessage, ServerState, StateMessage, TICK_TIME};
 use crate::ws_channel::WSChannel;
-use crate::{game_server, wasm_game::GameMessage};
 use futures::channel::mpsc::{channel, Receiver};
 use futures::StreamExt;
 use log::info;
