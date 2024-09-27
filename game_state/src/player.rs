@@ -13,7 +13,7 @@ use std::{
     sync::mpsc::{Receiver, Sender},
 };
 
-const BOAT_SPEED: f64 = 30.0;
+const BOAT_SPEED: f64 = 16.0;
 
 #[derive(Debug)]
 pub struct PlayerShip {
@@ -267,7 +267,9 @@ impl Player {
                 if let Some(&next) = path.first() {
                     let position: V2D = ship.position.into();
                     let direction = next - position;
-                    if direction.magnitude() < 1.0 {
+                    let is_final_target = path.len() == 1;
+                    let error_tolerance = if is_final_target { 1.0 } else { 5.0 };
+                    if direction.magnitude() < error_tolerance {
                         path.remove(0);
                         if path.is_empty() {
                             if let Err(e) = self.actions.send(StateMessage::MoveShip {
@@ -287,7 +289,11 @@ impl Player {
                         break;
                     }
                     player_ship.target = Some(next);
-                    let speed = direction.normalize() * BOAT_SPEED;
+                    let speed = if is_final_target {
+                        direction.normalize() * BOAT_SPEED
+                    } else {
+                        direction.normalize() * BOAT_SPEED / 2.0
+                    };
                     if let Err(e) = self.actions.send(StateMessage::MoveShip {
                         player_id: self.id,
                         id: ship.id,

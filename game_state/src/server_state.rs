@@ -18,7 +18,6 @@ use wasm_bindgen::prelude::*;
 
 const TOTAL_HIT: f64 = 30.0;
 const BLAST_RADIUS: f64 = 20.0;
-const BOAT_SPEED: f64 = 8.0;
 const EXPLOSION_TTL: f64 = 1.0;
 const SHIP_PRODUCTION_TIME: f64 = 10.0;
 const ISLAND_TAKE_TIME: f64 = 1.0;
@@ -363,11 +362,6 @@ impl ServerState {
         self.ship_collection.retain(|_id, ship| {
             let position: V2D = ship.position.into();
             let speed: V2D = ship.speed.into();
-            let speed = if speed.magnitude() > BOAT_SPEED {
-                speed.normalize() * BOAT_SPEED
-            } else {
-                speed
-            };
             if speed.magnitude() > 0.001 {
                 let orientation: V2D = ship.orientation.into();
                 let diff = orientation - speed.normalize();
