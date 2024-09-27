@@ -82,6 +82,7 @@ async fn main() {
 struct WsQuery {
     server_id: String,
     player_name: String,
+    player_id: Option<u64>,
 }
 
 async fn ws_handler(
@@ -91,6 +92,7 @@ async fn ws_handler(
 ) -> impl IntoResponse {
     let server_id = params.server_id.clone();
     let player_name = params.player_name.clone();
+    let player_id = params.player_id.clone();
     log::info!("Connecting {player_name} Player to server {server_id}");
     let res = ws.on_upgrade(move |ws| {
         return async move {
@@ -109,7 +111,7 @@ async fn ws_handler(
             });
             let id = {
                 if let Some(server) = state.get_game_server().get_server(&server_id) {
-                    server.new_connection(player_send)
+                    server.new_connection(player_send, player_id)
                 } else {
                     log::warn!("Server {server_id} not found, disconnecting player {player_name}");
                     return;
@@ -136,7 +138,7 @@ async fn ws_handler(
                             .get_game_server()
                             .get_server(&server_id)
                             .map(|server| {
-                                server.disconnect_player(id);
+                                server.on_player_connection_down(id);
                             });
                         return;
                     }

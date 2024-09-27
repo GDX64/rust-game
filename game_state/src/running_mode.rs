@@ -18,6 +18,7 @@ pub struct OnlineClient {
     frame_buffer: Vec<Vec<StateMessage>>,
     send_buffer: Vec<GameMessage>,
     start_position: V2D,
+    receiver_buffer: Vec<GameMessage>,
 }
 
 pub trait Client {
@@ -37,26 +38,59 @@ impl OnlineClient {
             frame_buffer: vec![],
             send_buffer: vec![],
             start_position: V2D::new(0.0, 0.0),
+            receiver_buffer: vec![],
+        }
+    }
+
+    async fn async_next(&mut self) -> Option<GameMessage> {
+        if !self.receiver_buffer.is_empty() {
+            return Some(self.receiver_buffer.remove(0));
+        }
+        let msg = self.ws.next().await;
+        let msg = match msg {
+            Some(msg) => msg,
+            _ => return None,
+        };
+        let msg = GameMessage::from_arr_bytes(&msg);
+        self.receiver_buffer = msg;
+        if !self.receiver_buffer.is_empty() {
+            Some(self.receiver_buffer.remove(0))
+        } else {
+            None
+        }
+    }
+
+    fn next(&mut self) -> Option<GameMessage> {
+        if !self.receiver_buffer.is_empty() {
+            return Some(self.receiver_buffer.remove(0));
+        }
+        let msg = self.ws.receive();
+        let msg = match msg {
+            Some(msg) => msg,
+            _ => return None,
+        };
+        let msg = GameMessage::from_arr_bytes(&msg);
+        self.receiver_buffer = msg;
+        if !self.receiver_buffer.is_empty() {
+            Some(self.receiver_buffer.remove(0))
+        } else {
+            None
         }
     }
 
     pub async fn init(&mut self) -> JsValue {
-        while let Some(msg) = self.ws.next().await {
-            let msg = GameMessage::from_arr_bytes(&msg);
-            for msg in msg.into_iter() {
-                match msg {
-                    GameMessage::PlayerCreated { id, x, y } => {
-                        info!("My ID is: {}", id);
-                        self.id = id;
-                        self.start_position = V2D::new(x, y);
-                        self.send(GameMessage::AskBroadcast { player: id });
-                        return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
-                    }
-                    _ => {}
+        loop {
+            match self.async_next().await {
+                Some(GameMessage::PlayerCreated { id, x, y }) => {
+                    info!("My ID is: {}", id);
+                    self.id = id;
+                    self.start_position = V2D::new(x, y);
+                    self.send(GameMessage::AskBroadcast { player: id });
+                    return serde_wasm_bindgen::to_value(&vec![x, y]).unwrap();
                 }
+                _ => {}
             }
         }
-        panic!("Failed to connect to server");
     }
 
     fn flush_send_buffer(&mut self) {
@@ -77,20 +111,17 @@ impl Client for OnlineClient {
     fn tick(&mut self, dt: f64) {
         self.flush_send_buffer();
         loop {
-            let msg = self.ws.receive();
+            let msg = self.next();
             let msg = match msg {
                 Some(msg) => msg,
                 _ => break,
             };
-            let msg = GameMessage::from_arr_bytes(&msg);
-            msg.into_iter().for_each(|msg| {
-                match msg {
-                    GameMessage::FrameMessage(msg) => {
-                        self.frame_buffer.insert(0, msg);
-                    }
-                    _ => {}
+            match msg {
+                GameMessage::FrameMessage(msg) => {
+                    self.frame_buffer.insert(0, msg);
                 }
-            });
+                _ => {}
+            }
         }
 
         self.frame_acc += dt;
@@ -126,7 +157,7 @@ impl LocalClient {
     pub fn new() -> LocalClient {
         let (sender, receiver) = channel(100);
         let mut game = game_server::GameServer::new();
-        let player_id = game.new_connection(sender);
+        let player_id = game.new_connection(sender, None);
         info!("Local server started");
         LocalClient {
             game,

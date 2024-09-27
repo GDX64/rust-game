@@ -38,6 +38,7 @@ type PlayerSender = Sender<Vec<u8>>;
 struct PlayerBufferSenderPair {
     buffer: Vec<GameMessage>,
     sender: PlayerSender,
+    connection_down_time: Option<u64>,
 }
 
 pub struct GameServer {
@@ -149,11 +150,21 @@ impl GameServer {
         };
     }
 
-    pub fn new_connection(&mut self, sender: PlayerSender) -> u64 {
+    pub fn new_connection(&mut self, sender: PlayerSender, id: Option<u64>) -> u64 {
+        if let Some(id) = id {
+            if let Some(player) = self.players.get_mut(&id) {
+                player.sender = sender;
+                player.connection_down_time = None;
+                return id;
+            }
+            log::error!("Player {} not found", id);
+        }
+
         let id = self.next_player_id();
         let pair = PlayerBufferSenderPair {
             buffer: vec![],
             sender,
+            connection_down_time: None,
         };
 
         let has_no_players = self.players.is_empty();
@@ -194,15 +205,15 @@ impl GameServer {
         return id;
     }
 
-    pub fn disconnect_player(&mut self, id: u64) {
-        self.players.remove(&id);
+    pub fn on_player_connection_down(&mut self, id: u64) {
         info!(
-            "Player {} disconnected, total players {}",
+            "Player {} connection down, total players {}",
             id,
             self.players.len()
         );
-        let msg = StateMessage::RemovePlayer { id };
-        self.add_to_frame(msg);
+        if let Some(player) = self.players.get_mut(&id) {
+            player.connection_down_time = Some(crate::utils::system_things::get_time());
+        }
     }
 
     fn handle_bots(&mut self) {
@@ -265,7 +276,7 @@ impl GameServer {
             }
         }
         for id in player_errors {
-            self.disconnect_player(id);
+            self.on_player_connection_down(id);
         }
     }
 

@@ -15,11 +15,13 @@ impl WSChannel {
         let (mut channel_sender, channel_receiver) = channel(1000);
         let ws = WebSocket::new(url).expect("Failed to create WebSocket");
         ws.set_binary_type(web_sys::BinaryType::Arraybuffer);
+
+        let mut on_message_sender = channel_sender.clone();
         let on_message = Closure::new(move |event: MessageEvent| {
             let data = event.data().dyn_into::<js_sys::ArrayBuffer>();
             if let Ok(data) = data {
                 let data = js_sys::Uint8Array::new(&data).to_vec();
-                match channel_sender.try_send(data) {
+                match on_message_sender.try_send(data) {
                     Ok(_) => (),
                     Err(e) => {
                         log::error!("Failed to send message: {:?}", e)
@@ -27,8 +29,16 @@ impl WSChannel {
                 }
             }
         });
+
+        let on_close = Closure::new(move |_event: MessageEvent| {
+            channel_sender.close_channel();
+            log::info!("WebSocket closed");
+        });
+
+        let on_close = on_close.into_js_value();
         let on_message = on_message.into_js_value();
         ws.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
+        ws.set_onclose(Some(on_close.as_ref().unchecked_ref()));
         WSChannel {
             receiver: channel_receiver,
             ws,
