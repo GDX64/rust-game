@@ -10,6 +10,7 @@ use crate::world_gen::WorldGenConfig;
 use crate::{get_flag_names, server::online_client::OnlineClient};
 use cgmath::{MetricSpace, Vector2};
 use core::f64;
+use js_sys::{Number, Promise};
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -44,6 +45,17 @@ impl GameWasmState {
     pub fn start_position(&self) -> JsValue {
         let pos = self.running_mode.start_position;
         serde_wasm_bindgen::to_value(&pos).unwrap_or_default()
+    }
+
+    pub fn when_started(&mut self) -> Promise {
+        let data = self.running_mode.when_started();
+        let future = async move {
+            let val = data.await as f64;
+            let num: Number = val.into();
+            let num: JsValue = num.into();
+            return Ok(num);
+        };
+        wasm_bindgen_futures::future_to_promise(future)
     }
 
     pub fn action_shoot_at(&mut self, x: f64, y: f64) {

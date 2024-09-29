@@ -1,6 +1,7 @@
 use crate::{
     bot_player::BotPlayer,
     ship::ShipState,
+    utils::vectors::V2D,
     wasm_game::{ServerState, StateMessage, PLAYER_START_SHIPS},
 };
 use futures::channel::mpsc::Sender;
@@ -22,6 +23,12 @@ pub enum GameMessage {
     PlayerCreated { x: f64, y: f64, id: u64 },
     AskBroadcast { player: u64 },
     None,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum StateEvent {
+    MyID(u64),
+    PositionReset(V2D),
 }
 
 impl GameMessage {

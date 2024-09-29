@@ -2,7 +2,18 @@ use super::local_client::Client;
 use crate::utils::vectors::V2D;
 use crate::wasm_game::{GameMessage, ServerState, StateMessage};
 use crate::TICK_TIME;
+use futures::channel::oneshot;
 use log::info;
+use std::any::Any;
+use std::collections::HashMap;
+use std::future::Future;
+
+type BoxAny = Box<dyn Any>;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+enum RunningModeEventKey {
+    MyID,
+}
 
 pub struct RunningMode {
     game_state: ServerState,
@@ -11,6 +22,7 @@ pub struct RunningMode {
     frame_buffer: Vec<Vec<StateMessage>>,
     player_id: u64,
     pub start_position: V2D,
+    event_map: HashMap<RunningModeEventKey, BoxAny>,
 }
 
 impl RunningMode {
@@ -26,7 +38,27 @@ impl RunningMode {
             frame_buffer: vec![],
             player_id: 0,
             start_position: V2D::new(0.0, 0.0),
+            event_map: HashMap::new(),
         }
+    }
+
+    pub fn when_started(&mut self) -> impl Future<Output = u64> {
+        let (sender, receiver) = oneshot::channel::<u64>();
+        self.event_map
+            .insert(RunningModeEventKey::MyID, Box::new(sender));
+        async move {
+            match receiver.await {
+                Ok(id) => id,
+                Err(_) => 0,
+            }
+        }
+    }
+
+    fn send_my_id_event(&mut self, id: u64) -> Option<()> {
+        let sender = self.event_map.remove(&RunningModeEventKey::MyID)?;
+        let sender = sender.downcast::<oneshot::Sender<u64>>().ok()?;
+        sender.send(id).ok()?;
+        return Some(());
     }
 
     pub fn tick(&mut self, dt: f64) {
@@ -46,6 +78,7 @@ impl RunningMode {
                     self.player_id = id;
                     self.start_position = V2D::new(x, y);
                     self.send_game_message(GameMessage::AskBroadcast { player: id });
+                    self.send_my_id_event(id);
                 }
                 _ => {}
             }

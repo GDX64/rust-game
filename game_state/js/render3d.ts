@@ -172,15 +172,21 @@ export class Render3D {
   }
 
   static async startServer(online: boolean) {
+    let game;
     if (online) {
       const url = `${config.serverURL}?server_id=default&player_name=player`;
       const onlineData = OnlineClient.new(url);
-      await onlineData.init();
-      return GameWasmState.new_online(onlineData);
+      game = GameWasmState.new_online(onlineData);
+    } else {
+      const localClient = LocalClient.new();
+      game = GameWasmState.new_local(localClient);
     }
-    const localClient = LocalClient.new();
-    await localClient.init();
-    return GameWasmState.new_local(localClient);
+    const timer = setInterval(() => {
+      game.tick(0);
+    }, 50);
+    await game.when_started();
+    clearTimeout(timer);
+    return game;
   }
 
   async init(el: HTMLElement) {
