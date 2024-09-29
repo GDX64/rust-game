@@ -42,6 +42,10 @@ impl GameWasmState {
         }
     }
 
+    fn has_id_changed(&self) -> bool {
+        self.running_mode.id() != self.player.id
+    }
+
     pub fn start_position(&self) -> JsValue {
         let pos = self.running_mode.start_position;
         serde_wasm_bindgen::to_value(&pos).unwrap_or_default()
@@ -185,6 +189,9 @@ impl GameWasmState {
     }
 
     pub fn tick(&mut self, time: f64) {
+        if self.has_id_changed() {
+            self.player = Player::new(self.running_mode.id());
+        }
         let dt = time - self.current_time;
         self.current_time = time;
         self.player.tick(&self.running_mode.server_state());
