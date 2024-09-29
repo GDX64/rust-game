@@ -54,11 +54,10 @@ impl RunningMode {
         }
     }
 
-    fn send_my_id_event(&mut self, id: u64) -> Option<()> {
+    fn get_channel<T: 'static>(&mut self) -> Option<oneshot::Sender<T>> {
         let sender = self.event_map.remove(&RunningModeEventKey::MyID)?;
-        let sender = sender.downcast::<oneshot::Sender<u64>>().ok()?;
-        sender.send(id).ok()?;
-        return Some(());
+        let sender = sender.downcast::<oneshot::Sender<T>>().ok()?;
+        return Some(*sender);
     }
 
     pub fn tick(&mut self, dt: f64) {
@@ -78,7 +77,9 @@ impl RunningMode {
                     self.player_id = id;
                     self.start_position = V2D::new(x, y);
                     self.send_game_message(GameMessage::AskBroadcast { player: id });
-                    self.send_my_id_event(id);
+                    if let Some(sender) = self.get_channel() {
+                        sender.send(id).ok();
+                    }
                 }
                 _ => {}
             }
