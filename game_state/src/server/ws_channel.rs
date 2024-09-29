@@ -51,6 +51,10 @@ impl WSChannel {
         self.ws.send_with_array_buffer(&msg).ok()
     }
 
+    pub fn is_offline(&self) -> bool {
+        self.ws.ready_state() == WebSocket::CLOSED
+    }
+
     pub fn receive(&mut self) -> Option<Vec<u8>> {
         match self.receiver.try_next() {
             Ok(Some(msg)) => Some(msg),

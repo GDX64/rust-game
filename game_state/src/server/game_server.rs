@@ -22,6 +22,8 @@ pub enum GameMessage {
     RemoveBot,
     PlayerCreated { x: f64, y: f64, id: u64 },
     AskBroadcast { player: u64 },
+    ConnectionDown,
+    Reconnection,
     None,
 }
 
@@ -154,6 +156,8 @@ impl GameServer {
             // Those messages should not be received in the server
             GameMessage::PlayerCreated { .. } => {}
             GameMessage::None => {}
+            GameMessage::ConnectionDown => {}
+            GameMessage::Reconnection => {}
         };
     }
 
@@ -194,6 +198,8 @@ impl GameServer {
                 id,
             },
         );
+
+        self.send_message_to_player(id, GameMessage::Reconnection);
 
         for _ in 0..PLAYER_START_SHIPS {
             let mut ship = ShipState::default();

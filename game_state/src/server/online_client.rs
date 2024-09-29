@@ -9,10 +9,9 @@ use wasm_bindgen::prelude::*;
 #[wasm_bindgen]
 pub struct OnlineClient {
     ws: WSChannel,
-    id: u64,
     send_buffer: Vec<GameMessage>,
-    start_position: V2D,
     receiver_buffer: Vec<GameMessage>,
+    url: String,
 }
 
 #[wasm_bindgen]
@@ -20,10 +19,9 @@ impl OnlineClient {
     pub fn new(url: &str) -> OnlineClient {
         OnlineClient {
             ws: WSChannel::new(url),
-            id: 0,
             send_buffer: vec![],
-            start_position: V2D::new(0.0, 0.0),
             receiver_buffer: vec![],
+            url: url.to_string(),
         }
     }
 
@@ -49,6 +47,10 @@ impl OnlineClient {
         if !self.receiver_buffer.is_empty() {
             return Some(self.receiver_buffer.remove(0));
         }
+        if self.ws.is_offline() {
+            return Some(GameMessage::ConnectionDown);
+        }
+
         let msg = self.ws.receive();
         let msg = match msg {
             Some(msg) => msg,
@@ -84,5 +86,10 @@ impl Client for OnlineClient {
 
     fn server_state(&self) -> Option<&ServerState> {
         return None;
+    }
+
+    fn reconnect(&mut self, player_id: u64) {
+        let url = format!("{}&player_id={}", self.url, player_id);
+        self.ws = WSChannel::new(&url);
     }
 }

@@ -11,8 +11,9 @@ use std::future::Future;
 type BoxAny = Box<dyn Any>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-enum RunningModeEventKey {
+pub enum RunningEventKey {
     MyID,
+    PositionChanged,
 }
 
 pub struct RunningMode {
@@ -22,7 +23,7 @@ pub struct RunningMode {
     frame_buffer: Vec<Vec<StateMessage>>,
     player_id: u64,
     pub start_position: V2D,
-    event_map: HashMap<RunningModeEventKey, BoxAny>,
+    event_map: HashMap<RunningEventKey, Vec<BoxAny>>,
 }
 
 impl RunningMode {
@@ -42,22 +43,31 @@ impl RunningMode {
         }
     }
 
-    pub fn when_started(&mut self) -> impl Future<Output = u64> {
-        let (sender, receiver) = oneshot::channel::<u64>();
-        self.event_map
-            .insert(RunningModeEventKey::MyID, Box::new(sender));
+    pub fn when<T: 'static>(
+        &mut self,
+        event: RunningEventKey,
+    ) -> impl Future<Output = anyhow::Result<T>> {
+        let (sender, receiver) = oneshot::channel::<T>();
+        let entry = self.event_map.entry(event);
+        let v = entry.or_insert(vec![]);
+        v.push(Box::new(sender));
         async move {
-            match receiver.await {
-                Ok(id) => id,
-                Err(_) => 0,
-            }
+            let r = receiver.await;
+            r.map_err(|_| anyhow::anyhow!("Channel was canceled"))
         }
     }
 
-    fn get_channel<T: 'static>(&mut self) -> Option<oneshot::Sender<T>> {
-        let sender = self.event_map.remove(&RunningModeEventKey::MyID)?;
-        let sender = sender.downcast::<oneshot::Sender<T>>().ok()?;
-        return Some(*sender);
+    fn notify<T: 'static + Clone>(&mut self, event: RunningEventKey, data: T) {
+        self.event_map
+            .remove(&event)
+            .into_iter()
+            .flatten()
+            .for_each(|sender| {
+                let sender = sender.downcast::<oneshot::Sender<T>>();
+                if let Ok(sender) = sender {
+                    sender.send(data.clone()).ok();
+                }
+            })
     }
 
     pub fn tick(&mut self, dt: f64) {
@@ -76,10 +86,14 @@ impl RunningMode {
                     info!("My ID is: {}", id);
                     self.player_id = id;
                     self.start_position = V2D::new(x, y);
-                    self.send_game_message(GameMessage::AskBroadcast { player: id });
-                    if let Some(sender) = self.get_channel() {
-                        sender.send(id).ok();
-                    }
+                    self.notify(RunningEventKey::MyID, id);
+                    self.notify(RunningEventKey::PositionChanged, self.start_position);
+                }
+                GameMessage::Reconnection => {
+                    self.send_game_message(GameMessage::AskBroadcast { player: self.id() });
+                }
+                GameMessage::ConnectionDown => {
+                    self.client.reconnect(self.id());
                 }
                 _ => {}
             }
