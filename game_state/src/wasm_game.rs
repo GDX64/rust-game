@@ -1,12 +1,12 @@
-use crate::get_flag_names;
 use crate::player::Player;
 use crate::player_state::PlayerState;
 pub use crate::server::game_server::*;
-use crate::server::running_mode::{Client, LocalClient, OnlineClient, RunningMode};
+use crate::server::running_mode::{Client, LocalClient, RunningMode};
 pub use crate::server_state::*;
 use crate::ship::ShipState;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
+use crate::{get_flag_names, server::online_client::OnlineClient};
 use cgmath::{MetricSpace, Vector2};
 use core::f64;
 use serde::Serialize;
@@ -27,21 +27,21 @@ pub struct GameWasmState {
 impl GameWasmState {
     pub fn new_online(client: OnlineClient) -> Self {
         Self {
-            player: Player::new(client.get_id()),
-            running_mode: RunningMode::Online(client),
+            player: Player::new(0),
+            running_mode: RunningMode::new(Box::new(client)),
             current_time: 0.0,
         }
     }
     pub fn new_local(client: LocalClient) -> Self {
         Self {
-            player: Player::new(client.get_id()),
-            running_mode: RunningMode::start_local(client),
+            player: Player::new(0),
+            running_mode: RunningMode::new(Box::new(client)),
             current_time: 0.0,
         }
     }
 
     pub fn start_position(&self) -> JsValue {
-        let pos = self.running_mode.start_position();
+        let pos = self.running_mode.start_position;
         serde_wasm_bindgen::to_value(&pos).unwrap_or_default()
     }
 
@@ -162,12 +162,12 @@ impl GameWasmState {
     }
 
     pub fn start_local_server(&mut self, client: LocalClient) {
-        self.running_mode = RunningMode::start_local(client);
+        self.running_mode = RunningMode::new(Box::new(client));
         self.player = Player::new(self.running_mode.id());
     }
 
     pub fn start_online(&mut self, on_data: OnlineClient) {
-        self.running_mode = RunningMode::Online(on_data);
+        self.running_mode = RunningMode::new(Box::new(on_data));
         self.player = Player::new(self.running_mode.id());
     }
 

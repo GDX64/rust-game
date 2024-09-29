@@ -13,7 +13,6 @@ mod ship;
 mod utils;
 mod wasm_game;
 mod world_gen;
-mod ws_channel;
 pub use server::game_server::{GameServer, TICK_TIME};
 use std::sync::OnceLock;
 use wasm_bindgen::prelude::*;
