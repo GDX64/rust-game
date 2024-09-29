@@ -1,7 +1,8 @@
 use crate::player::Player;
 use crate::player_state::PlayerState;
 pub use crate::server::game_server::*;
-use crate::server::running_mode::{Client, LocalClient, RunningMode};
+use crate::server::local_client::LocalClient;
+use crate::server::running_mode::RunningMode;
 pub use crate::server_state::*;
 use crate::ship::ShipState;
 use crate::utils::vectors::V2D;

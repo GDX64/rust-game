@@ -3,7 +3,7 @@ use crate::{
     wasm_game::{GameMessage, ServerState},
 };
 
-use super::{running_mode::Client, ws_channel::WSChannel};
+use super::{local_client::Client, ws_channel::WSChannel};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
