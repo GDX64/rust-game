@@ -1,20 +1,17 @@
 use super::local_client::Client;
+use crate::utils::event_hub::{EventHub, EventKey};
 use crate::utils::vectors::V2D;
 use crate::wasm_game::{GameMessage, ServerState, StateMessage};
 use crate::TICK_TIME;
-use futures::channel::oneshot;
 use log::info;
-use std::any::Any;
-use std::collections::HashMap;
-use std::future::Future;
-
-type BoxAny = Box<dyn Any>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum RunningEventKey {
     MyID,
     PositionChanged,
 }
+
+impl EventKey for RunningEventKey {}
 
 pub struct RunningMode {
     game_state: ServerState,
@@ -23,7 +20,7 @@ pub struct RunningMode {
     frame_buffer: Vec<Vec<StateMessage>>,
     player_id: u64,
     pub start_position: V2D,
-    event_map: HashMap<RunningEventKey, Vec<BoxAny>>,
+    pub events: EventHub<RunningEventKey>,
 }
 
 impl RunningMode {
@@ -39,35 +36,8 @@ impl RunningMode {
             frame_buffer: vec![],
             player_id: 0,
             start_position: V2D::new(0.0, 0.0),
-            event_map: HashMap::new(),
+            events: EventHub::new(),
         }
-    }
-
-    pub fn when<T: 'static>(
-        &mut self,
-        event: RunningEventKey,
-    ) -> impl Future<Output = anyhow::Result<T>> {
-        let (sender, receiver) = oneshot::channel::<T>();
-        let entry = self.event_map.entry(event);
-        let v = entry.or_insert(vec![]);
-        v.push(Box::new(sender));
-        async move {
-            let r = receiver.await;
-            r.map_err(|_| anyhow::anyhow!("Channel was canceled"))
-        }
-    }
-
-    fn notify<T: 'static + Clone>(&mut self, event: RunningEventKey, data: T) {
-        self.event_map
-            .remove(&event)
-            .into_iter()
-            .flatten()
-            .for_each(|sender| {
-                let sender = sender.downcast::<oneshot::Sender<T>>();
-                if let Ok(sender) = sender {
-                    sender.send(data.clone()).ok();
-                }
-            })
     }
 
     pub fn tick(&mut self, dt: f64) {
@@ -86,8 +56,9 @@ impl RunningMode {
                     info!("My ID is: {}", id);
                     self.player_id = id;
                     self.start_position = V2D::new(x, y);
-                    self.notify(RunningEventKey::MyID, id);
-                    self.notify(RunningEventKey::PositionChanged, self.start_position);
+                    self.events.notify(RunningEventKey::MyID, id);
+                    self.events
+                        .notify(RunningEventKey::PositionChanged, self.start_position);
                 }
                 GameMessage::Reconnection => {
                     self.send_game_message(GameMessage::AskBroadcast { player: self.id() });
