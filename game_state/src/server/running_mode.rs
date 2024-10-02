@@ -5,13 +5,13 @@ use crate::wasm_game::{GameMessage, ServerState, StateMessage};
 use crate::TICK_TIME;
 use log::info;
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum RunningEventKey {
-    MyID,
-    PositionChanged,
+#[derive(Debug, Clone, PartialEq)]
+pub enum RunningEvent {
+    MyID(u64),
+    PositionChanged(V2D),
 }
 
-impl EventKey for RunningEventKey {}
+impl EventKey for RunningEvent {}
 
 pub struct RunningMode {
     game_state: ServerState,
@@ -20,7 +20,7 @@ pub struct RunningMode {
     frame_buffer: Vec<Vec<StateMessage>>,
     player_id: u64,
     pub start_position: V2D,
-    pub events: EventHub<RunningEventKey>,
+    pub events: EventHub<RunningEvent>,
 }
 
 impl RunningMode {
@@ -56,9 +56,9 @@ impl RunningMode {
                     info!("My ID is: {}", id);
                     self.player_id = id;
                     self.start_position = V2D::new(x, y);
-                    self.events.notify(RunningEventKey::MyID, id);
+                    self.events.notify(RunningEvent::MyID(id));
                     self.events
-                        .notify(RunningEventKey::PositionChanged, self.start_position);
+                        .notify(RunningEvent::PositionChanged(self.start_position));
                 }
                 GameMessage::Reconnection => {
                     self.send_game_message(GameMessage::AskBroadcast { player: self.id() });

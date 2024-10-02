@@ -2,10 +2,9 @@ use crate::player::Player;
 use crate::player_state::PlayerState;
 pub use crate::server::game_server::*;
 use crate::server::local_client::LocalClient;
-use crate::server::running_mode::{RunningEventKey, RunningMode};
+use crate::server::running_mode::{RunningEvent, RunningMode};
 pub use crate::server_state::*;
 use crate::ship::ShipState;
-use crate::utils::event_hub::as_promise;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
 use crate::{get_flag_names, server::online_client::OnlineClient};
@@ -53,8 +52,12 @@ impl GameWasmState {
     }
 
     pub fn when_started(&mut self) -> Promise {
-        let data = self.running_mode.events.when::<u64>(RunningEventKey::MyID);
-        return as_promise(data);
+        return self.running_mode.events.as_promise(|event| {
+            match event {
+                RunningEvent::MyID(id) => Some(id),
+                _ => None,
+            }
+        });
     }
 
     pub fn action_shoot_at(&mut self, x: f64, y: f64) {

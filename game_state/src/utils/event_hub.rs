@@ -1,50 +1,73 @@
-use std::{any::Any, collections::HashMap, future::Future};
-
-use futures::channel::oneshot;
+use futures::{
+    channel::mpsc::{Receiver, Sender},
+    StreamExt,
+};
 use js_sys::Promise;
 use serde::Serialize;
+use std::{future::Future, mem};
 use wasm_bindgen::JsValue;
 
-pub trait EventKey: Clone + Eq + std::hash::Hash {}
-type BoxAny = Box<dyn Any>;
+pub trait EventKey: Clone + PartialEq + 'static {}
 pub struct EventHub<K: EventKey> {
-    event_map: HashMap<K, Vec<BoxAny>>,
+    senders: Vec<Sender<K>>,
+}
+
+pub struct Subscription<T> {
+    receiver: Receiver<T>,
 }
 
 impl<K: EventKey> EventHub<K> {
     pub fn new() -> Self {
         Self {
-            event_map: HashMap::new(),
+            senders: Vec::new(),
         }
     }
 
-    pub fn when<T: 'static>(&mut self, event: K) -> impl Future<Output = anyhow::Result<T>> {
-        let (sender, receiver) = oneshot::channel::<T>();
-        let entry = self.event_map.entry(event);
-        let v = entry.or_insert(vec![]);
-        v.push(Box::new(sender));
-        async move {
-            let r = receiver.await;
-            r.map_err(|_| anyhow::anyhow!("Channel was canceled"))
-        }
+    pub fn subscribe(&mut self) -> Subscription<K> {
+        let (sender, receiver) = futures::channel::mpsc::channel(10);
+        self.senders.push(sender);
+        Subscription { receiver }
     }
 
-    pub fn notify<T: 'static + Clone>(&mut self, event: K, data: T) {
-        self.event_map
-            .remove(&event)
+    pub fn notify(&mut self, event: K) {
+        let senders = mem::take(&mut self.senders);
+        self.senders = senders
             .into_iter()
-            .flatten()
-            .for_each(|sender| {
-                let sender = sender.downcast::<oneshot::Sender<T>>();
-                if let Ok(sender) = sender {
-                    sender.send(data.clone()).ok();
+            .filter_map(|mut sender| {
+                match sender.try_send(event.clone()) {
+                    Ok(_) => {
+                        return Some(sender);
+                    }
+                    Err(_) => {
+                        return None;
+                    }
                 }
             })
+            .collect();
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub fn as_promise<T, F>(&mut self, f: F) -> Promise
+    where
+        T: Serialize + 'static,
+        F: Fn(K) -> Option<T> + 'static,
+    {
+        let mut recv = self.subscribe();
+        let future = async move {
+            while let Some(event) = recv.receiver.next().await {
+                if let Some(val) = f(event) {
+                    return Ok(val);
+                }
+            }
+            return Err(anyhow::anyhow!("No event received"));
+        };
+
+        return as_promise(future);
     }
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn as_promise<T: Serialize + 'static>(
+fn as_promise<T: Serialize + 'static>(
     val: impl Future<Output = anyhow::Result<T>> + 'static,
 ) -> Promise {
     let mapped = async move {
