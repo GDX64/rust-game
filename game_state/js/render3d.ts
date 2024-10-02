@@ -178,7 +178,7 @@ export class Render3D {
       const onlineData = OnlineClient.new(url);
       game = GameWasmState.new_online(onlineData);
     } else {
-      const localClient = LocalClient.new();
+      const localClient = LocalClient.new("player");
       game = GameWasmState.new_local(localClient);
     }
     const timer = setInterval(() => {

@@ -111,7 +111,7 @@ async fn ws_handler(
             });
             let id = {
                 if let Some(server) = state.get_game_server().get_server(&server_id) {
-                    server.new_connection(player_send, player_id)
+                    server.new_connection(player_send, player_id, &player_name)
                 } else {
                     log::warn!("Server {server_id} not found, disconnecting player {player_name}");
                     return;

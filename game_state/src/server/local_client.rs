@@ -22,10 +22,10 @@ pub struct LocalClient {
 
 #[wasm_bindgen]
 impl LocalClient {
-    pub fn new() -> LocalClient {
+    pub fn new(player_name: String) -> LocalClient {
         let (sender, receiver) = channel(100);
         let mut game = game_server::GameServer::new();
-        game.new_connection(sender, None);
+        game.new_connection(sender, None, &player_name);
         info!("Local server started");
         LocalClient {
             game,

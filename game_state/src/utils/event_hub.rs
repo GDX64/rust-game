@@ -46,7 +46,6 @@ impl<K: EventKey> EventHub<K> {
             .collect();
     }
 
-    #[cfg(target_arch = "wasm32")]
     pub fn as_promise<T, F>(&mut self, f: F) -> Promise
     where
         T: Serialize + 'static,
@@ -66,7 +65,6 @@ impl<K: EventKey> EventHub<K> {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
 fn as_promise<T: Serialize + 'static>(
     val: impl Future<Output = anyhow::Result<T>> + 'static,
 ) -> Promise {

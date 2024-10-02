@@ -1,6 +1,6 @@
 use futures::{
     channel::mpsc::{channel, Receiver},
-    StreamExt,
+    SinkExt, StreamExt,
 };
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{MessageEvent, WebSocket};

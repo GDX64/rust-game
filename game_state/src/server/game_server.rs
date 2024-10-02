@@ -12,6 +12,7 @@ use std::collections::HashMap;
 const MAX_BOTS: usize = 10;
 const SYNC_EVERY_N_FRAMES: u64 = 1000;
 pub const TICK_TIME: f64 = 1.0 / 60.0;
+const MAX_DOWN_TIME: u64 = 10_000;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum GameMessage {
@@ -46,7 +47,7 @@ impl GameMessage {
 type PlayerSender = Sender<Vec<u8>>;
 struct PlayerBufferSenderPair {
     buffer: Vec<GameMessage>,
-    sender: PlayerSender,
+    sender: Option<PlayerSender>,
     connection_down_time: Option<u64>,
 }
 
@@ -161,10 +162,10 @@ impl GameServer {
         };
     }
 
-    pub fn new_connection(&mut self, sender: PlayerSender, id: Option<u64>) -> u64 {
+    pub fn new_connection(&mut self, sender: PlayerSender, id: Option<u64>, name: &str) -> u64 {
         if let Some(id) = id {
             if let Some(player) = self.players.get_mut(&id) {
-                player.sender = sender;
+                player.sender = Some(sender);
                 player.connection_down_time = None;
                 return id;
             }
@@ -174,7 +175,7 @@ impl GameServer {
         let id = self.next_player_id();
         let pair = PlayerBufferSenderPair {
             buffer: vec![],
-            sender,
+            sender: Some(sender),
             connection_down_time: None,
         };
 
@@ -182,8 +183,10 @@ impl GameServer {
 
         self.players.insert(id, pair);
 
-        let name = format!("Player {}", id);
-        let create_player_msg = StateMessage::CreatePlayer { id, name };
+        let create_player_msg = StateMessage::CreatePlayer {
+            id,
+            name: name.to_string(),
+        };
         self.add_to_frame(create_player_msg.clone());
 
         let map_size = self.game_state.game_map.dim * 0.8;
@@ -226,6 +229,7 @@ impl GameServer {
         );
         if let Some(player) = self.players.get_mut(&id) {
             player.connection_down_time = Some(crate::utils::system_things::get_time());
+            player.sender = None;
         }
     }
 
@@ -266,9 +270,26 @@ impl GameServer {
 
         if self.frames % SYNC_EVERY_N_FRAMES == 0 {
             self.frame_inputs = vec![self.game_state.state_message()];
+            self.remove_inactive_players();
         }
         self.flush_frame_inputs();
         self.flush_send_buffers();
+    }
+
+    fn remove_inactive_players(&mut self) {
+        let now = crate::utils::system_things::get_time();
+        let player_ids: Vec<u64> = self.players.keys().cloned().collect();
+        for id in player_ids {
+            if let Some(player) = self.players.get_mut(&id) {
+                if let Some(connection_down_time) = player.connection_down_time {
+                    if now - connection_down_time > MAX_DOWN_TIME {
+                        self.players.remove(&id);
+                        self.add_to_frame(StateMessage::RemovePlayer { id });
+                        log::info!("Player {} removed because of inactivity", id);
+                    }
+                }
+            }
+        }
     }
 
     pub fn flush_send_buffers(&mut self) {
@@ -277,7 +298,12 @@ impl GameServer {
         for id in player_ids {
             if let Some(player) = self.players.get_mut(&id) {
                 let messages = GameMessage::serialize_arr(&player.buffer);
-                match player.sender.try_send(messages) {
+                let sender = if let Some(sender) = &mut player.sender {
+                    sender
+                } else {
+                    continue;
+                };
+                match sender.try_send(messages) {
                     Ok(_) => {}
                     Err(e) => {
                         log::error!("Error sending message to player {}: {:?}", id, e);
