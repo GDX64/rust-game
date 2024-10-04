@@ -1,6 +1,6 @@
 use futures::{
     channel::mpsc::{channel, Receiver},
-    SinkExt, StreamExt,
+    StreamExt,
 };
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{MessageEvent, WebSocket};
@@ -53,6 +53,10 @@ impl WSChannel {
 
     pub fn is_offline(&self) -> bool {
         self.ws.ready_state() == WebSocket::CLOSED
+    }
+
+    pub fn is_connecting(&self) -> bool {
+        self.ws.ready_state() == WebSocket::CONNECTING
     }
 
     pub fn receive(&mut self) -> Option<Vec<u8>> {

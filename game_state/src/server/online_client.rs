@@ -1,7 +1,4 @@
-use crate::{
-    utils::vectors::V2D,
-    wasm_game::{GameMessage, ServerState},
-};
+use crate::wasm_game::{GameMessage, ServerState};
 
 use super::{local_client::Client, ws_channel::WSChannel};
 use wasm_bindgen::prelude::*;
@@ -25,23 +22,23 @@ impl OnlineClient {
         }
     }
 
-    async fn async_next(&mut self) -> Option<GameMessage> {
-        if !self.receiver_buffer.is_empty() {
-            return Some(self.receiver_buffer.remove(0));
-        }
-        let msg = self.ws.next().await;
-        let msg = match msg {
-            Some(msg) => msg,
-            _ => return None,
-        };
-        let msg = GameMessage::from_arr_bytes(&msg);
-        self.receiver_buffer = msg;
-        if !self.receiver_buffer.is_empty() {
-            Some(self.receiver_buffer.remove(0))
-        } else {
-            None
-        }
-    }
+    // async fn async_next(&mut self) -> Option<GameMessage> {
+    //     if !self.receiver_buffer.is_empty() {
+    //         return Some(self.receiver_buffer.remove(0));
+    //     }
+    //     let msg = self.ws.next().await;
+    //     let msg = match msg {
+    //         Some(msg) => msg,
+    //         _ => return None,
+    //     };
+    //     let msg = GameMessage::from_arr_bytes(&msg);
+    //     self.receiver_buffer = msg;
+    //     if !self.receiver_buffer.is_empty() {
+    //         Some(self.receiver_buffer.remove(0))
+    //     } else {
+    //         None
+    //     }
+    // }
 
     fn next(&mut self) -> Option<GameMessage> {
         if !self.receiver_buffer.is_empty() {
@@ -80,7 +77,7 @@ impl Client for OnlineClient {
         self.next()
     }
 
-    fn tick(&mut self, dt: f64) {
+    fn tick(&mut self, _dt: f64) {
         self.flush_send_buffer();
     }
 
@@ -89,7 +86,10 @@ impl Client for OnlineClient {
     }
 
     fn reconnect(&mut self, player_id: u64) {
-        let url = format!("{}&player_id={}", self.url, player_id);
-        self.ws = WSChannel::new(&url);
+        if !self.ws.is_connecting() {
+            let url = format!("{}&player_id={}", self.url, player_id);
+            self.ws = WSChannel::new(&url);
+            log::info!("Reconnecting to {}", url);
+        }
     }
 }

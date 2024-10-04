@@ -9,6 +9,7 @@ use log::info;
 pub enum RunningEvent {
     MyID(u64),
     PositionChanged(V2D),
+    Pong,
 }
 
 impl EventKey for RunningEvent {}
@@ -21,6 +22,7 @@ pub struct RunningMode {
     player_id: u64,
     pub start_position: V2D,
     pub events: EventHub<RunningEvent>,
+    frames_since_last_ping: u64,
 }
 
 impl RunningMode {
@@ -37,6 +39,7 @@ impl RunningMode {
             player_id: 0,
             start_position: V2D::new(0.0, 0.0),
             events: EventHub::new(),
+            frames_since_last_ping: 0,
         }
     }
 
@@ -66,8 +69,21 @@ impl RunningMode {
                 GameMessage::ConnectionDown => {
                     self.client.reconnect(self.id());
                 }
+                GameMessage::Pong => {
+                    self.events.notify(RunningEvent::Pong);
+                    self.frames_since_last_ping = 0;
+                }
                 _ => {}
             }
+        }
+
+        self.frames_since_last_ping += 1;
+        if self.frames_since_last_ping == 100 {
+            self.send_game_message(GameMessage::Ping(self.player_id));
+        }
+        if self.frames_since_last_ping > 160 {
+            self.frames_since_last_ping = 0;
+            self.client.reconnect(self.player_id);
         }
 
         self.frame_acc += dt;

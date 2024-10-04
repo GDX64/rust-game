@@ -24,6 +24,8 @@ pub enum GameMessage {
     PlayerCreated { x: f64, y: f64, id: u64 },
     AskBroadcast { player: u64 },
     ConnectionDown,
+    Ping(u64),
+    Pong,
     Reconnection,
     None,
 }
@@ -154,7 +156,11 @@ impl GameServer {
                 let state = self.game_state.state_message();
                 self.send_message_to_player(player, GameMessage::FrameMessage(vec![state]));
             }
+            GameMessage::Ping(id) => {
+                self.send_message_to_player(id, GameMessage::Pong);
+            }
             // Those messages should not be received in the server
+            GameMessage::Pong => {}
             GameMessage::PlayerCreated { .. } => {}
             GameMessage::None => {}
             GameMessage::ConnectionDown => {}
