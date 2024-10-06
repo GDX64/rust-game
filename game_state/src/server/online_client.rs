@@ -112,7 +112,6 @@ impl Client for OnlineClient {
 struct WasmSleep {
     receiver: futures::channel::oneshot::Receiver<()>,
     timeout: i32,
-    f: JsValue,
 }
 
 impl WasmSleep {
@@ -125,7 +124,6 @@ impl WasmSleep {
                 Err(e) => log::error!("Failed to send message: {:?}", e),
             }
         });
-
         let f = f.into_js_value();
 
         let id = window()
@@ -135,7 +133,6 @@ impl WasmSleep {
         WasmSleep {
             receiver,
             timeout: id.unwrap_or_default(),
-            f,
         }
     }
 }
