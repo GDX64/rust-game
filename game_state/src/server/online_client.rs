@@ -1,11 +1,14 @@
+use std::future::Future;
+
 use crate::wasm_game::{GameMessage, ServerState};
 
 use super::{local_client::Client, ws_channel::WSChannel};
 use futures::{
     channel::mpsc::{channel, Receiver},
-    SinkExt, StreamExt,
+    select, FutureExt, SinkExt, StreamExt,
 };
 use wasm_bindgen::prelude::*;
+use web_sys::window;
 
 #[wasm_bindgen]
 pub struct OnlineClient {
@@ -72,7 +75,14 @@ impl Client for OnlineClient {
         wasm_bindgen_futures::spawn_local(async move {
             log::info!("Reconnecting to {}", url);
             loop {
-                let ans = channel_receiver.next().await;
+                let ans = select! {
+                    ans = channel_receiver.next() => {
+                        ans
+                    },
+                    _ = WasmSleep::new(5000).fuse() => {
+                        None
+                    }
+                };
                 match ans {
                     Some(msg) => {
                         let msg = GameMessage::from_arr_bytes(&msg);
@@ -84,6 +94,7 @@ impl Client for OnlineClient {
                         });
                     }
                     None => {
+                        log::warn!("Connection down detected");
                         sender
                             .send(GameMessage::ConnectionDown)
                             .await
@@ -95,5 +106,57 @@ impl Client for OnlineClient {
         });
         self.receiver = Some(receiver);
         self.ws = Some(ws);
+    }
+}
+
+struct WasmSleep {
+    receiver: futures::channel::oneshot::Receiver<()>,
+    timeout: i32,
+    f: JsValue,
+}
+
+impl WasmSleep {
+    fn new(time: i32) -> Self {
+        let (sender, receiver) = futures::channel::oneshot::channel();
+
+        let f = Closure::once(move || {
+            match sender.send(()) {
+                Ok(_) => (),
+                Err(e) => log::error!("Failed to send message: {:?}", e),
+            }
+        });
+
+        let f = f.into_js_value();
+
+        let id = window()
+            .unwrap()
+            .set_timeout_with_callback_and_timeout_and_arguments_0(f.unchecked_ref(), time);
+
+        WasmSleep {
+            receiver,
+            timeout: id.unwrap_or_default(),
+            f,
+        }
+    }
+}
+
+impl Future for WasmSleep {
+    type Output = ();
+
+    fn poll(
+        mut self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        match self.receiver.poll_unpin(cx) {
+            std::task::Poll::Ready(_) => std::task::Poll::Ready(()),
+            std::task::Poll::Pending => std::task::Poll::Pending,
+        }
+        // std::task::Poll::Pending
+    }
+}
+
+impl Drop for WasmSleep {
+    fn drop(&mut self) {
+        window().unwrap().clear_timeout_with_handle(self.timeout);
     }
 }
