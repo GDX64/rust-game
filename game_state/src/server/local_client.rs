@@ -1,9 +1,10 @@
-use crate::wasm_game::{GameMessage, ServerState};
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 pub use wasm_bindgen::prelude::*;
 
-use super::game_server;
+use crate::server_state::ServerState;
+
+use super::game_server::{self, GameMessage};
 
 pub trait Client {
     fn send(&mut self, msg: GameMessage);

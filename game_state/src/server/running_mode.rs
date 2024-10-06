@@ -1,7 +1,8 @@
+use super::game_server::GameMessage;
 use super::local_client::Client;
+use crate::server_state::{ServerState, StateMessage};
 use crate::utils::event_hub::{EventHub, EventKey};
 use crate::utils::vectors::V2D;
-use crate::wasm_game::{GameMessage, ServerState, StateMessage};
 use crate::TICK_TIME;
 use log::info;
 
@@ -107,7 +108,7 @@ impl RunningMode {
 
 #[cfg(test)]
 mod test {
-    use crate::{server::local_client::LocalClient, wasm_game::GameMessage};
+    use crate::server::{game_server::GameMessage, local_client::LocalClient};
 
     #[test]
     fn running_mode() {

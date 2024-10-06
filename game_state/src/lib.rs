@@ -11,10 +11,11 @@ mod server;
 mod server_state;
 mod ship;
 mod utils;
-mod wasm_game;
 mod world_gen;
 pub use server::game_server::{GameServer, TICK_TIME};
 use std::sync::OnceLock;
+#[cfg(target_arch = "wasm32")]
+mod wasm_game;
 use wasm_bindgen::prelude::*;
 
 const FLAG_NAMES: &'static str = include_str!("../assets/flagnames.txt");

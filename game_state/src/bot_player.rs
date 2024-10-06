@@ -1,6 +1,6 @@
 use cgmath::MetricSpace;
 
-use crate::{island::Island, player::Player, utils::vectors::V2D, wasm_game::ServerState};
+use crate::{island::Island, player::Player, server_state::ServerState, utils::vectors::V2D};
 
 enum BotState {
     WaitingShips,

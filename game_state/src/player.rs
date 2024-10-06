@@ -1,9 +1,9 @@
 use crate::{
     bullet::Bullet,
     hashgrid::HashEntityKind,
+    server_state::{ServerState, StateMessage},
     ship::{ShipKey, ShipState},
     utils::{spiral_search::SpiralSearch, vectors::V2D},
-    wasm_game::{ServerState, StateMessage},
 };
 use anyhow::Context;
 use cgmath::InnerSpace;
