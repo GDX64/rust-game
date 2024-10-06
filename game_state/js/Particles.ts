@@ -12,6 +12,7 @@ const PARTICLES = 50;
 export class ExplosionManager {
   explosions: Map<number, Explosion> = new Map();
   explosionPool: Explosion[] = [];
+  texture = new THREE.TextureLoader().load(explosionImage);
   group = new THREE.Group();
   currentTime = 0;
   constructor(scene: THREE.Scene) {
@@ -49,7 +50,7 @@ export class ExplosionManager {
       timeToLive = 2;
     }
 
-    const explosion = this.explosionPool.pop() ?? new Explosion();
+    const explosion = this.explosionPool.pop() ?? new Explosion(this.texture);
     explosion.setParams({
       size,
       velocity,
@@ -84,8 +85,8 @@ export class Explosion {
   private timeToLive = 0;
   private t = 0;
   public id: number = -1;
-  constructor() {
-    const { points } = Explosion.makePoints();
+  constructor(texture: THREE.Texture) {
+    const { points } = Explosion.makePoints(texture);
     this.points = points;
     this.particlesPosition = new Array(PARTICLES)
       .fill(0)
@@ -186,7 +187,7 @@ export class Explosion {
     });
   }
 
-  static makePoints() {
+  static makePoints(texture: THREE.Texture) {
     const geometry = new THREE.BufferGeometry();
     const vertices = new Float32Array(PARTICLES * 3);
     // const colors = new Float32Array(particles * 3);
@@ -196,7 +197,6 @@ export class Explosion {
       new THREE.BufferAttribute(new Float32Array(vertices), 3)
     );
     // geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-    const texture = new THREE.TextureLoader().load(explosionImage);
     const pointMaterial = new THREE.ShaderMaterial({
       fragmentShader,
       vertexShader,
