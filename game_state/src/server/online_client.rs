@@ -1,70 +1,43 @@
 use crate::wasm_game::{GameMessage, ServerState};
 
 use super::{local_client::Client, ws_channel::WSChannel};
+use futures::{
+    channel::mpsc::{channel, Receiver},
+    SinkExt, StreamExt,
+};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct OnlineClient {
-    ws: WSChannel,
     send_buffer: Vec<GameMessage>,
-    receiver_buffer: Vec<GameMessage>,
+    receiver: Option<Receiver<GameMessage>>,
+    ws: Option<WSChannel>,
     url: String,
 }
 
 #[wasm_bindgen]
 impl OnlineClient {
     pub fn new(url: &str) -> OnlineClient {
-        OnlineClient {
-            ws: WSChannel::new(url),
+        let mut client = OnlineClient {
+            receiver: None,
             send_buffer: vec![],
-            receiver_buffer: vec![],
             url: url.to_string(),
-        }
+            ws: None,
+        };
+        client.reconnect(None);
+        client
     }
-
-    // async fn async_next(&mut self) -> Option<GameMessage> {
-    //     if !self.receiver_buffer.is_empty() {
-    //         return Some(self.receiver_buffer.remove(0));
-    //     }
-    //     let msg = self.ws.next().await;
-    //     let msg = match msg {
-    //         Some(msg) => msg,
-    //         _ => return None,
-    //     };
-    //     let msg = GameMessage::from_arr_bytes(&msg);
-    //     self.receiver_buffer = msg;
-    //     if !self.receiver_buffer.is_empty() {
-    //         Some(self.receiver_buffer.remove(0))
-    //     } else {
-    //         None
-    //     }
-    // }
 
     fn next(&mut self) -> Option<GameMessage> {
-        if !self.receiver_buffer.is_empty() {
-            return Some(self.receiver_buffer.remove(0));
-        }
-        if self.ws.is_offline() {
-            return Some(GameMessage::ConnectionDown);
-        }
-
-        let msg = self.ws.receive();
-        let msg = match msg {
-            Some(msg) => msg,
-            _ => return None,
-        };
-        let msg = GameMessage::from_arr_bytes(&msg);
-        self.receiver_buffer = msg;
-        if !self.receiver_buffer.is_empty() {
-            Some(self.receiver_buffer.remove(0))
-        } else {
-            None
-        }
+        self.receiver.as_mut()?.try_next().ok()?
     }
 
-    fn flush_send_buffer(&mut self) {
-        self.ws.send(GameMessage::serialize_arr(&self.send_buffer));
+    fn flush_send_buffer(&mut self) -> Option<()> {
+        self.ws
+            .as_mut()?
+            .send(GameMessage::serialize_arr(&self.send_buffer));
         self.send_buffer.clear();
+        Some(())
     }
 }
 
@@ -85,11 +58,42 @@ impl Client for OnlineClient {
         return None;
     }
 
-    fn reconnect(&mut self, player_id: u64) {
-        if !self.ws.is_connecting() {
-            let url = format!("{}&player_id={}", self.url, player_id);
-            self.ws = WSChannel::new(&url);
+    fn reconnect(&mut self, player_id: Option<u64>) {
+        let url = if let Some(id) = player_id {
+            format!("{}&player_id={}", self.url, id)
+        } else {
+            self.url.clone()
+        };
+
+        let (mut sender, receiver) = channel(100);
+
+        let mut ws = WSChannel::new(&url);
+        let mut channel_receiver = ws.receiver().expect("Failed to get receiver");
+        wasm_bindgen_futures::spawn_local(async move {
             log::info!("Reconnecting to {}", url);
-        }
+            loop {
+                let ans = channel_receiver.next().await;
+                match ans {
+                    Some(msg) => {
+                        let msg = GameMessage::from_arr_bytes(&msg);
+                        msg.into_iter().for_each(|msg| {
+                            match sender.try_send(msg) {
+                                Err(e) => log::error!("Failed to send message: {:?}", e),
+                                _ => (),
+                            }
+                        });
+                    }
+                    None => {
+                        sender
+                            .send(GameMessage::ConnectionDown)
+                            .await
+                            .expect("Failed to send");
+                        break;
+                    }
+                }
+            }
+        });
+        self.receiver = Some(receiver);
+        self.ws = Some(ws);
     }
 }

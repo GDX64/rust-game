@@ -1,12 +1,9 @@
-use futures::{
-    channel::mpsc::{channel, Receiver},
-    StreamExt,
-};
+use futures::channel::mpsc::{channel, Receiver};
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{MessageEvent, WebSocket};
 
 pub struct WSChannel {
-    receiver: Receiver<Vec<u8>>,
+    receiver: Option<Receiver<Vec<u8>>>,
     ws: WebSocket,
 }
 
@@ -40,7 +37,7 @@ impl WSChannel {
         ws.set_onmessage(Some(on_message.as_ref().unchecked_ref()));
         ws.set_onclose(Some(on_close.as_ref().unchecked_ref()));
         WSChannel {
-            receiver: channel_receiver,
+            receiver: Some(channel_receiver),
             ws,
         }
     }
@@ -59,15 +56,8 @@ impl WSChannel {
         self.ws.ready_state() == WebSocket::CONNECTING
     }
 
-    pub fn receive(&mut self) -> Option<Vec<u8>> {
-        match self.receiver.try_next() {
-            Ok(Some(msg)) => Some(msg),
-            _ => None,
-        }
-    }
-
-    pub async fn next(&mut self) -> Option<Vec<u8>> {
-        self.receiver.next().await
+    pub fn receiver(&mut self) -> Option<Receiver<Vec<u8>>> {
+        self.receiver.take()
     }
 }
 
