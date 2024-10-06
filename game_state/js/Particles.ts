@@ -19,6 +19,14 @@ export class ExplosionManager {
     this.group.renderOrder = RenderOrder.PARTICLES;
   }
 
+  destroy() {
+    this.group.traverse((obj: any) => {
+      if ("dispose" in obj) {
+        obj.dispose();
+      }
+    });
+  }
+
   explodeData(data: ExplosionData, color: THREE.Color) {
     const position = new THREE.Vector3(data.position.x, data.position.y, 0);
     if (this.explosions.has(data.id)) {

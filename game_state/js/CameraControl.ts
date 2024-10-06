@@ -61,6 +61,8 @@ export class CameraControl {
     return look.projectOnPlane(new THREE.Vector3(0, 0, 1));
   }
 
+  destroy() {}
+
   tick(_time: number) {
     this.handlePressedKeys();
     const target = this.target.evolve();

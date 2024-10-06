@@ -81,6 +81,12 @@ export class IslandsManager {
     }
   }
 
+  destroy() {
+    this.scene.remove(this.lightHouseGroup);
+    // this.flagSprites.forEach((sprite) => {
+    // })
+  }
+
   makeFlags() {
     const owners: IslandOwners = this.game.island_owners();
     const islandData: IslandData[] = this.game.all_island_data();

@@ -59,6 +59,7 @@ export class Render3D {
   readonly playerActions;
   readonly canvas;
   readonly cameraControls;
+  private renderer?: THREE.WebGLRenderer;
 
   constructor(
     public gameState: GameWasmState,
@@ -129,6 +130,19 @@ export class Render3D {
     this.gui.close();
   }
 
+  destroy() {
+    this.renderer?.dispose();
+    [...this.canvas.parentElement!.children].forEach((el) => el.remove());
+    this.shipsManager.destroy();
+    this.cameraControls.destroy();
+    this.playerActions.destroy();
+    this.scene.traverse((obj: any) => {
+      if ("dispose" in obj) {
+        obj.dispose();
+      }
+    });
+  }
+
   private saveState() {
     localStorage.setItem("state", JSON.stringify(this.state));
   }
@@ -158,15 +172,19 @@ export class Render3D {
     });
   }
 
-  static async new(element: HTMLElement) {
+  static state(): ReturnType<typeof defaultState> {
     let state: any = localStorage.getItem("state");
     if (state) {
       state = { ...defaultState(), ...JSON.parse(state) };
     } else {
       state = defaultState();
     }
-    const server = await this.startServer(state.online);
-    const render = new Render3D(server, state);
+    return state;
+  }
+
+  static new(element: HTMLElement, game: GameWasmState) {
+    const state = this.state();
+    const render = new Render3D(game, state);
     render.init(element);
     return render;
   }
@@ -212,6 +230,7 @@ export class Render3D {
       canvas: this.canvas,
       stencil: true,
     });
+    this.renderer = renderer;
 
     const fog = new THREE.Fog(0x999999, 0, 4000);
     this.scene.fog = fog;

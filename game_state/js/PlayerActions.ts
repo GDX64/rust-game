@@ -101,6 +101,8 @@ export class PlayerActions {
     );
   }
 
+  destroy() {}
+
   pointerup(event: PointerEvent) {
     this.mouse.x = event.offsetX;
     this.mouse.y = event.offsetY;

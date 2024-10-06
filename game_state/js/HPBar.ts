@@ -45,6 +45,11 @@ export class HPBar {
     this.hpBar.count = count;
   }
 
+  destroy() {
+    this.hpBar.geometry.dispose();
+    this.hpBar.material.dispose();
+  }
+
   updateBar(i: number, shipMatrix: THREE.Matrix4, hp: number) {
     const x = shipMatrix.elements[12];
     const y = shipMatrix.elements[13];

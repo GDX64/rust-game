@@ -444,6 +444,23 @@ export class ShipsManager {
     }
   }
 
+  destroy() {
+    this.hpBar.destroy();
+    this.explosionManager.destroy();
+    this.islandsManager.destroy();
+    this.boatMesh.dispose();
+    this.bulletModel.dispose();
+    this.outlines.dispose();
+    this.sailsMap.forEach((sails) => {
+      sails.dispose();
+    });
+    this.armyFlags.forEach((flags) => {
+      flags.forEach((flag) => {
+        flag.material.dispose();
+      });
+    });
+  }
+
   auto_shoot() {
     this.game.auto_shoot();
   }
