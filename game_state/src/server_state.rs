@@ -534,6 +534,7 @@ impl ServerState {
                         self.flags.map_changed = true;
                     }
                 });
+                log::info!("Player {} removed from the server", id);
             }
             StateMessage::BroadCastState { state } => {
                 self.ship_collection = state.ships;

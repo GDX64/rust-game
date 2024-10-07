@@ -171,11 +171,16 @@ impl GameServer {
     pub fn new_connection(&mut self, sender: PlayerSender, id: Option<u64>, name: &str) -> u64 {
         if let Some(id) = id {
             if let Some(player) = self.players.get_mut(&id) {
-                player.sender = Some(sender);
-                player.connection_down_time = None;
-                return id;
+                if player.connection_down_time.is_some() {
+                    player.sender = Some(sender);
+                    player.connection_down_time = None;
+                    log::info!("Player {} reconnected", id);
+                    return id;
+                } else {
+                    log::warn!("Player {} already connected", id);
+                }
             }
-            log::error!("Player {} not found", id);
+            log::warn!("Player {} not found", id);
         }
 
         let id = self.next_player_id();
@@ -264,38 +269,47 @@ impl GameServer {
     }
 
     pub fn tick(&mut self, time: f64) {
-        if self.players.is_empty() {
-            // no players, no need to tick
-            return;
-        }
         self.frames += 1;
         self.handle_bots();
+
+        if self.frames % SYNC_EVERY_N_FRAMES == 0 {
+            self.remove_inactive_players();
+            let state = self.game_state.state_message();
+            self.broadcast(GameMessage::FrameMessage(vec![state]));
+        }
 
         self.add_to_frame(StateMessage::Tick(time));
         self.run_inputs();
 
-        if self.frames % SYNC_EVERY_N_FRAMES == 0 {
-            self.frame_inputs = vec![self.game_state.state_message()];
-            self.remove_inactive_players();
-        }
         self.flush_frame_inputs();
         self.flush_send_buffers();
     }
 
     fn remove_inactive_players(&mut self) {
         let now = crate::utils::system_things::get_time();
-        let player_ids: Vec<u64> = self.players.keys().cloned().collect();
-        for id in player_ids {
-            if let Some(player) = self.players.get_mut(&id) {
-                if let Some(connection_down_time) = player.connection_down_time {
-                    if now - connection_down_time > MAX_DOWN_TIME {
-                        self.players.remove(&id);
-                        self.add_to_frame(StateMessage::RemovePlayer { id });
-                        log::info!("Player {} removed because of inactivity", id);
-                    }
+        let mut to_remove = vec![];
+        for (id, player) in self.players.iter() {
+            if let Some(connection_down_time) = player.connection_down_time {
+                if now - connection_down_time > MAX_DOWN_TIME {
+                    to_remove.push(*id);
                 }
             }
         }
+        for id in to_remove {
+            match self.players.remove(&id) {
+                Some(player) => {
+                    if let Some(mut sender) = player.sender {
+                        sender.close_channel();
+                    }
+                }
+                None => {
+                    log::warn!("Player {} not found to remove", id);
+                }
+            }
+            self.add_to_frame(StateMessage::RemovePlayer { id });
+            log::warn!("Player {} removed because of inactivity", id);
+        }
+        log::info!("Total players: {}", self.players.len());
     }
 
     pub fn flush_send_buffers(&mut self) {
