@@ -1,4 +1,7 @@
-use crate::{server_state::ServerState, utils::scheduling::WasmSleep};
+use crate::{
+    server_state::ServerState,
+    utils::scheduling::{Interval, WasmSleep},
+};
 
 use super::{game_server::GameMessage, local_client::Client, ws_channel::WSChannel};
 use actor::Actor;
@@ -74,13 +77,22 @@ impl Client for OnlineClient {
 
             let receiver_future = async move {
                 log::info!("Reconnecting to {}", url);
+                let mut interval = Interval::new(1000);
+                let mut ticks_idle = 0;
                 loop {
                     let ans = select! {
                         ans = ws_receiver.next().fuse() => {
+                            ticks_idle = 0;
                             ans
                         },
-                        _ = WasmSleep::sleep(5000).fuse() => {
-                            None
+                        _ = interval.tick().fuse() => {
+                            ticks_idle += 1;
+                            if ticks_idle > 5{
+                                log::warn!("Connection idle detected");
+                                None
+                            }else{
+                                continue;
+                            }
                         }
                     };
                     match ans {

@@ -1,6 +1,9 @@
-use std::future::Future;
+use std::{
+    future::Future,
+    pin::{self, Pin},
+};
 
-use futures::FutureExt;
+use futures::{future::BoxFuture, pin_mut, FutureExt};
 use js_sys::Promise;
 use wasm_bindgen::prelude::*;
 use web_sys::window;
@@ -38,6 +41,27 @@ impl WasmSleep {
             receiver,
             timeout: id.unwrap_or_default(),
         }
+    }
+}
+
+pub struct Interval {
+    time: i32,
+    inner: Pin<Box<dyn Future<Output = ()>>>,
+}
+
+impl Interval {
+    pub fn new(time: i32) -> Self {
+        let f = WasmSleep::sleep(time);
+        Interval {
+            time,
+            inner: Box::pin(f),
+        }
+    }
+
+    pub async fn tick(&mut self) {
+        let inner = self.inner.as_mut();
+        inner.await;
+        self.inner = Box::pin(WasmSleep::sleep(self.time));
     }
 }
 
