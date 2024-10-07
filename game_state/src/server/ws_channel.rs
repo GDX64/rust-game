@@ -1,4 +1,7 @@
-use futures::channel::mpsc::{channel, Receiver};
+use futures::{
+    channel::mpsc::{channel, Receiver},
+    StreamExt,
+};
 use wasm_bindgen::{closure::Closure, JsCast};
 use web_sys::{MessageEvent, WebSocket};
 
@@ -58,6 +61,10 @@ impl WSChannel {
 
     pub fn receiver(&mut self) -> Option<Receiver<Vec<u8>>> {
         self.receiver.take()
+    }
+
+    pub async fn next(&mut self) -> Option<Vec<u8>> {
+        self.receiver.as_mut()?.next().await
     }
 }
 
