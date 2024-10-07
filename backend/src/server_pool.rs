@@ -25,11 +25,11 @@ impl ServerPool {
         self.servers.get_mut(server_id)
     }
 
-    pub fn tick(&mut self, time: f64) {
+    pub fn tick(&mut self, dt: f64) {
         let elapsed = measure_time(|| {
             for (_, server) in self.servers.iter_mut() {
                 let elapsed = measure_time(|| {
-                    server.tick(time);
+                    server.tick(dt);
                 });
                 if elapsed.as_millis() > 16 {
                     let server_name = server.name.as_str();

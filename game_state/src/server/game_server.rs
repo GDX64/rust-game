@@ -268,8 +268,13 @@ impl GameServer {
         }
     }
 
-    pub fn tick(&mut self, time: f64) {
+    pub fn tick(&mut self, dt: f64) {
+        if self.players.is_empty() {
+            return;
+        }
+
         self.frames += 1;
+
         self.handle_bots();
 
         if self.frames % SYNC_EVERY_N_FRAMES == 0 {
@@ -278,7 +283,7 @@ impl GameServer {
             self.broadcast(GameMessage::FrameMessage(vec![state]));
         }
 
-        self.add_to_frame(StateMessage::Tick(time));
+        self.add_to_frame(StateMessage::Tick(dt));
         self.run_inputs();
 
         self.flush_frame_inputs();
