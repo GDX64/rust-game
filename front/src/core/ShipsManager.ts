@@ -1,7 +1,7 @@
-import { GameWasmState } from "../pkg/game_state";
+import { GameWasmState } from "rust";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import boat from "./assets/shipuv.glb?url";
+import boat from "../assets/shipuv.glb?url";
 import { ExplosionManager } from "./Particles";
 import { Water } from "./Water";
 import { RenderOrder } from "./RenderOrder";

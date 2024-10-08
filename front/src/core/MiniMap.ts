@@ -1,5 +1,5 @@
 import { Subject } from "rxjs";
-import { GameWasmState } from "../pkg/game_state";
+import { GameWasmState } from "rust";
 import { Linscale } from "./Linscale";
 import {
   CenterResults,
@@ -44,6 +44,7 @@ export class MiniMap {
     // mapCanvas.style.borderRadius = "5px";
     mapCanvas.style.right = "3px";
     mapCanvas.style.bottom = "3px";
+    mapCanvas.style.position = "absolute";
 
     mapCanvas.width = this.mapSizeInPixels;
     mapCanvas.height = this.mapSizeInPixels;

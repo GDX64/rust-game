@@ -1,4 +1,4 @@
-import { GameWasmState } from "../pkg/game_state";
+import { GameWasmState } from "rust";
 import * as THREE from "three";
 import { Linscale } from "./Linscale";
 import { MiniMap } from "./MiniMap";

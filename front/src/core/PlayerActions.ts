@@ -4,7 +4,7 @@ import { CameraControl } from "./CameraControl";
 import { Water } from "./Water";
 import { Terrain } from "./Terrain";
 import { LeaderBoards } from "./LeaderBoards";
-import { config } from "./config/Config";
+import { config } from "../config/Config";
 
 enum States {
   IDLE,

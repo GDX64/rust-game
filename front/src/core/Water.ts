@@ -1,9 +1,9 @@
 import * as THREE from "three";
-import fragShader from "./shaders/water.frag.glsl?raw";
-import vertShader from "./shaders/water.vert.glsl?raw";
+import fragShader from "../shaders/water.frag.glsl?raw";
+import vertShader from "../shaders/water.vert.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
-import normalMap from "./assets/water_normals.jpg";
-import { GameWasmState } from "../pkg/game_state";
+import normalMap from "../assets/water_normals.jpg";
+import { GameWasmState } from "rust";
 
 const FREQ_START = 0.025;
 const WIDTH = 5_000;

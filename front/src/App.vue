@@ -1,8 +1,7 @@
-<script setup lang="ts">
-import CanvasGame from "./components/CanvasGame.vue";
-</script>
-
 <template>
-  <CanvasGame></CanvasGame>
+  <RouterView />
 </template>
 
+<script lang="ts" setup>
+import { RouterView } from "vue-router";
+</script>

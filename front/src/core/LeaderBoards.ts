@@ -1,4 +1,4 @@
-import { GameWasmState } from "../pkg/game_state";
+import { GameWasmState } from "rust";
 import { getFlagImage } from "./PlayerStuff";
 import { PlayerInfo } from "./RustWorldTypes";
 
@@ -26,6 +26,9 @@ export class LeaderBoards {
     this.canvas.style.width = this.width + "px";
     this.canvas.style.height = HEIGHT + "px";
     this.canvas.style.transition = "opacity 0.3s";
+    this.canvas.style.position = "absolute";
+    this.canvas.style.top = "0";
+    this.canvas.style.left = "0";
   }
 
   measureHeader() {

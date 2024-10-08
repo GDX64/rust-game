@@ -4,7 +4,7 @@ import {
   NoiseConfig,
   ViewInfo,
   TileKind,
-} from "../pkg/game_state.js";
+} from "rust";
 import { GUI } from "dat.gui";
 
 const randSeed = Math.floor(Math.random() * 1000000);

@@ -1,4 +1,4 @@
-import { ExplosionKind } from "../pkg/game_state";
+import { ExplosionKind } from "rust";
 
 export type V2D = { x: number; y: number };
 export type V3D = { x: number; y: number; z: number };

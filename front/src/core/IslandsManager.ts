@@ -1,7 +1,7 @@
 import { GLTFLoader } from "three/examples/jsm/Addons.js";
-import { GameWasmState } from "../pkg/game_state";
+import { GameWasmState } from "rust";
 import { IslandData, IslandOwners } from "./RustWorldTypes";
-import lighthouseUrl from "./assets/lighthouse.glb?url";
+import lighthouseUrl from "../assets/lighthouse.glb?url";
 import * as THREE from "three";
 import { getFlagTexture, whenFlagLoaded } from "./PlayerStuff";
 

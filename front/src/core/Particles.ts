@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import vertexShader from "./shaders/explosion.vert.glsl?raw";
-import fragmentShader from "./shaders/explosion.frag.glsl?raw";
+import vertexShader from "../shaders/explosion.vert.glsl?raw";
+import fragmentShader from "../shaders/explosion.frag.glsl?raw";
 import { RenderOrder } from "./RenderOrder";
 import { ExplosionData } from "./RustWorldTypes";
-import explosionImage from "./assets/explosion.png";
-import { ExplosionKind } from "../pkg/game_state";
+import explosionImage from "../assets/explosion.png";
+import { ExplosionKind } from "rust";
 
 const PARTICLES = 50;
 

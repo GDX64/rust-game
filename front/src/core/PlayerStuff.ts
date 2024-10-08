@@ -16,7 +16,7 @@ export function playerColor(playerID: number) {
   return playerArray[playerID % playerArray.length];
 }
 
-const allCountries = import.meta.glob<string>("./assets/flags/*.png", {
+const allCountries = import.meta.glob<string>("../assets/flags/*.png", {
   query: "?url",
   import: "default",
 });
@@ -24,7 +24,7 @@ const allCountries = import.meta.glob<string>("./assets/flags/*.png", {
 const loader = new THREE.TextureLoader();
 
 function getFlagPromise(country: string) {
-  return allCountries[`./assets/flags/${country}.png`]();
+  return allCountries[`../assets/flags/${country}.png`]();
 }
 
 const flagsTextures = new Map<string, THREE.Texture>();

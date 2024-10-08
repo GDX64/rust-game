@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GameWasmState, LocalClient, OnlineClient } from "../pkg/game_state";
+import { GameWasmState, LocalClient, OnlineClient } from "rust";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -12,7 +12,7 @@ import { CameraControl } from "./CameraControl";
 import { Terrain } from "./Terrain";
 import { PlayerActions } from "./PlayerActions";
 import { LeaderBoards } from "./LeaderBoards";
-import { config } from "./config/Config";
+import { config } from "../config/Config";
 
 function defaultState() {
   return {
@@ -77,6 +77,12 @@ export class Render3D {
     );
     this.terrain = Terrain.new(this.gameState);
     this.canvas = document.createElement("canvas");
+    this.canvas.style.width = "100%";
+    this.canvas.style.height = "100%";
+    this.canvas.style.position = "absolute";
+    this.canvas.style.top = "0";
+    this.canvas.style.left = "0";
+
     this.cameraControls = new CameraControl(
       this.camera,
       this.gameState.start_position()

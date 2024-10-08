@@ -1,4 +1,4 @@
-import { Render3D } from "./render3d";
+import { Render3D } from "./core/render3d";
 import * as Lib from "./libInterface";
 
 export class ArchpelagusGame implements Lib.ArchpelagusGame {
@@ -9,7 +9,7 @@ export class ArchpelagusGame implements Lib.ArchpelagusGame {
 
   static async new(element: HTMLElement) {
     const state = Render3D.state();
-    const game = await Render3D.startServer(state.online);
+    const game = await Render3D.startServer(state.online && false);
     const renderer = Render3D.new(element, game);
 
     const controller = new ArchpelagusGame(renderer, element);
