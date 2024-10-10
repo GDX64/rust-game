@@ -119,6 +119,7 @@ pub enum StateMessage {
     CreatePlayer {
         id: u64,
         name: String,
+        flag: Option<String>,
     },
     RemovePlayer {
         id: u64,
@@ -522,8 +523,8 @@ impl ServerState {
             StateMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);
             }
-            StateMessage::CreatePlayer { id, name } => {
-                self.players.insert(id, PlayerState::new(name, id));
+            StateMessage::CreatePlayer { id, name, flag } => {
+                self.players.insert(id, PlayerState::new(name, id, flag));
             }
             StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);

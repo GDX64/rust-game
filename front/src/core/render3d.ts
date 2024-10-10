@@ -134,6 +134,9 @@ export class Render3D {
       this.gameState.change_error(val);
     });
     this.gui.close();
+    if (config.isProd) {
+      this.gui.hide();
+    }
   }
 
   destroy() {
@@ -195,13 +198,17 @@ export class Render3D {
     return render;
   }
 
-  static async startServer(online: boolean) {
+  static async startServer() {
     const queryParms = new URLSearchParams(window.location.search);
-    const userName = queryParms.get("user");
-    const flag = queryParms.get("flag");
+
+    const isOnline = queryParms.get("online");
+    const userName = queryParms.get("user") ?? "player";
+    const flag = queryParms.get("flag") ?? "br";
+    const serverID = queryParms.get("server_id") ?? "default";
+
     let game;
-    if (online) {
-      const url = `${config.serverURL}?server_id=default&player_name=${userName}&flag=${flag}`;
+    if (!!isOnline) {
+      const url = `${config.serverURL}?server_id=${serverID}&player_name=${userName}&flag=${flag}`;
       const onlineData = OnlineClient.new(url);
       game = GameWasmState.new_online(onlineData);
     } else {

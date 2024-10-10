@@ -83,6 +83,7 @@ struct WsQuery {
     server_id: String,
     player_name: String,
     player_id: Option<u64>,
+    flag: Option<String>,
 }
 
 async fn ws_handler(
@@ -93,6 +94,7 @@ async fn ws_handler(
     let server_id = params.server_id.clone();
     let player_name = params.player_name.clone();
     let player_id = params.player_id.clone();
+    let flag = params.flag.clone();
     log::info!("Connecting {player_name} Player to server {server_id}");
     let res = ws.on_upgrade(move |ws| {
         return async move {
@@ -111,7 +113,7 @@ async fn ws_handler(
             });
             let id = {
                 if let Some(server) = state.get_game_server().get_server(&server_id) {
-                    server.new_connection(player_send, player_id, &player_name)
+                    server.new_connection(player_send, player_id, &player_name, flag)
                 } else {
                     log::warn!("Server {server_id} not found, disconnecting player {player_name}");
                     return;

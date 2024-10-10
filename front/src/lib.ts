@@ -8,8 +8,7 @@ export class ArchpelagusGame implements Lib.ArchpelagusGame {
   ) {}
 
   static async new(element: HTMLElement) {
-    const state = Render3D.state();
-    const game = await Render3D.startServer(state.online && false);
+    const game = await Render3D.startServer();
     const renderer = Render3D.new(element, game);
 
     const controller = new ArchpelagusGame(renderer, element);

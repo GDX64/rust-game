@@ -97,6 +97,7 @@ impl GameServer {
         self.add_to_frame(StateMessage::CreatePlayer {
             id: bot.player.id,
             name,
+            flag: None,
         });
         self.bots.push(bot);
     }
@@ -168,7 +169,13 @@ impl GameServer {
         };
     }
 
-    pub fn new_connection(&mut self, sender: PlayerSender, id: Option<u64>, name: &str) -> u64 {
+    pub fn new_connection(
+        &mut self,
+        sender: PlayerSender,
+        id: Option<u64>,
+        name: &str,
+        flag: Option<String>,
+    ) -> u64 {
         if let Some(id) = id {
             if let Some(player) = self.players.get_mut(&id) {
                 if player.connection_down_time.is_some() {
@@ -197,6 +204,7 @@ impl GameServer {
         let create_player_msg = StateMessage::CreatePlayer {
             id,
             name: name.to_string(),
+            flag,
         };
         self.add_to_frame(create_player_msg.clone());
 

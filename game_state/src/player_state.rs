@@ -40,11 +40,11 @@ impl PlayerState {
         self.flag = get_player_flag(self.id);
     }
 
-    pub fn new(name: String, id: u64) -> Self {
+    pub fn new(name: String, id: u64, flag: Option<String>) -> Self {
         PlayerState {
             name,
             id,
-            flag: get_player_flag(id),
+            flag: flag.unwrap_or(get_player_flag(id)),
             ..Default::default()
         }
     }

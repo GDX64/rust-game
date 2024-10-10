@@ -57,6 +57,7 @@ function onPlay() {
       query: {
         user: userName.value,
         flag: selectedFlag.value,
+        online: "true",
       },
     });
   }
