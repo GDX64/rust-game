@@ -31,6 +31,5 @@ export default defineConfig({
       fileName: "lib",
     },
   },
-  base: "/static/game/",
+  // base: "",
 });
-

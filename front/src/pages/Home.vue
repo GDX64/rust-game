@@ -19,12 +19,15 @@
         <input
           type="text"
           class="p-1 rounded-md text-black outline-none bg-white philosopher-regular-italic"
+          v-model="userName"
           placeholder="Play as"
         />
-        <Flags class="flex-1" />
+
+        <Flags @selected="onSelected" class="flex-1" />
 
         <button
           class="bg-warmGray-600 text-white rounded-md philosopher-bold text-lg py-3 px-6"
+          @click="onPlay"
         >
           Play
         </button>
@@ -34,8 +37,30 @@
 </template>
 
 <script lang="ts" setup>
+import { ref } from "vue";
 import archpelagus from "../assets/archpelagus.png";
 import Flags from "../components/Flags.vue";
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+const selectedFlag = ref<string | null>(null);
+const userName = ref("");
+
+function onSelected(flag: string) {
+  selectedFlag.value = flag;
+}
+
+function onPlay() {
+  if (userName.value && selectedFlag.value) {
+    router.push({
+      path: "/game",
+      query: {
+        user: userName.value,
+        flag: selectedFlag.value,
+      },
+    });
+  }
+}
 </script>
 
 <style>

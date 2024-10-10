@@ -196,9 +196,12 @@ export class Render3D {
   }
 
   static async startServer(online: boolean) {
+    const queryParms = new URLSearchParams(window.location.search);
+    const userName = queryParms.get("user");
+    const flag = queryParms.get("flag");
     let game;
     if (online) {
-      const url = `${config.serverURL}?server_id=default&player_name=player`;
+      const url = `${config.serverURL}?server_id=default&player_name=${userName}&flag=${flag}`;
       const onlineData = OnlineClient.new(url);
       game = GameWasmState.new_online(onlineData);
     } else {
