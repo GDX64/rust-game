@@ -25,7 +25,7 @@ RUN cargo install wasm-pack
 RUN rustup target add wasm32-unknown-unknown
 
 COPY ./game_state ./game_state
-RUN cd ./game_state && wasm-pack build
+RUN cd ./game_state && npm run build
 
 FROM node:22 as FrontendBuilder
 
@@ -46,8 +46,6 @@ ARG FRONT_SERVER
 
 # Use the variable
 ENV FRONT_SERVER=$FRONT_SERVER
-
-RUN cd ./game_state && npm run buildjs
 
 RUN cd ./front && npm run build
 

@@ -50,12 +50,12 @@ async fn main() {
     let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
-        .route("/", get(|| async { "Sanity Check" }))
+        .route("/hello", get(|| async { "Sanity Check" }))
         .route("/ws", get(ws_handler))
         .route("/create_server", get(create_server_handler))
         .route("/get_server_list", get(get_server_list_handler))
         .route("/remove_server", get(remove_server_handler))
-        .nest_service("/static", ServeDir::new("./dist"))
+        .nest_service("/", ServeDir::new("./dist"))
         .layer(CompressionLayer::new().gzip(true))
         .with_state(state.clone());
 

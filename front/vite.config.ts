@@ -31,5 +31,4 @@ export default defineConfig({
       fileName: "lib",
     },
   },
-  // base: "",
 });
