@@ -25,10 +25,11 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
-    lib: {
-      entry: "./js/lib.ts",
-      formats: ["es"],
-      fileName: "lib",
-    },
+    // lib: {
+    //   entry: "./js/lib.ts",
+    //   formats: ["es"],
+    //   fileName: "lib",
+    // },
   },
+  base: "/static/",
 });

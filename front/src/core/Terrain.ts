@@ -9,10 +9,7 @@ const SEGMENTS_PER_KM = 50;
 export class Terrain {
   minimap;
   terrainGroup = new THREE.Group();
-  constructor(
-    private gameState: GameWasmState,
-    private chunks: TerrainChunk[]
-  ) {
+  constructor(gameState: GameWasmState, chunks: TerrainChunk[]) {
     this.minimap = new MiniMap(gameState);
     this.terrainGroup.add(...chunks.map((c) => c.planeMesh));
   }

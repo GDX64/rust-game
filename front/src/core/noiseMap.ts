@@ -166,8 +166,6 @@ class GameMap {
     switch (kind) {
       case TileKind.Water:
         return params.rgbSea;
-      case TileKind.Grass:
-        return params.rgbField;
       case TileKind.Forest:
         return params.rgbForest;
       default:
