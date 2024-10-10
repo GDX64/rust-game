@@ -1,14 +1,53 @@
 <template>
-  <div class="h-full w-full flex items-center justify-center text-white">
-    <div class="bg-prime-950 border-black border p-3 rounded-md">
-      <h1 class="text-prime-100 mb-4 text-2xl font-bold">Archpelagus</h1>
-      <p>Enter a user name:</p>
-      <input
-        type="text"
-        class="border-black border p-1 rounded-md text-black outline-none"
-      />
+  <div class="h-full w-full flex items-end justify-center">
+    <div
+      class="absolute -z-1 w-full h-[30%] top-0 left-0 bg-gradient-to-b from-yellow-100 to-white opacity-80"
+    ></div>
+    <div class="absolute -z-1 bottom-0 left-0 w-full">
+      <img :src="archpelagus" class="w-full opacity-75" />
+      <div
+        class="w-full h-full bottom-0 left-0 absolute bg-gradient-to-b from-white to-transparent z-10"
+      ></div>
+    </div>
+
+    <div
+      class="relative z-20 flex flex-col items-center justify-between h-[60%] pb-20"
+    >
+      <h1 class="text-gray-700 text-8xl philosopher-bold mb-20">ARCHPELAGUS</h1>
+
+      <div class="flex gap-20 bg-white/30 py-5 px-10 rounded-lg items-center">
+        <input
+          type="text"
+          class="p-1 rounded-md text-black outline-none bg-white philosopher-regular-italic"
+          placeholder="Play as"
+        />
+        <Flags class="flex-1" />
+
+        <button
+          class="bg-warmGray-600 text-white rounded-md philosopher-bold text-lg py-3 px-6"
+        >
+          Play
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+import archpelagus from "../assets/archpelagus.png";
+import Flags from "../components/Flags.vue";
+</script>
+
+<style>
+.philosopher-bold {
+  font-family: "Philosopher", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.philosopher-regular-italic {
+  font-family: "Philosopher", sans-serif;
+  font-weight: 400;
+  font-style: italic;
+}
+</style>
