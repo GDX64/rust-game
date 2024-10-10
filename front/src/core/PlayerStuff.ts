@@ -16,7 +16,7 @@ export function playerColor(playerID: number) {
   return playerArray[playerID % playerArray.length];
 }
 
-const allCountries = import.meta.glob<string>("../assets/flags/*.png", {
+export const allCountries = import.meta.glob<string>("../assets/flags/*.png", {
   query: "?url",
   import: "default",
 });

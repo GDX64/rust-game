@@ -1,12 +1,16 @@
 <template>
-  <div class="flex gap-5 w-full">
+  <div
+    class="flex gap-5 w-full overflow-x-auto overflow-y-hidden hide-scrollbar py-2"
+  >
     <img
       :src="flag"
-      v-for="(flag, index) in flags"
+      v-for="(flag, index) in options"
       @click="selected = index"
       :class="[
-        'h-[35px] w-[50px] hover:opacity-100 ease-linear',
-        selected === index ? 'opacity-100' : 'opacity-60',
+        'max-h-[35px] hover:opacity-100 hover:scale-110 ease-linear transition-all rounded-md',
+        selected === index
+          ? 'opacity-100 scale-110 outline outline-white'
+          : 'opacity-60',
       ]"
     />
   </div>
@@ -14,20 +18,23 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import ad from "../assets/flags/ad.png";
-import ae from "../assets/flags/ae.png";
-import af from "../assets/flags/af.png";
-import ag from "../assets/flags/ag.png";
-import ai from "../assets/flags/ai.png";
-import al from "../assets/flags/al.png";
-import am from "../assets/flags/am.png";
-import ao from "../assets/flags/ao.png";
-import aq from "../assets/flags/aq.png";
-import ar from "../assets/flags/ar.png";
+import { allCountries } from "../core/PlayerStuff";
 
-const flags = [ad, ae, af, ag, ai, al, am, ao, aq, ar];
+const allArr = Object.values(allCountries);
+
+const optionsPromises = [...Array(16)].map(() => getRandom(allArr));
+
+const options = ref<string[]>([]);
+
+optionsPromises.forEach(async (promise) => {
+  options.value.push(await promise());
+});
 
 const selected = ref(0);
+
+function getRandom<T>(arr: T[]) {
+  return arr.splice(Math.floor(Math.random() * arr.length), 1)[0];
+}
 </script>
 
 <style scoped></style>
