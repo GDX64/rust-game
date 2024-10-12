@@ -55,8 +55,7 @@ RUN cd ./front && npm run build
 FROM scratch AS runner
 
 COPY --from=builder /app/backend/target/x86_64-unknown-linux-musl/release/game game
-COPY --from=FrontendBuilder /app/front/dist dist/game
-COPY --from=FrontendBuilder /app/game_state/dist dist/editor
+COPY --from=FrontendBuilder /app/front/dist dist
 
 CMD ["/game"]
 # CMD ["ls"]

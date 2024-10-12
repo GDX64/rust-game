@@ -9,7 +9,10 @@ use futures_util::StreamExt;
 use game_state::TICK_TIME;
 use server_pool::ServerPool;
 use std::sync::{Arc, Mutex, MutexGuard};
-use tower_http::{compression::CompressionLayer, services::ServeDir};
+use tower_http::{
+    compression::CompressionLayer,
+    services::{ServeDir, ServeFile},
+};
 mod server_pool;
 
 #[derive(Clone)]
@@ -47,6 +50,9 @@ async fn main() {
     init_logger();
     log::info!("Starting Axum Server");
 
+    let static_dir = ServeDir::new("./dist");
+    let static_dir = static_dir.fallback(ServeFile::new("./dist/index.html"));
+
     let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
@@ -55,7 +61,7 @@ async fn main() {
         .route("/create_server", get(create_server_handler))
         .route("/get_server_list", get(get_server_list_handler))
         .route("/remove_server", get(remove_server_handler))
-        .nest_service("/", ServeDir::new("./dist"))
+        .nest_service("/static", static_dir)
         .layer(CompressionLayer::new().gzip(true))
         .with_state(state.clone());
 
