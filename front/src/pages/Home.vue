@@ -71,7 +71,7 @@ onMounted(() => {
       arrImgs.push(arrImgs.shift()!)
       return
     }
-    xTranslate -= 0.3
+    xTranslate -= 0.1
   };
   
   img.onload = redrawLoop
