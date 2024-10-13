@@ -4,7 +4,7 @@
       class="absolute -z-1 w-full h-[30%] top-0 left-0 bg-gradient-to-b from-yellow-100 to-white opacity-80"
     ></div>
     <div class="absolute -z-1 bottom-0 left-0 w-full">
-      <img :src="archpelagus" class="w-full opacity-75" />
+      <canvas ref="mainImg" class="w-full opacity-75 h-[50vh]" />
       <div
         class="w-full h-full bottom-0 left-0 absolute bg-gradient-to-b from-white to-transparent z-10"
       ></div>
@@ -37,7 +37,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import archpelagus from "../assets/archpelagus.png";
 import Flags from "../components/Flags.vue";
 import { useRouter } from "vue-router";
@@ -45,6 +45,38 @@ import { useRouter } from "vue-router";
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
 const userName = ref("");
+const mainImg = ref()
+
+let xTranslate = 0
+onMounted(() => {
+  const canvas = mainImg.value
+  
+  const img = new Image()
+  img.src = archpelagus
+  
+  
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  const redrawLoop = () => {
+    canvas.height = img.height;
+    const arrImgs = [img, img]
+    arrImgs.forEach((img, index) => {
+      const imgx = xTranslate + index * img.width
+      ctx.drawImage(img, 0, 0, img.width, img.height, imgx, 0, img.width, img.height)
+    })
+    requestAnimationFrame(redrawLoop);
+
+    if (xTranslate >= img.width) {
+      xTranslate = 0
+      arrImgs.push(arrImgs.shift()!)
+      return
+    }
+    xTranslate -= 0.15
+  };
+  
+  img.onload = redrawLoop
+  
+})
 
 function onSelected(flag: string) {
   selectedFlag.value = flag;
