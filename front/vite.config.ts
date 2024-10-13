@@ -15,8 +15,7 @@ export default defineConfig({
     vue(),
   ],
   define: {
-    // IS_PROD: process.env.NODE_ENV === "production",
-    IS_PROD: false,
+    IS_PROD: process.env.NODE_ENV === "production",
   },
   server: {
     open: true,
