@@ -4,11 +4,11 @@
   >
     <img
       :src="flag"
-      v-for="flag in options"
-      @click="onSelect(flag)"
+      v-for="{ flag, flagName } in options"
+      @click="onSelect(flagName)"
       :class="[
         'max-h-[35px] hover:opacity-100 hover:scale-110 ease-linear transition-all rounded-md',
-        selected === flag
+        selected === flagName
           ? 'opacity-100 scale-110 outline outline-high-500'
           : 'opacity-60',
       ]"
@@ -17,31 +17,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { allCountries } from "../core/PlayerStuff";
+import { useAsyncComputed } from "../utils/reactiveUtils";
 
-const allArr = Object.values(allCountries);
+const allArr = useAsyncComputed(() => {
+  const promises = Object.entries(allCountries).map(async ([key, value]) => {
+    const flagName = key.match(/\/(\w*)\.png/)?.[1];
+    if (!flagName) {
+      return null;
+    }
+    return {
+      flagName,
+      flag: await value(),
+    };
+  });
+  return Promise.all(promises);
+}, []);
 
 const emit = defineEmits({
   selected: (flag: string) => flag,
 });
 
-const optionsPromises = [...Array(16)].map(() => getRandom(allArr));
-
-const options = ref<string[]>([]);
-
-optionsPromises.forEach(async (promise) => {
-  options.value.push(await promise());
-});
+const options = computed(() =>
+  [...Array(16)]
+    .map(() => getRandom(allArr.value))
+    .filter((item) => item != null)
+);
 
 const selected = ref<null | string>(null);
 
 function onSelect(flag: string) {
   selected.value = flag;
-  const flagName = flag.match(/\/(\w*)\.png/)?.[1];
-  if (flagName) {
-    emit("selected", flagName);
-  }
+  emit("selected", flag);
 }
 
 function getRandom<T>(arr: T[]) {
