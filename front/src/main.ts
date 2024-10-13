@@ -1,10 +1,10 @@
 import { createApp } from "vue";
-import { createWebHistory, createRouter } from "vue-router";
+import { createWebHistory, createRouter, RouteRecordRaw } from "vue-router";
 import App from "./App.vue";
 import Home from "./pages/Home.vue";
 import "./index.css";
 
-const routes = [
+const routes: RouteRecordRaw[] = [
   { path: "/", component: Home },
   {
     path: "/game",
@@ -15,6 +15,11 @@ const routes = [
 const router = createRouter({
   history: createWebHistory("/static/"),
   routes,
+});
+
+router.beforeEach((to, from, next) => {
+  console.log(to, from);
+  next();
 });
 
 // router.afterEach((to, from, next) => {

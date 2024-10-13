@@ -16,6 +16,7 @@
 
     /* Linting */
     "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
     "noImplicitAny": true,
     "strict": true,
     "strictNullChecks": true,
