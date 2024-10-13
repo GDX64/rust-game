@@ -17,19 +17,6 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to, from, next) => {
-  console.log(to, from);
-  next();
-});
-
-// router.afterEach((to, from, next) => {
-//   if (to.path != from.path) {
-//     window.location.reload();
-//   } else {
-//     // next();
-//   }
-// });
-
 start();
 
 function start() {
