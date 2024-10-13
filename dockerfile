@@ -25,7 +25,7 @@ RUN cargo install wasm-pack
 RUN rustup target add wasm32-unknown-unknown
 
 COPY ./game_state ./game_state
-RUN cd ./game_state && wasm-pack build --target web --release
+RUN cd ./game_state && wasm-pack build --target bundler --release
 
 FROM node:22 as FrontendBuilder
 
