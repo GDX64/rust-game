@@ -17,7 +17,16 @@
     >
       <h1 class="text-sec-700 text-8xl font-bold">ARCHPELAGUS</h1>
 
-      <ServerSelector v-model:selected="serverSelected"></ServerSelector>
+      <div class="flex flex-col gap-2">
+        <ServerSelector
+          v-model:selected="serverSelected"
+          :class="online ? '' : 'opacity-30 pointer-events-none'"
+        ></ServerSelector>
+        <label class="px-1 flex gap-2 select-none">
+          <input type="checkbox" v-model="online" />
+          <div class="">Online</div>
+        </label>
+      </div>
 
       <div
         class="flex gap-20 bg-white/30 py-5 px-10 rounded-md items-center max-w-[900px] border border-sec-700 z-10"
@@ -54,15 +63,21 @@ import { ServerRequests } from "../requests/ServerRequests";
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
 const userName = ref("");
+const online = ref(true);
 
 const serverSelected = ref<string>();
 
 function canPlay() {
-  if (userName.value && selectedFlag.value && serverSelected.value) {
+  if (
+    userName.value &&
+    selectedFlag.value &&
+    (serverSelected.value || !online.value)
+  ) {
     return {
       user: userName.value,
       flag: selectedFlag.value,
       server_id: serverSelected.value,
+      online: online.value,
     };
   }
   return null;
@@ -77,16 +92,25 @@ async function onPlay() {
   if (!data) {
     return;
   }
-  const id = await ServerRequests.getPlayerID(data.server_id);
+  let id;
+  if (data.online) {
+    if (data.server_id) {
+      id = await ServerRequests.getPlayerID(data.server_id);
+    } else {
+      throw new Error("Server ID not found");
+    }
+  } else {
+    id = 0;
+  }
   if (canPlay()) {
     router.push({
       path: "/game",
       query: {
-        user: userName.value,
+        player_name: userName.value,
         flag: selectedFlag.value,
         server_id: serverSelected.value,
         player_id: id,
-        online: "true",
+        online: data.online ? "true" : "false",
       },
     });
   }
