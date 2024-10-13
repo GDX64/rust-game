@@ -17,12 +17,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { allCountries } from "../core/PlayerStuff";
 import { useAsyncComputed } from "../utils/reactiveUtils";
 
-const allArr = useAsyncComputed(() => {
-  const promises = Object.entries(allCountries).map(async ([key, value]) => {
+const options = useAsyncComputed(async () => {
+  const allOptions = Object.entries(allCountries);
+  const options = [...Array(16)]
+    .map(() => getRandom(allOptions))
+    .filter((item) => item != null);
+
+  const promises = options.map(async ([key, value]) => {
     const flagName = key.match(/\/(\w*)\.png/)?.[1];
     if (!flagName) {
       return null;
@@ -32,18 +37,13 @@ const allArr = useAsyncComputed(() => {
       flag: await value(),
     };
   });
-  return Promise.all(promises);
+  const values = await Promise.all(promises);
+  return values.filter((item) => item != null);
 }, []);
 
 const emit = defineEmits({
   selected: (flag: string) => flag,
 });
-
-const options = computed(() =>
-  [...Array(16)]
-    .map(() => getRandom(allArr.value))
-    .filter((item) => item != null)
-);
 
 const selected = ref<null | string>(null);
 
