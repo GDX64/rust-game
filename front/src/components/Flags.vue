@@ -9,7 +9,7 @@
       :class="[
         'max-h-[35px] hover:opacity-100 hover:scale-110 ease-linear transition-all rounded-md',
         selected === flagName
-          ? 'opacity-100 scale-110 outline outline-high-500'
+          ? 'opacity-100 scale-110 outline outline-2 outline-prime-200 -translate-y-1'
           : 'opacity-60',
       ]"
     />

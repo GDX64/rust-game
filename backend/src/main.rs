@@ -25,7 +25,9 @@ struct Apps {
 impl Apps {
     fn new() -> Apps {
         let mut pool = ServerPool::new();
-        pool.create_server("default")
+        pool.create_server("AWS SP1")
+            .expect("Failed to create default server");
+        pool.create_server("AWS SP2")
             .expect("Failed to create default server");
 
         Apps {

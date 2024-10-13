@@ -7,7 +7,7 @@ export default {
     colors: {
       ...colors,
       prime: {
-        ...colors.yellow,
+        ...colors.amber,
         50: "#ffffff",
       },
       back: {
