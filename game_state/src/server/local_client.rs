@@ -11,7 +11,7 @@ pub trait Client {
     fn tick(&mut self, dt: f64);
     fn next_message(&mut self) -> Option<GameMessage>;
     fn server_state(&self) -> Option<&ServerState>;
-    fn reconnect(&mut self, player_id: Option<u64>);
+    fn reconnect(&mut self);
 }
 
 #[wasm_bindgen]
@@ -49,7 +49,7 @@ impl Client for LocalClient {
         Some(&self.game.game_state)
     }
 
-    fn reconnect(&mut self, _player_id: Option<u64>) {
+    fn reconnect(&mut self) {
         // does not need to do anything in this case
     }
 

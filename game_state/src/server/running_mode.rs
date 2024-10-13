@@ -66,7 +66,7 @@ impl RunningMode {
                     self.send_game_message(GameMessage::AskBroadcast { player: self.id() });
                 }
                 GameMessage::ConnectionDown => {
-                    self.client.reconnect(Some(self.id()));
+                    self.client.reconnect();
                 }
                 GameMessage::Pong => {
                     self.events.notify(RunningEvent::Pong);

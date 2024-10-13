@@ -6,7 +6,7 @@
       class="absolute -z-1 w-full h-[30%] top-0 left-0 bg-gradient-to-b from-prime-100 to-white opacity-80"
     ></div>
     <div class="absolute -z-1 bottom-0 left-0 w-full">
-      <canvas ref="mainImg" class="w-full opacity-75 h-[50vh]" />
+      <img :src="archpelagus" class="w-full opacity-75 h-[50vh] object-cover" />
       <div
         class="w-full h-full bottom-0 left-0 absolute bg-gradient-to-b from-white to-transparent z-10"
       ></div>
@@ -44,30 +44,40 @@
 </template>
 
 <script lang="ts" setup>
-import { getCurrentInstance, onMounted, ref } from "vue";
+import { ref } from "vue";
 import archpelagus from "../assets/archpelagus.png";
 import Flags from "../components/Flags.vue";
 import { useRouter } from "vue-router";
-import { ServerRequests } from "../requests/ServerRequests";
-import { useAsyncComputed } from "../utils/reactiveUtils";
 import ServerSelector from "./ServerSelector.vue";
+import { ServerRequests } from "../requests/ServerRequests";
 
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
 const userName = ref("");
-const { mainImg } = useImageTranslation();
 
 const serverSelected = ref<string>();
 
 function canPlay() {
-  return userName.value && selectedFlag.value && serverSelected.value;
+  if (userName.value && selectedFlag.value && serverSelected.value) {
+    return {
+      user: userName.value,
+      flag: selectedFlag.value,
+      server_id: serverSelected.value,
+    };
+  }
+  return null;
 }
 
 function onSelected(flag: string) {
   selectedFlag.value = flag;
 }
 
-function onPlay() {
+async function onPlay() {
+  const data = canPlay();
+  if (!data) {
+    return;
+  }
+  const id = await ServerRequests.getPlayerID(data.server_id);
   if (canPlay()) {
     router.push({
       path: "/game",
@@ -75,58 +85,11 @@ function onPlay() {
         user: userName.value,
         flag: selectedFlag.value,
         server_id: serverSelected.value,
+        player_id: id,
         online: "true",
       },
     });
   }
-}
-
-function useImageTranslation() {
-  const mainImg = ref<HTMLCanvasElement>();
-  const instance = getCurrentInstance();
-  onMounted(() => {
-    const canvas = mainImg.value!;
-
-    const img = new Image();
-    img.src = archpelagus;
-
-    const ctx = canvas.getContext("2d")!;
-    canvas.width = window.innerWidth;
-    let xTranslate = 0;
-    const redrawLoop = () => {
-      if (instance?.isUnmounted) {
-        return;
-      }
-
-      canvas.height = img.height;
-      const arrImgs = [img];
-      arrImgs.forEach((img) => {
-        const imgx = xTranslate;
-        ctx.drawImage(
-          img,
-          0,
-          0,
-          img.width,
-          img.height,
-          imgx,
-          0,
-          img.width,
-          img.height
-        );
-      });
-
-      if (-xTranslate + canvas.width > img.width) {
-        return;
-      }
-      requestAnimationFrame(redrawLoop);
-
-      xTranslate -= 0.15;
-    };
-
-    img.onload = redrawLoop;
-  });
-
-  return { mainImg };
 }
 </script>
 

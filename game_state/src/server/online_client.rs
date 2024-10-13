@@ -21,7 +21,7 @@ impl OnlineClient {
             actor: None,
             url: url.to_string(),
         };
-        client.reconnect(None);
+        client.reconnect();
         client
     }
 
@@ -52,12 +52,8 @@ impl Client for OnlineClient {
         return None;
     }
 
-    fn reconnect(&mut self, player_id: Option<u64>) {
-        let url = if let Some(id) = player_id {
-            format!("{}&player_id={}", self.url, id)
-        } else {
-            self.url.clone()
-        };
+    fn reconnect(&mut self) {
+        let url = self.url.clone();
 
         let actor = Actor::<GameMessage>::spawn(move |mut sender, mut receiver| {
             let mut ws = WSChannel::new(&url);

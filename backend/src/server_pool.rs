@@ -60,6 +60,11 @@ impl ServerPool {
             .collect()
     }
 
+    pub fn get_player_id_for_server(&mut self, server_id: &str) -> Option<u64> {
+        let server = self.servers.get_mut(server_id)?;
+        return Some(server.next_player_id());
+    }
+
     pub fn remove_server(&mut self, server_id: &str) -> Result<()> {
         if self.servers.remove(server_id).is_none() {
             return Err(anyhow::anyhow!("Server not found"));

@@ -201,14 +201,11 @@ export class Render3D {
   static async startServer() {
     const queryParms = new URLSearchParams(window.location.search);
 
-    const isOnline = queryParms.get("online");
-    const userName = queryParms.get("user") ?? "player";
-    const flag = queryParms.get("flag") ?? "br";
-    const serverID = queryParms.get("server_id") ?? "default";
+    const isOnline = queryParms.get("online") === "true";
 
     let game;
-    if (!!isOnline) {
-      const url = `${config.websocketURL}?server_id=${serverID}&player_name=${userName}&flag=${flag}`;
+    if (isOnline) {
+      const url = `${config.websocketURL}?${queryParms.toString()}`;
       const onlineData = OnlineClient.new(url);
       game = GameWasmState.new_online(onlineData);
     } else {

@@ -70,6 +70,7 @@ async fn main() {
         .route("/create_server", get(create_server_handler))
         .route("/get_server_list", get(get_server_list_handler))
         .route("/remove_server", get(remove_server_handler))
+        .route("/get_player_id", get(handle_get_player_id))
         .nest_service("/static", static_dir)
         .layer(CompressionLayer::new().gzip(true))
         .layer(cors)
@@ -97,7 +98,7 @@ async fn main() {
 #[derive(serde::Deserialize)]
 struct WsQuery {
     server_id: String,
-    player_name: String,
+    player_name: Option<String>,
     player_id: Option<u64>,
     flag: Option<String>,
 }
@@ -108,7 +109,7 @@ async fn ws_handler(
     state: State<AppState>,
 ) -> impl IntoResponse {
     let server_id = params.server_id.clone();
-    let player_name = params.player_name.clone();
+    let player_name = params.player_name.clone().unwrap_or("Unknown".to_string());
     let player_id = params.player_id.clone();
     let flag = params.flag.clone();
     log::info!("Connecting {player_name} Player to server {server_id}");
@@ -165,6 +166,28 @@ async fn ws_handler(
         };
     });
     res
+}
+
+async fn handle_get_player_id(params: Query<WsQuery>, state: State<AppState>) -> impl IntoResponse {
+    #[derive(serde::Serialize)]
+    enum IdResponse {
+        Ok(u64),
+        Err(String),
+    }
+
+    let server_id = params.server_id.clone();
+    log::info!("Getting player id to server {server_id}");
+    let res = {
+        if let Some(id) = state.get_game_server().get_player_id_for_server(&server_id) {
+            log::info!("Id retrieved: {id}");
+            IdResponse::Ok(id)
+        } else {
+            log::warn!("Server {server_id} not found");
+            IdResponse::Err("Server not found".to_string())
+        }
+    };
+
+    axum::Json(res)
 }
 
 #[derive(serde::Deserialize)]
