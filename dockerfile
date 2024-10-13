@@ -37,7 +37,7 @@ COPY ./front/package.json ./front/package.json
 
 RUN npm install
 
-COPY --from=WasmBuilder /app/game_state /app/game_state
+COPY --from=WasmBuilder /app/game_state/pkg /app/game_state/pkg
 
 RUN npm install
 

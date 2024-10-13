@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "dev": "wasm-pack build --target web --profile",
-    "build": "wasm-pack build --target web --release"
+    "dev": "wasm-pack build --target bundler --profiling",
+    "build": "wasm-pack build --target bundler --release"
   }
 }

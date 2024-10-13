@@ -15,7 +15,8 @@ export default defineConfig({
     vue(),
   ],
   define: {
-    IS_PROD: process.env.NODE_ENV === "production",
+    // IS_PROD: process.env.NODE_ENV === "production",
+    IS_PROD: false,
   },
   server: {
     open: true,
@@ -24,7 +25,8 @@ export default defineConfig({
     exclude: ["three"],
   },
   build: {
-    target: "esnext",
+    target: "es2022",
+    minify: true,
     // lib: {
     //   entry: "./js/lib.ts",
     //   formats: ["es"],
