@@ -55,10 +55,10 @@ onMounted(() => {
   img.src = archpelagus
   
   
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
   const redrawLoop = () => {
-    const ctx = canvas.getContext("2d");
     canvas.height = img.height;
-    canvas.width = window.innerWidth;
     const arrImgs = [img, img]
     arrImgs.forEach((img, index) => {
       const imgx = xTranslate + index * img.width
@@ -71,7 +71,7 @@ onMounted(() => {
       arrImgs.push(arrImgs.shift()!)
       return
     }
-    xTranslate -= 0.1
+    xTranslate -= 0.15
   };
   
   img.onload = redrawLoop
