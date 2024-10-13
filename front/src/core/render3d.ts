@@ -208,7 +208,7 @@ export class Render3D {
 
     let game;
     if (!!isOnline) {
-      const url = `${config.serverURL}?server_id=${serverID}&player_name=${userName}&flag=${flag}`;
+      const url = `${config.websocketURL}?server_id=${serverID}&player_name=${userName}&flag=${flag}`;
       const onlineData = OnlineClient.new(url);
       game = GameWasmState.new_online(onlineData);
     } else {

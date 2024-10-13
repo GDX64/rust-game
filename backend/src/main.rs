@@ -1,5 +1,6 @@
 use axum::{
     extract::{ws::Message, Query, State, WebSocketUpgrade},
+    http::HeaderValue,
     response::IntoResponse,
     routing::get,
     Router,
@@ -11,6 +12,7 @@ use server_pool::ServerPool;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tower_http::{
     compression::CompressionLayer,
+    cors::{Any, CorsLayer},
     services::{ServeDir, ServeFile},
 };
 mod server_pool;
@@ -53,6 +55,11 @@ async fn main() {
     let static_dir = ServeDir::new("./dist");
     let static_dir = static_dir.fallback(ServeFile::new("./dist/index.html"));
 
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let state: AppState = Apps::new();
     // build our application with a single route
     let backend_app = Router::new()
@@ -63,6 +70,7 @@ async fn main() {
         .route("/remove_server", get(remove_server_handler))
         .nest_service("/static", static_dir)
         .layer(CompressionLayer::new().gzip(true))
+        .layer(cors)
         .with_state(state.clone());
 
     let local_set = tokio::task::LocalSet::new();

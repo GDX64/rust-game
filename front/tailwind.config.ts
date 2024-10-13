@@ -14,9 +14,10 @@ export default {
         ...colors.stone,
         950: "#000000",
       },
-      high: colors.amber,
+      sec: {
+        ...colors.stone,
+      },
     },
   },
   plugins: [],
 };
-

@@ -1,7 +1,7 @@
 <template>
   <div class="h-full w-full relative">
     <Transition>
-      <Spinner v-if="!game" class="bg-prime-100 z-10 absolute"></Spinner>
+      <Spinner v-if="!game" class="bg-sec-100 z-10 absolute"></Spinner>
     </Transition>
     <div v-show="game" ref="container"></div>
   </div>
