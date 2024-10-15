@@ -1,6 +1,8 @@
 <template>
-  <div class="border border-sec-700 rounded-md p-2">
-    <h3 class="font-bold">Ranking</h3>
+  <div
+    class="border border-sec-700 rounded-md p-2 max-h-[300px] overflow-y-auto overflow-x-hidden"
+  >
+    <h3 class="font-bold pb-1">Week Ranking</h3>
     <table class="">
       <thead>
         <tr class="bg-sec-300">
@@ -15,9 +17,9 @@
           :key="player.name"
           class="even:bg-sec-200"
         >
-          <td>{{ player.name }}</td>
-          <td>{{ player.kills }}</td>
-          <td>{{ player.deaths }}</td>
+          <td class="px-2">{{ player.name }}</td>
+          <td class="px-2">{{ player.kills }}</td>
+          <td class="px-2">{{ player.deaths }}</td>
         </tr>
       </tbody>
     </table>

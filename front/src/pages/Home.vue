@@ -15,7 +15,7 @@
     <div
       class="z-10 flex flex-col items-center justify-between grow gap-8 min-h-fit"
     >
-      <h1 class="text-sec-700 text-4xl sm:text-6xl font-bold">ARCHPELAGUS</h1>
+      <h1 class="text-sec-700 text-4xl sm:text-7xl font-bold">ARCHPELAGUS</h1>
 
       <div class="flex gap-8 flex-wrap justify-center items-center">
         <Ranking></Ranking>
