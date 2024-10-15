@@ -1,4 +1,5 @@
 use game_state::{DBStatsMessage, PlayerState};
+use serde::Serialize;
 use std::future::Future;
 
 use futures::{
@@ -6,7 +7,8 @@ use futures::{
     StreamExt,
 };
 
-struct DBPlayer {
+#[derive(Serialize)]
+pub struct DBPlayer {
     name: String,
     kills: usize,
     deaths: usize,
@@ -99,6 +101,27 @@ impl GameDatabase {
         }
         tx.commit()?;
         Ok(())
+    }
+
+    pub fn get_leaderboard(&self, n: usize) -> anyhow::Result<Vec<DBPlayer>> {
+        let n = n.min(100);
+        let mut stmt = self
+            .conn
+            .prepare("select * from players order by kills desc LIMIT ?1")?;
+        let rows = stmt.query_map(rusqlite::params![n], |row| {
+            Ok(DBPlayer {
+                name: row.get(0)?,
+                kills: row.get(1)?,
+                deaths: row.get(2)?,
+            })
+        })?;
+
+        let mut players = Vec::new();
+        for player in rows {
+            players.push(player?);
+        }
+
+        Ok(players)
     }
 
     fn increment_player_stats(&mut self, player: &DBPlayer) -> anyhow::Result<()> {

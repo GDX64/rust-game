@@ -7,6 +7,8 @@ export type ServerList = {
   players: number;
 };
 
+export type RankingResponse = { name: string; kills: number; deaths: number }[];
+
 type GetIDResponse =
   | {
       Ok: number;
@@ -18,6 +20,12 @@ type GetIDResponse =
 export const ServerRequests = {
   async getServerList(): Promise<ServerList[]> {
     const req = await fetch(`${baseURL}/get_server_list`);
+    const body = await req.json();
+    return body;
+  },
+
+  async getRanking(): Promise<RankingResponse> {
+    const req = await fetch(`${baseURL}/ranking`);
     const body = await req.json();
     return body;
   },

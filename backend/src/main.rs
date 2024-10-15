@@ -1,6 +1,6 @@
 use axum::{
     extract::{ws::Message, Query, State, WebSocketUpgrade},
-    http::HeaderValue,
+    http::{HeaderValue, StatusCode},
     response::IntoResponse,
     routing::get,
     Router,
@@ -25,6 +25,7 @@ mod server_pool;
 #[derive(Clone)]
 struct Apps {
     game_server: Arc<Mutex<ServerPool>>,
+    stats_db: Arc<Mutex<GameDatabase>>,
 }
 
 impl Apps {
@@ -35,8 +36,11 @@ impl Apps {
         pool.create_server("AWS SP2")
             .expect("Failed to create default server");
 
+        let stats_db = GameDatabase::file("./dbs/game.db").expect("Failed to create db");
+
         Apps {
             game_server: Arc::new(Mutex::new(pool)),
+            stats_db: Arc::new(Mutex::new(stats_db)),
         }
     }
 
@@ -80,6 +84,7 @@ async fn main() {
         .route("/get_server_list", get(get_server_list_handler))
         .route("/remove_server", get(remove_server_handler))
         .route("/get_player_id", get(handle_get_player_id))
+        .route("/ranking", get(handle_ranking_stats))
         .nest_service("/static", static_dir)
         .layer(CompressionLayer::new().gzip(true))
         .layer(cors)
@@ -201,6 +206,25 @@ async fn handle_get_player_id(params: Query<WsQuery>, state: State<AppState>) ->
     };
 
     axum::Json(res)
+}
+
+async fn handle_ranking_stats(state: State<AppState>) -> impl IntoResponse {
+    match state.stats_db.lock() {
+        Ok(db) => {
+            match db.get_leaderboard(15) {
+                Ok(players) => {
+                    return Ok(axum::Json(players));
+                }
+                Err(e) => {
+                    log::error!("Failed to get leaderboard: {e}");
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("Failed to lock db: {e}");
+        }
+    };
+    return Err(StatusCode::INTERNAL_SERVER_ERROR);
 }
 
 #[derive(serde::Deserialize)]

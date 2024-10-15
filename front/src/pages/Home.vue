@@ -17,15 +17,18 @@
     >
       <h1 class="text-sec-700 text-8xl font-bold">ARCHPELAGUS</h1>
 
-      <div class="flex flex-col gap-2">
-        <ServerSelector
-          v-model:selected="serverSelected"
-          :class="online ? '' : 'opacity-30 pointer-events-none'"
-        ></ServerSelector>
-        <label class="px-1 flex gap-2 select-none">
-          <input type="checkbox" v-model="online" />
-          <div class="">Online</div>
-        </label>
+      <div class="flex gap-8">
+        <div class="flex flex-col gap-2">
+          <ServerSelector
+            v-model:selected="serverSelected"
+            :class="online ? '' : 'opacity-30 pointer-events-none'"
+          ></ServerSelector>
+          <label class="px-1 flex gap-2 select-none">
+            <input type="checkbox" v-model="online" />
+            <div class="">Online</div>
+          </label>
+        </div>
+        <Ranking></Ranking>
       </div>
 
       <div
@@ -59,6 +62,7 @@ import Flags from "../components/Flags.vue";
 import { useRouter } from "vue-router";
 import ServerSelector from "./ServerSelector.vue";
 import { ServerRequests } from "../requests/ServerRequests";
+import Ranking from "./Ranking.vue";
 
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
