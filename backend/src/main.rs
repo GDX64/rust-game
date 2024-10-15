@@ -15,6 +15,7 @@ use tower_http::{
     cors::{Any, CorsLayer},
     services::{ServeDir, ServeFile},
 };
+mod database;
 mod server_pool;
 
 #[derive(Clone)]
