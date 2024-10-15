@@ -5,13 +5,13 @@ use axum::{
     routing::get,
     Router,
 };
-use database::{DBMessage, GameDatabase};
+use database::GameDatabase;
 use futures::{
     channel::mpsc::{channel, Sender},
     SinkExt,
 };
 use futures_util::StreamExt;
-use game_state::TICK_TIME;
+use game_state::{DBStatsMessage, TICK_TIME};
 use server_pool::ServerPool;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tower_http::{
@@ -28,7 +28,7 @@ struct Apps {
 }
 
 impl Apps {
-    fn new(db_sender: Sender<DBMessage>) -> Apps {
+    fn new(db_sender: Sender<DBStatsMessage>) -> Apps {
         let mut pool = ServerPool::new(db_sender);
         pool.create_server("AWS SP1")
             .expect("Failed to create default server");

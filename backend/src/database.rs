@@ -1,4 +1,4 @@
-use game_state::PlayerState;
+use game_state::{DBStatsMessage, PlayerState};
 use std::future::Future;
 
 use futures::{
@@ -35,10 +35,6 @@ enum DbKind {
     File(String),
 }
 
-pub enum DBMessage {
-    BulkInsert(Vec<PlayerState>),
-}
-
 pub struct GameDatabase {
     conn: rusqlite::Connection,
 }
@@ -52,19 +48,14 @@ impl GameDatabase {
         return Self::new(DbKind::File(path.into()));
     }
 
-    pub fn actor(file: impl Into<String>) -> (Sender<DBMessage>, impl Future<Output = ()>) {
-        let (sender, mut receiver) = channel::<DBMessage>(100);
+    pub fn actor(file: impl Into<String>) -> (Sender<DBStatsMessage>, impl Future<Output = ()>) {
+        let (sender, mut receiver) = channel::<DBStatsMessage>(100);
         let future = async move {
-            let mut db = GameDatabase::file(file).unwrap();
+            let db = GameDatabase::file(file).unwrap();
             while let Some(msg) = receiver.next().await {
                 match msg {
-                    DBMessage::BulkInsert(players) => {
-                        log::info!("Received stats update request: {:?}", players.len());
-                        let players = players
-                            .iter()
-                            .map(DBPlayer::from_player_state)
-                            .collect::<Vec<_>>();
-                        db.bulk_update_players(&players)
+                    DBStatsMessage::PlayerUpdate(player) => {
+                        db.insert_player(&DBPlayer::from_player_state(&player))
                             .expect("Failed to update players");
                     }
                 }

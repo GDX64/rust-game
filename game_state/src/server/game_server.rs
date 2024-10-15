@@ -54,6 +54,10 @@ struct PlayerBufferSenderPair {
     connection_down_time: Option<u64>,
 }
 
+pub enum DBStatsMessage {
+    PlayerUpdate(PlayerState),
+}
+
 pub struct GameServer {
     pub game_state: ServerState,
     players: HashMap<u64, PlayerBufferSenderPair>,
@@ -63,10 +67,11 @@ pub struct GameServer {
     rng: fastrand::Rng,
     frames: u64,
     pub name: String,
+    db_sender: Option<Sender<DBStatsMessage>>,
 }
 
 impl GameServer {
-    pub fn new() -> GameServer {
+    pub fn new(db_sender: Option<Sender<DBStatsMessage>>) -> GameServer {
         GameServer {
             game_state: ServerState::new(),
             players: HashMap::new(),
@@ -76,6 +81,7 @@ impl GameServer {
             frames: 0,
             frame_inputs: vec![],
             name: "default".to_string(),
+            db_sender,
         }
     }
 
@@ -325,6 +331,16 @@ impl GameServer {
                 }
             }
             self.add_to_frame(StateMessage::RemovePlayer { id });
+
+            let player_state = self.game_state.players.get(&id).cloned();
+            match (player_state, self.db_sender.as_mut()) {
+                (Some(player_state), Some(sender)) => {
+                    let msg = DBStatsMessage::PlayerUpdate(player_state);
+                    sender.try_send(msg).ok();
+                }
+                _ => {}
+            }
+
             log::warn!("Player {} removed because of inactivity", id);
         }
         log::info!("Total players: {}", self.players.len());

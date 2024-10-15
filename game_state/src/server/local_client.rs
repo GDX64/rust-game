@@ -25,7 +25,7 @@ pub struct LocalClient {
 impl LocalClient {
     pub fn new(player_name: String) -> LocalClient {
         let (sender, receiver) = channel(100);
-        let mut game = game_server::GameServer::new();
+        let mut game = game_server::GameServer::new(None);
         game.new_connection(sender, None, &player_name, None);
         info!("Local server started");
         LocalClient {
