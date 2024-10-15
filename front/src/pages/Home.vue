@@ -1,6 +1,6 @@
 <template>
   <div
-    class="h-full w-full flex items-center justify-center flex-col philosopher"
+    class="h-full w-full flex items-center justify-center flex-col philosopher overflow-x- px-2 overflow-y-auto pt-16 pb-20"
   >
     <div
       class="absolute -z-1 w-full h-[30%] top-0 left-0 bg-gradient-to-b from-prime-100 to-white opacity-80"
@@ -13,11 +13,12 @@
     </div>
 
     <div
-      class="relative z-10 flex flex-col items-center justify-between h-full pt-16 pb-20"
+      class="z-10 flex flex-col items-center justify-between grow gap-8 min-h-fit"
     >
-      <h1 class="text-sec-700 text-8xl font-bold">ARCHPELAGUS</h1>
+      <h1 class="text-sec-700 text-4xl sm:text-6xl font-bold">ARCHPELAGUS</h1>
 
-      <div class="flex gap-8">
+      <div class="flex gap-8 flex-wrap justify-center items-center">
+        <Ranking></Ranking>
         <div class="flex flex-col gap-2">
           <ServerSelector
             v-model:selected="serverSelected"
@@ -28,15 +29,14 @@
             <div class="">Online</div>
           </label>
         </div>
-        <Ranking></Ranking>
       </div>
 
       <div
-        class="flex gap-20 bg-white/30 py-5 px-10 rounded-md items-center max-w-[900px] border border-sec-700 z-10"
+        class="flex gap-4 flex-col min-h-fit sm:flex-row items-start sm:items-center bg-white/30 p-3 rounded-md max-w-[900px] border border-sec-700 z-10 overflow-hidden w-full"
       >
         <input
           type="text"
-          class="p-1 rounded-md text-black outline-none bg-white philosopher-regular-italic focus:outline-prime-200 outline-offset-0"
+          class="block p-1 rounded-md text-black outline-none bg-sec-100 philosopher-regular-italic focus:outline-prime-200 outline-offset-0"
           v-model="userName"
           placeholder="Play as"
         />
