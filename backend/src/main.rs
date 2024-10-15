@@ -5,7 +5,11 @@ use axum::{
     routing::get,
     Router,
 };
-use futures::{channel::mpsc::channel, SinkExt};
+use database::{DBMessage, GameDatabase};
+use futures::{
+    channel::mpsc::{channel, Sender},
+    SinkExt,
+};
 use futures_util::StreamExt;
 use game_state::TICK_TIME;
 use server_pool::ServerPool;
@@ -24,8 +28,8 @@ struct Apps {
 }
 
 impl Apps {
-    fn new() -> Apps {
-        let mut pool = ServerPool::new();
+    fn new(db_sender: Sender<DBMessage>) -> Apps {
+        let mut pool = ServerPool::new(db_sender);
         pool.create_server("AWS SP1")
             .expect("Failed to create default server");
         pool.create_server("AWS SP2")
@@ -63,7 +67,11 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let state: AppState = Apps::new();
+    let (sender, future) = GameDatabase::actor("./dbs/game.db");
+
+    let db_join = tokio::spawn(future);
+
+    let state: AppState = Apps::new(sender);
     // build our application with a single route
     let backend_app = Router::new()
         .route("/hello", get(|| async { "Sanity Check" }))
@@ -93,7 +101,11 @@ async fn main() {
     let listener_game = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
 
     let game_axum = axum::serve(listener_game, backend_app);
-    let (_r1, _r2) = tokio::join!(async { game_axum.await }, async { tick_task.await });
+    let (_r1, _r2, _r3) = tokio::join!(
+        async { game_axum.await },
+        async { tick_task.await },
+        db_join
+    );
 }
 
 #[derive(serde::Deserialize)]

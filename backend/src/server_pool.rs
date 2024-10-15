@@ -1,11 +1,16 @@
 use anyhow::Result;
+use futures::channel::mpsc::Sender;
 use game_state::GameServer;
 use std::{collections::HashMap, time::Duration};
+
+use crate::database::DBMessage;
 
 const MAX_SERVERS: usize = 3;
 
 pub struct ServerPool {
     servers: HashMap<String, GameServer>,
+    rng: fastrand::Rng,
+    db_sender: Sender<DBMessage>,
 }
 
 #[derive(serde::Serialize)]
@@ -15,9 +20,11 @@ pub struct ServerInfo {
 }
 
 impl ServerPool {
-    pub fn new() -> ServerPool {
+    pub fn new(db_sender: Sender<DBMessage>) -> ServerPool {
         ServerPool {
             servers: HashMap::new(),
+            rng: fastrand::Rng::with_seed(0),
+            db_sender,
         }
     }
 
@@ -37,6 +44,10 @@ impl ServerPool {
                         "Tick of server {server_name} took longer than a frame time: {}ms",
                         elapsed.as_millis()
                     );
+                }
+                if self.rng.f32() < (1.0 / 300.0) {
+                    let players = server.get_players_stats();
+                    self.db_sender.try_send(DBMessage::BulkInsert(players)).ok();
                 }
             }
         });

@@ -1,7 +1,15 @@
+use game_state::PlayerState;
+use std::future::Future;
+
+use futures::{
+    channel::mpsc::{channel, Sender},
+    StreamExt,
+};
+
 struct DBPlayer {
     name: String,
-    kills: i32,
-    deaths: i32,
+    kills: usize,
+    deaths: usize,
 }
 
 impl DBPlayer {
@@ -12,6 +20,14 @@ impl DBPlayer {
             deaths: 0,
         }
     }
+
+    fn from_player_state(player: &PlayerState) -> Self {
+        Self {
+            name: player.name.clone(),
+            kills: player.kills,
+            deaths: player.deaths,
+        }
+    }
 }
 
 enum DbKind {
@@ -19,7 +35,11 @@ enum DbKind {
     File(String),
 }
 
-struct GameDatabase {
+pub enum DBMessage {
+    BulkInsert(Vec<PlayerState>),
+}
+
+pub struct GameDatabase {
     conn: rusqlite::Connection,
 }
 
@@ -30,6 +50,27 @@ impl GameDatabase {
 
     pub fn file(path: impl Into<String>) -> anyhow::Result<Self> {
         return Self::new(DbKind::File(path.into()));
+    }
+
+    pub fn actor(file: impl Into<String>) -> (Sender<DBMessage>, impl Future<Output = ()>) {
+        let (sender, mut receiver) = channel::<DBMessage>(100);
+        let future = async move {
+            let mut db = GameDatabase::file(file).unwrap();
+            while let Some(msg) = receiver.next().await {
+                match msg {
+                    DBMessage::BulkInsert(players) => {
+                        log::info!("Received stats update request: {:?}", players.len());
+                        let players = players
+                            .iter()
+                            .map(DBPlayer::from_player_state)
+                            .collect::<Vec<_>>();
+                        db.bulk_update_players(&players)
+                            .expect("Failed to update players");
+                    }
+                }
+            }
+        };
+        return (sender, future);
     }
 
     fn new(kind: DbKind) -> anyhow::Result<Self> {
@@ -49,7 +90,7 @@ impl GameDatabase {
         Ok(Self { conn })
     }
 
-    pub fn insert_player(&self, player: &DBPlayer) -> anyhow::Result<()> {
+    fn insert_player(&self, player: &DBPlayer) -> anyhow::Result<()> {
         self.conn.execute(
             "insert or replace into players (name, kills, deaths) values (?1, ?2, ?3)",
             rusqlite::params![player.name, player.kills, player.deaths],
@@ -57,7 +98,7 @@ impl GameDatabase {
         Ok(())
     }
 
-    pub fn bulk_update_players(&mut self, players: &[DBPlayer]) -> anyhow::Result<()> {
+    fn bulk_update_players(&mut self, players: &[DBPlayer]) -> anyhow::Result<()> {
         let tx = self.conn.transaction()?;
         for player in players {
             tx.execute(
@@ -69,7 +110,7 @@ impl GameDatabase {
         Ok(())
     }
 
-    pub fn get_player(&self, name: &str) -> anyhow::Result<DBPlayer> {
+    fn get_player(&self, name: &str) -> anyhow::Result<DBPlayer> {
         let mut stmt = self.conn.prepare("select * from players where name = ?1")?;
         let mut rows = stmt.query(rusqlite::params![name])?;
         let row = rows
@@ -77,8 +118,8 @@ impl GameDatabase {
             .ok_or_else(|| anyhow::anyhow!("Player not found"))?;
 
         let name: String = row.get(0)?;
-        let kills: i32 = row.get(1)?;
-        let deaths: i32 = row.get(2)?;
+        let kills: usize = row.get(1)?;
+        let deaths: usize = row.get(2)?;
 
         let player = DBPlayer {
             name: name,

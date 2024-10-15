@@ -3,6 +3,7 @@ use crate::{
     server_state::{ServerState, StateMessage, PLAYER_START_SHIPS},
     ship::ShipState,
     utils::vectors::V2D,
+    PlayerState,
 };
 use futures::channel::mpsc::Sender;
 use log::info;
@@ -80,6 +81,10 @@ impl GameServer {
 
     pub fn get_player_count(&self) -> usize {
         self.players.len() + self.bots.len()
+    }
+
+    pub fn get_players_stats(&self) -> Vec<PlayerState> {
+        self.game_state.players.values().cloned().collect()
     }
 
     fn add_bot(&mut self) {
