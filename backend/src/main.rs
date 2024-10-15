@@ -36,7 +36,7 @@ impl Apps {
         pool.create_server("AWS SP2")
             .expect("Failed to create default server");
 
-        let stats_db = GameDatabase::file("./dbs/game.db").expect("Failed to create db");
+        let stats_db = GameDatabase::file("./data/game.db").expect("Failed to create db");
 
         Apps {
             game_server: Arc::new(Mutex::new(pool)),
@@ -71,7 +71,7 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let (sender, future) = GameDatabase::actor("./dbs/game.db");
+    let (sender, future) = GameDatabase::actor("./data/game.db");
 
     let db_join = tokio::spawn(future);
 

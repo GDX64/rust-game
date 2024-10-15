@@ -1,31 +1,24 @@
 # Build stage
 FROM rust:latest AS builder
 
-
 WORKDIR /app
 
-COPY ./backend ./backend
-COPY ./game_state ./game_state
-
-# RUN apt update && apt install -y musl-tools musl-dev
-# RUN apt-get install -y build-essential
-# RUN yes | apt install gcc-x86-64-linux-gnu
-
-RUN rustup target add x86_64-unknown-linux-musl
-
-ENV RUSTFLAGS='-Clinker=x86_64-linux-gnu-gcc'
-
-RUN cd ./backend && cargo build --release --target x86_64-unknown-linux-musl
-
-FROM rust:latest as WasmBuilder
-
-WORKDIR /app
-
-RUN cargo install wasm-pack
+RUN rustup target add x86_64-unknown-linux-gnu
 RUN rustup target add wasm32-unknown-unknown
+RUN cargo install wasm-pack
+
+# RUN rustup target add x86_64-unknown-linux-musl
+# ENV RUSTFLAGS='-Clinker=x86_64-linux-gnu-gcc'
+# RUN cd ./backend && cargo build --release --target x86_64-unknown-linux-musl
 
 COPY ./game_state ./game_state
 RUN cd ./game_state && wasm-pack build --target bundler --release
+
+RUN cd ../
+
+COPY ./backend ./backend
+COPY ./game_state ./game_state
+RUN cd ./backend && cargo build --release --target x86_64-unknown-linux-gnu
 
 FROM node:22 as FrontendBuilder
 
@@ -37,7 +30,7 @@ COPY ./front/package.json ./front/package.json
 
 RUN npm install
 
-COPY --from=WasmBuilder /app/game_state/pkg /app/game_state/pkg
+COPY --from=builder /app/game_state/pkg /app/game_state/pkg
 
 RUN npm install
 
@@ -52,9 +45,11 @@ COPY ./front ./front
 RUN cd ./front && npm run build
 
 # Final run stage
-FROM scratch AS runner
+FROM rust:slim as Runner
 
-COPY --from=builder /app/backend/target/x86_64-unknown-linux-musl/release/game game
+VOLUME [ "/data" ]
+
+COPY --from=builder /app/backend/target/x86_64-unknown-linux-gnu/release/game game
 COPY --from=FrontendBuilder /app/front/dist dist
 
 CMD ["/game"]
