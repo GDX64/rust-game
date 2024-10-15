@@ -51,11 +51,11 @@ impl GameDatabase {
     pub fn actor(file: impl Into<String>) -> (Sender<DBStatsMessage>, impl Future<Output = ()>) {
         let (sender, mut receiver) = channel::<DBStatsMessage>(100);
         let future = async move {
-            let db = GameDatabase::file(file).unwrap();
+            let mut db = GameDatabase::file(file).unwrap();
             while let Some(msg) = receiver.next().await {
                 match msg {
                     DBStatsMessage::PlayerUpdate(player) => {
-                        db.insert_player(&DBPlayer::from_player_state(&player))
+                        db.increment_player_stats(&DBPlayer::from_player_state(&player))
                             .expect("Failed to update players");
                     }
                 }
@@ -97,6 +97,22 @@ impl GameDatabase {
                 rusqlite::params![player.name, player.kills, player.deaths],
             )?;
         }
+        tx.commit()?;
+        Ok(())
+    }
+
+    fn increment_player_stats(&mut self, player: &DBPlayer) -> anyhow::Result<()> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "INSERT OR IGNORE INTO players (name, kills, deaths) VALUES (?1, 0, 0)",
+            rusqlite::params![player.name],
+        )?;
+
+        tx.execute(
+            "update players set kills = kills + ?1, deaths = deaths + ?2 where name = ?3",
+            rusqlite::params![player.kills, player.deaths, player.name],
+        )?;
+
         tx.commit()?;
         Ok(())
     }
