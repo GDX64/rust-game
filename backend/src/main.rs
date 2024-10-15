@@ -22,6 +22,8 @@ use tower_http::{
 mod database;
 mod server_pool;
 
+const DB_PATH: &str = "./data/game.db";
+
 #[derive(Clone)]
 struct Apps {
     game_server: Arc<Mutex<ServerPool>>,
@@ -36,7 +38,7 @@ impl Apps {
         pool.create_server("AWS SP2")
             .expect("Failed to create default server");
 
-        let stats_db = GameDatabase::file("./data/game.db").expect("Failed to create db");
+        let stats_db = GameDatabase::file(DB_PATH).expect("Failed to create db");
 
         Apps {
             game_server: Arc::new(Mutex::new(pool)),
@@ -71,13 +73,13 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let (sender, future) = GameDatabase::actor("./data/game.db");
+    let (sender, future) = GameDatabase::actor(DB_PATH);
 
     let db_join = tokio::spawn(future);
 
     let state: AppState = Apps::new(sender);
-    // build our application with a single route
     let backend_app = Router::new()
+        .nest_service("/", static_dir)
         .route("/hello", get(|| async { "Sanity Check" }))
         .route("/ws", get(ws_handler))
         .route("/create_server", get(create_server_handler))
@@ -85,7 +87,6 @@ async fn main() {
         .route("/remove_server", get(remove_server_handler))
         .route("/get_player_id", get(handle_get_player_id))
         .route("/ranking", get(handle_ranking_stats))
-        .nest_service("/static", static_dir)
         .layer(CompressionLayer::new().gzip(true))
         .layer(cors)
         .with_state(state.clone());
