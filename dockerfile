@@ -53,4 +53,3 @@ COPY --from=builder /app/backend/target/x86_64-unknown-linux-gnu/release/game ga
 COPY --from=FrontendBuilder /app/front/dist dist
 
 CMD ["/game"]
-# CMD ["ls"]
