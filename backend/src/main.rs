@@ -2,8 +2,8 @@ use axum::{
     extract::{ws::Message, Query, State, WebSocketUpgrade},
     http::{HeaderValue, StatusCode},
     response::IntoResponse,
-    routing::get,
-    Router,
+    routing::{get, post},
+    Json, Router,
 };
 use database::GameDatabase;
 use futures::{
@@ -87,6 +87,7 @@ async fn main() {
         .route("/remove_server", get(remove_server_handler))
         .route("/get_player_id", get(handle_get_player_id))
         .route("/ranking", get(handle_ranking_stats))
+        .route("/error", post(handle_post_error))
         .layer(CompressionLayer::new().gzip(true))
         .layer(cors)
         .with_state(state.clone());
@@ -226,6 +227,11 @@ async fn handle_ranking_stats(state: State<AppState>) -> impl IntoResponse {
         }
     };
     return Err(StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+async fn handle_post_error(body: Json<serde_json::Value>) -> impl IntoResponse {
+    let body_data = body.to_string();
+    log::error!("Error received from client: {body_data}");
 }
 
 #[derive(serde::Deserialize)]

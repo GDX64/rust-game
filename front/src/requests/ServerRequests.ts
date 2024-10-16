@@ -24,6 +24,20 @@ export const ServerRequests = {
     return body;
   },
 
+  async sendError(error: Error) {
+    try {
+      const stack = error.stack;
+      const body = JSON.stringify({ error: error.message, stack });
+      await fetch(`${baseURL}/error`, {
+        method: "POST",
+        body,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      console.error("Failed to send error to server");
+    }
+  },
+
   async getRanking(): Promise<RankingResponse> {
     const req = await fetch(`${baseURL}/ranking`);
     const body = await req.json();
