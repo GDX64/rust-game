@@ -3,7 +3,7 @@
     class="border border-sec-700 rounded-md p-2 max-h-[300px] overflow-y-auto overflow-x-hidden"
   >
     <h3 class="font-bold pb-1">Week Ranking</h3>
-    <table class="">
+    <table class="w-full">
       <thead>
         <tr class="bg-sec-300">
           <th class="min-w-16 text-start">Player</th>

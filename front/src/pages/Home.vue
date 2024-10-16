@@ -18,9 +18,10 @@
       <h1 class="text-sec-700 text-4xl sm:text-7xl font-bold">ARCHPELAGUS</h1>
 
       <div class="flex gap-8 flex-wrap justify-center items-center">
-        <Ranking></Ranking>
-        <div class="flex flex-col gap-2">
+        <Ranking class="w-full sm:w-auto"></Ranking>
+        <div class="flex flex-col gap-2 w-full sm:w-auto">
           <ServerSelector
+            class="w-full"
             v-model:selected="serverSelected"
             :class="online ? '' : 'opacity-30 pointer-events-none'"
           ></ServerSelector>
