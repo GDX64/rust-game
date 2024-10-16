@@ -1,6 +1,6 @@
 <template>
   <div
-    class="h-full w-full flex flex-col philosopher overflow-x- px-2 overflow-y-auto pt-16 pb-20"
+    class="h-full w-full flex flex-col philosopher overflow-x- px-4 overflow-y-auto pt-16 pb-20"
   >
     <div
       class="absolute -z-1 w-full h-[30%] top-0 left-0 bg-gradient-to-b from-prime-100 to-white opacity-80"
@@ -17,7 +17,7 @@
     >
       <h1 class="text-sec-700 text-4xl sm:text-7xl font-bold">ARCHPELAGUS</h1>
 
-      <div class="flex gap-8 flex-wrap justify-center items-center">
+      <div class="flex gap-8 flex-wrap justify-center items-center w-full">
         <Ranking class="w-full sm:w-auto"></Ranking>
         <div class="flex flex-col gap-2 w-full sm:w-auto">
           <ServerSelector
