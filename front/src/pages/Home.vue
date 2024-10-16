@@ -36,7 +36,7 @@
       >
         <input
           type="text"
-          class="block p-1 rounded-md text-black outline-none bg-sec-100 philosopher-regular-italic focus:outline-prime-200 outline-offset-0"
+          class="block p-1 rounded-md text-black outline-none bg-sec-100 philosopher-regular-italic focus:outline-prime-200 outline-offset-0 w-full sm:w-auto"
           v-model="userName"
           placeholder="Play as"
         />
@@ -44,7 +44,7 @@
         <Flags @selected="onSelected" class="flex-1" />
 
         <button
-          class="bg-sec-700 text-white rounded-md text-lg py-3 px-6 disabled:opacity-30"
+          class="bg-sec-700 text-white rounded-md text-lg py-3 px-6 disabled:opacity-30 w-full sm:w-auto"
           :disabled="!canPlay()"
           @click="onPlay"
         >
