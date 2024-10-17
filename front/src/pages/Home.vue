@@ -1,6 +1,6 @@
 <template>
   <div
-    class="h-full w-full flex flex-col philosopher overflow-x- px-4 overflow-y-auto pt-16 pb-20"
+    class="h-full w-full flex flex-col philosopher overflow-x- px-4 overflow-y-auto pt-16 pb-20 min-h-screen"
   >
     <div
       class="absolute -z-1 w-full h-[30%] top-0 left-0 bg-gradient-to-b from-prime-100 to-white opacity-80"
