@@ -16,7 +16,7 @@ function runImage(){
     sudo docker stop $(sudo docker ps -a -q)
     sudo docker pull $tagName
     sudo docker volume create archpelagus
-    sudo docker run --name archpelagus -rm -d -p 5000:5000 -v archpelagus:/data $tagName 
+    sudo docker run --name archpelagus --rm -d -p 5000:5000 -v archpelagus:/data $tagName 
 }
 
 function uploadImage(){
