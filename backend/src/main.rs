@@ -35,7 +35,7 @@ impl Apps {
         let mut pool = ServerPool::new(db_sender);
         pool.create_server("AWS SP1", 5)
             .expect("Failed to create default server");
-        pool.create_server("AWS SP2", 0)
+        pool.create_server("AWS SP2", 1)
             .expect("Failed to create default server");
 
         let stats_db = GameDatabase::file(DB_PATH).expect("Failed to create db");
