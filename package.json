@@ -7,7 +7,9 @@
     "dev": "npm-run-all --parallel dev:*",
     "dev:backend": "cd backend && cargo run",
     "dev:game_state": "cd game_state && wasm-pack build --target bundler --profiling",
-    "dev:front": "cd front && npm run dev"
+    "dev:front": "cd front && npm run dev",
+    "build": "sh docker_build.sh build",
+    "start": "sh docker_build.sh run"
   },
   "repository": {
     "type": "git",
