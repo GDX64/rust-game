@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full w-full relative">
+  <div class="w-full relative h-screen">
     <Transition>
       <Spinner v-if="!game" class="bg-sec-100 z-10 absolute"></Spinner>
     </Transition>
