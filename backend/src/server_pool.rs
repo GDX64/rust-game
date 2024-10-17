@@ -14,6 +14,7 @@ pub struct ServerPool {
 pub struct ServerInfo {
     name: String,
     players: usize,
+    seed: u32,
 }
 
 impl ServerPool {
@@ -58,6 +59,7 @@ impl ServerPool {
                 ServerInfo {
                     name: name.clone(),
                     players: server.get_player_count(),
+                    seed: server.seed,
                 }
             })
             .collect()
@@ -75,11 +77,11 @@ impl ServerPool {
         return Ok(());
     }
 
-    pub fn create_server(&mut self, server_id: &str) -> Result<()> {
+    pub fn create_server(&mut self, server_id: &str, seed: u32) -> Result<()> {
         if self.servers.len() >= MAX_SERVERS {
             return Err(anyhow::anyhow!("Max servers reached"));
         }
-        let mut server = GameServer::new(Some(self.db_sender.clone()));
+        let mut server = GameServer::new(Some(self.db_sender.clone()), seed);
         server.name = server_id.to_string();
         self.servers.insert(server_id.to_string(), server);
         return Ok(());

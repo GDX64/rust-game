@@ -12,14 +12,16 @@ use wasm_bindgen::prelude::*;
 pub struct OnlineClient {
     actor: Option<Actor<GameMessage>>,
     url: String,
+    seed: u32,
 }
 
 #[wasm_bindgen]
 impl OnlineClient {
-    pub fn new(url: &str) -> OnlineClient {
+    pub fn new(url: &str, seed: u32) -> OnlineClient {
         let mut client = OnlineClient {
             actor: None,
             url: url.to_string(),
+            seed,
         };
         client.reconnect();
         client
@@ -38,6 +40,10 @@ impl Client for OnlineClient {
                 Err(e) => log::error!("Failed to send message: {:?}", e),
             }
         }
+    }
+
+    fn get_seed(&self) -> u32 {
+        self.seed
     }
 
     fn next_message(&mut self) -> Option<GameMessage> {

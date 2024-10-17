@@ -32,7 +32,7 @@ impl RunningMode {
 
     pub fn new(client: Box<dyn Client>) -> RunningMode {
         RunningMode {
-            game_state: ServerState::new(),
+            game_state: ServerState::new(client.get_seed()),
             client,
             frame_acc: 0.0,
             frame_buffer: vec![],
@@ -112,7 +112,7 @@ mod test {
 
     #[test]
     fn running_mode() {
-        let client = LocalClient::new("test_player".to_string());
+        let client = LocalClient::new("test_player".to_string(), 0);
         let mut local = super::RunningMode::new(Box::new(client));
         local.send_game_message(GameMessage::AddBot);
         local.send_game_message(GameMessage::AddBot);

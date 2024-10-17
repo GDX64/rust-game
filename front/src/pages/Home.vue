@@ -25,22 +25,27 @@
             v-model:selected="serverSelected"
             :class="online ? '' : 'opacity-30 pointer-events-none'"
           ></ServerSelector>
-          <label class="px-1 flex gap-2 select-none">
-            <input type="checkbox" v-model="online" />
-            <div class="">Online</div>
-          </label>
+          <div class="px-1 flex gap-2 select-none items-center w-max">
+            <label class="flex items-center w-max gap-2">
+              <input type="checkbox" v-model="online" />
+              <div class="">Online</div>
+            </label>
+            <TextInput
+              v-model:value="localSeed"
+              placeholder="Seed, ex: 123"
+              :disabled="online"
+            ></TextInput>
+          </div>
         </div>
       </div>
 
       <div
         class="flex gap-4 flex-col min-h-fit sm:flex-row items-start sm:items-center bg-white/30 p-3 rounded-md max-w-[900px] border border-sec-700 z-10 overflow-hidden w-full"
       >
-        <input
-          type="text"
-          class="block p-1 rounded-md text-black outline-none bg-sec-100 philosopher-regular-italic focus:outline-prime-200 outline-offset-0 w-full sm:w-auto"
-          v-model="userName"
-          placeholder="Play as"
-        />
+        <TextInput
+          v-model:value="userName"
+          placeholder="Play as..."
+        ></TextInput>
 
         <Flags @selected="onSelected" class="flex-1" />
 
@@ -62,15 +67,17 @@ import archpelagus from "../assets/archpelagus.png";
 import Flags from "../components/Flags.vue";
 import { useRouter } from "vue-router";
 import ServerSelector from "./ServerSelector.vue";
-import { ServerRequests } from "../requests/ServerRequests";
+import { ServerList, ServerRequests } from "../requests/ServerRequests";
 import Ranking from "./Ranking.vue";
+import TextInput from "./TextInput.vue";
 
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
 const userName = ref("");
 const online = ref(true);
+const localSeed = ref("");
 
-const serverSelected = ref<string>();
+const serverSelected = ref<ServerList>();
 
 function canPlay() {
   if (
@@ -100,7 +107,7 @@ async function onPlay() {
   let id;
   if (data.online) {
     if (data.server_id) {
-      id = await ServerRequests.getPlayerID(data.server_id);
+      id = await ServerRequests.getPlayerID(data.server_id.name);
     } else {
       throw new Error("Server ID not found");
     }
@@ -108,12 +115,21 @@ async function onPlay() {
     id = 0;
   }
   if (canPlay()) {
+    const seed = data.online
+      ? serverSelected.value?.seed
+      : Number(localSeed.value) || 0;
+
+    if (seed == undefined) {
+      throw new Error("Seed is undefined");
+    }
+
     router.push({
       path: "/game",
       query: {
         player_name: userName.value,
         flag: selectedFlag.value,
-        server_id: serverSelected.value,
+        server_id: serverSelected.value?.name,
+        seed,
         player_id: id,
         online: data.online ? "true" : "false",
       },
@@ -127,11 +143,5 @@ async function onPlay() {
   font-family: "Philosopher", sans-serif;
   font-weight: 400;
   font-style: normal;
-}
-
-.philosopher-regular-italic {
-  font-family: "Philosopher", sans-serif;
-  font-weight: 400;
-  font-style: italic;
 }
 </style>

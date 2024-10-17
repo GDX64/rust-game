@@ -202,14 +202,15 @@ export class Render3D {
     const queryParms = new URLSearchParams(window.location.search);
 
     const isOnline = queryParms.get("online") === "true";
+    const seed = Number(queryParms.get("seed")) || 0;
 
     let game;
     if (isOnline) {
       const url = `${config.websocketURL}?${queryParms.toString()}`;
-      const onlineData = OnlineClient.new(url);
+      const onlineData = OnlineClient.new(url, seed);
       game = GameWasmState.new_online(onlineData);
     } else {
-      const localClient = LocalClient.new("player");
+      const localClient = LocalClient.new("player", seed);
       game = GameWasmState.new_local(localClient);
     }
     const timer = setInterval(() => {

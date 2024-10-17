@@ -5,6 +5,7 @@ const baseURL = config.serverURL;
 export type ServerList = {
   name: string;
   players: number;
+  seed: number;
 };
 
 export type RankingResponse = { name: string; kills: number; deaths: number }[];

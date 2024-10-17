@@ -67,13 +67,14 @@ pub struct GameServer {
     rng: fastrand::Rng,
     frames: u64,
     pub name: String,
+    pub seed: u32,
     db_sender: Option<Sender<DBStatsMessage>>,
 }
 
 impl GameServer {
-    pub fn new(db_sender: Option<Sender<DBStatsMessage>>) -> GameServer {
+    pub fn new(db_sender: Option<Sender<DBStatsMessage>>, seed: u32) -> GameServer {
         GameServer {
-            game_state: ServerState::new(),
+            game_state: ServerState::new(seed),
             players: HashMap::new(),
             player_id_counter: 0,
             bots: vec![],
@@ -82,6 +83,7 @@ impl GameServer {
             frame_inputs: vec![],
             name: "default".to_string(),
             db_sender,
+            seed,
         }
     }
 

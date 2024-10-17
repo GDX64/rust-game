@@ -187,8 +187,8 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    pub fn new() -> Self {
-        let world_gen = Arc::new(world_gen::WorldGen::new(5));
+    pub fn new(seed: u32) -> Self {
+        let world_gen = Arc::new(world_gen::WorldGen::new(seed));
         let game_map = Arc::new(world_gen.generate_grid());
         let hash_grid = HashGrid::new(game_map.dim, game_map.tile_size);
         let mut me = Self {

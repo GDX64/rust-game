@@ -33,9 +33,9 @@ struct Apps {
 impl Apps {
     fn new(db_sender: Sender<DBStatsMessage>) -> Apps {
         let mut pool = ServerPool::new(db_sender);
-        pool.create_server("AWS SP1")
+        pool.create_server("AWS SP1", 5)
             .expect("Failed to create default server");
-        pool.create_server("AWS SP2")
+        pool.create_server("AWS SP2", 0)
             .expect("Failed to create default server");
 
         let stats_db = GameDatabase::file(DB_PATH).expect("Failed to create db");
@@ -237,13 +237,17 @@ async fn handle_post_error(body: Json<serde_json::Value>) -> impl IntoResponse {
 #[derive(serde::Deserialize)]
 struct CreateServerParams {
     server_id: String,
+    server_seed: u32,
 }
 
 async fn create_server_handler(
     params: Query<CreateServerParams>,
     state: State<AppState>,
 ) -> impl IntoResponse {
-    match state.get_game_server().create_server(&params.server_id) {
+    match state
+        .get_game_server()
+        .create_server(&params.server_id, params.server_seed)
+    {
         Ok(_) => {
             let server_id = params.server_id.clone();
             log::info!("Server {server_id} created");
