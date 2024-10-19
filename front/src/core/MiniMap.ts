@@ -62,8 +62,6 @@ export class MiniMap {
   }
 
   private addCanvasEvents() {
-    const PLANE_WIDTH = this.game.map_size();
-
     const mapCanvas = this.mapCanvas;
 
     let isDragging = false;
@@ -88,19 +86,21 @@ export class MiniMap {
     };
 
     const emitMoveEvent = (event: MouseEvent) => {
+      const mapSize = this.game.map_size();
       const { height, width } = mapCanvas.getBoundingClientRect();
       const miniMapToWorldX = Linscale.fromPoints(
         0,
-        -PLANE_WIDTH / 2,
+        -mapSize / 2,
         width,
-        PLANE_WIDTH / 2
+        mapSize / 2
       );
       const miniMapToWorldY = Linscale.fromPoints(
         0,
-        PLANE_WIDTH / 2,
+        mapSize / 2,
         height,
-        -PLANE_WIDTH / 2
+        -mapSize / 2
       );
+
       event.stopPropagation();
       const x = event.offsetX;
       const y = event.offsetY;
@@ -110,25 +110,30 @@ export class MiniMap {
     };
   }
 
+  private scalePair() {
+    const mapSize = this.game.map_size();
+    const pixelPadding = 4;
+    const scaleX = Linscale.fromPoints(
+      -mapSize / 2,
+      pixelPadding,
+      mapSize / 2,
+      this.mapSizeInPixels - pixelPadding
+    );
+    const scaleY = Linscale.fromPoints(
+      mapSize / 2,
+      pixelPadding,
+      -mapSize / 2,
+      this.mapSizeInPixels - pixelPadding
+    );
+    return { scaleX, scaleY };
+  }
+
   private buildShapes() {
     const islandData: IslandData[] = this.game.all_island_data();
     const ctx = this.islandsCanvas.getContext("2d")!;
     ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
 
-    const mapSize = this.game.map_size();
-    const scaleX = Linscale.fromPoints(
-      -mapSize / 2,
-      0,
-      mapSize / 2,
-      this.mapSizeInPixels
-    );
-    const scaleY = Linscale.fromPoints(
-      mapSize / 2,
-      0,
-      -mapSize / 2,
-      this.mapSizeInPixels
-    );
-
+    const { scaleX, scaleY } = this.scalePair();
     const errorMargin = scaleX.inverseScale().alpha() * 10;
     const mapData = islandData
       .map((island) => {
