@@ -96,7 +96,7 @@ impl GameServer {
     }
 
     fn add_bot(&mut self) {
-        if self.bots.len() > MAX_BOTS {
+        if self.bots.len() >= MAX_BOTS {
             return;
         }
         let mut bot = BotPlayer::new(self.next_player_id());
