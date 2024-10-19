@@ -21,6 +21,7 @@ pub struct PlayerShip {
     id: u64,
     should_remove: bool,
     target: Option<V2D>,
+    speed: Option<V2D>,
 }
 
 pub struct Player {
@@ -89,6 +90,7 @@ impl Player {
             id: ship_id,
             should_remove: false,
             target: None,
+            speed: None,
         };
 
         self.moving_ships.insert(ship_id, ship);
@@ -269,7 +271,8 @@ impl Player {
                     let direction = next - position;
                     let is_final_target = path.len() == 1;
                     let error_tolerance = if is_final_target { 1.0 } else { 5.0 };
-                    if direction.magnitude() < error_tolerance {
+                    let has_reached_goal = direction.magnitude() < error_tolerance;
+                    if has_reached_goal {
                         path.remove(0);
                         if path.is_empty() {
                             if let Err(e) = self.actions.send(StateMessage::MoveShip {
@@ -285,15 +288,19 @@ impl Player {
                             continue;
                         }
                     };
-                    if player_ship.target == Some(next) {
+                    player_ship.target = Some(next);
+                    let speed = direction.normalize() * BOAT_SPEED;
+                    let has_speed_chanded = player_ship
+                        .speed
+                        .map(|s| is_different(s, speed))
+                        .unwrap_or(true);
+
+                    if !has_speed_chanded {
                         break;
                     }
-                    player_ship.target = Some(next);
-                    let speed = if is_final_target {
-                        direction.normalize() * BOAT_SPEED
-                    } else {
-                        direction.normalize() * BOAT_SPEED / 2.0
-                    };
+
+                    player_ship.speed = Some(speed);
+
                     if let Err(e) = self.actions.send(StateMessage::MoveShip {
                         player_id: self.id,
                         id: ship.id,
@@ -310,6 +317,10 @@ impl Player {
 
         self.moving_ships.retain(|_, ship| !ship.should_remove);
     }
+}
+
+fn is_different(a: V2D, b: V2D) -> bool {
+    return (a - b).magnitude2() > 0.1;
 }
 
 fn unit_spiral_formation(n: usize, x: f64, y: f64, game: &ServerState) -> Vec<(f64, f64)> {
@@ -329,35 +340,5 @@ fn unit_spiral_formation(n: usize, x: f64, y: f64, game: &ServerState) -> Vec<(f
     return v;
 }
 
-fn unit_box_formation(n: usize, x: f64, y: f64) -> Vec<(f64, f64)> {
-    let cell_size = 20.0;
-    let sqrt = (n as f64).sqrt();
-    let cols = sqrt;
-    let rows = (n as f64 / sqrt).ceil();
-
-    let max_x = (cols - 1.0) * cell_size;
-    let max_y = (rows - 1.0) * cell_size;
-
-    let x = x - max_x / 2.0;
-    let y = y - max_y / 2.0;
-
-    let sqrt = sqrt as usize;
-
-    let mut positions = Vec::with_capacity(n);
-    for i in 0..n {
-        let x = x + (i % sqrt) as f64 * cell_size;
-        let y = y + (i / sqrt) as f64 * cell_size;
-        positions.push((x, y));
-    }
-    positions
-}
-
 #[cfg(test)]
-mod test {
-    #[test]
-    fn test_formation_even() {
-        let formation = super::unit_box_formation(4, 0.0, 0.0);
-        let expected = vec![(-10.0, -10.0), (10.0, -10.0), (-10.0, 10.0), (10.0, 10.0)];
-        assert_eq!(formation, expected);
-    }
-}
+mod test {}
