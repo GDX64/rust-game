@@ -564,7 +564,7 @@ impl ServerState {
                 if let Some(place) =
                     self.game_map
                         .spiral_search(ship.position.x, ship.position.y, |x, y, tile| {
-                            if tile.can_go() {
+                            if tile.is_nav_water() {
                                 return !self.is_ship_here(x, y);
                             }
                             return false;

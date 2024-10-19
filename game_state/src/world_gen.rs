@@ -226,7 +226,7 @@ impl WorldGen {
             })
             .collect();
         grid.data = data;
-        grid.find_islands();
+        grid.update_map();
         grid
     }
 }
