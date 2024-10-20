@@ -195,6 +195,9 @@ export class MiniMap {
 
       if (owner != null) {
         const country = this.game.get_player_flag(BigInt(owner));
+        if (!country) {
+          return;
+        }
         const img = getFlagImage(country);
         if (img.width) {
           ctx.clip(shape.path);

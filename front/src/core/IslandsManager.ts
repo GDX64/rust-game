@@ -72,7 +72,7 @@ export class IslandsManager {
       const mapBefore = sprite.material.map;
       if (owner != null) {
         const ownerFlag = this.game.get_player_flag(BigInt(owner));
-        const flag = this.getFlagTexture(ownerFlag);
+        const flag = ownerFlag ? this.getFlagTexture(ownerFlag) : null;
         sprite.material.map = flag ?? null;
       } else {
         sprite.material.map = null;

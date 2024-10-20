@@ -17,6 +17,7 @@ export class PlayerActions {
   readonly rayCaster = new THREE.Raycaster();
   private state = States.IDLE;
   private readonly selectionStart = { x: 0, y: 0 };
+  readonly selectionDiv = document.createElement("div");
   axesHelper: THREE.AxesHelper;
 
   constructor(
@@ -28,6 +29,10 @@ export class PlayerActions {
     public leaderBoards: LeaderBoards
   ) {
     this.mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    this.selectionDiv.style.position = "absolute";
+    this.selectionDiv.style.pointerEvents = "none";
+    this.selectionDiv.style.zIndex = "10";
+    this.selectionDiv.style.border = "2px solid white";
 
     this.axesHelper = new THREE.AxesHelper(1000);
     this.shipsManager.scene.add(this.axesHelper);
@@ -69,10 +74,10 @@ export class PlayerActions {
       );
     });
 
-    this.canvas.addEventListener("pointerleave", this.pointerleave.bind(this));
+    document.addEventListener("pointerleave", this.pointerleave.bind(this));
     this.canvas.addEventListener("pointerdown", this.pointerdown.bind(this));
-    this.canvas.addEventListener("pointermove", this.pointermove.bind(this));
-    this.canvas.addEventListener("pointerup", this.pointerup.bind(this));
+    document.addEventListener("pointermove", this.pointermove.bind(this));
+    document.addEventListener("pointerup", this.pointerup.bind(this));
     this.canvas.addEventListener("contextmenu", (event) =>
       event.preventDefault()
     );
@@ -101,32 +106,31 @@ export class PlayerActions {
     );
   }
 
-  destroy() {}
+  appendSelectionRectange(el: HTMLElement) {
+    el.appendChild(this.selectionDiv);
+  }
+
+  destroy() {
+    this.selectionDiv.remove();
+  }
 
   pointerup(event: PointerEvent) {
-    this.mouse.x = event.offsetX;
-    this.mouse.y = event.offsetY;
+    this.mouse.x = event.pageX;
+    this.mouse.y = event.pageY;
     const selection = this.currentSelection();
     if (selection) {
-      const { start, end, basis } = selection;
-      //we need to convert every body to camera perspective
-      //so that we can compare it as if it was a normal rectangle
-      const invertedBasis = basis.clone().invert();
-      const startCamera = start.clone().applyMatrix4(invertedBasis);
-      const endCamera = end.clone().applyMatrix4(invertedBasis);
-      const startX = Math.min(startCamera.x, endCamera.x);
-      const startY = Math.min(startCamera.y, endCamera.y);
-      const endX = Math.max(startCamera.x, endCamera.x);
-      const endY = Math.max(startCamera.y, endCamera.y);
+      const { start, end } = selection;
+      const screenStart = this.screenSpacePoint(start);
+      const screenEnd = this.screenSpacePoint(end);
+
+      const shipV = new THREE.Vector3();
       this.shipsManager.select((ship) => {
-        const shipPos = new THREE.Vector3(ship.position.x, ship.position.y, 0);
-        shipPos.applyMatrix4(invertedBasis);
-        return (
-          shipPos.x > startX &&
-          shipPos.x < endX &&
-          shipPos.y > startY &&
-          shipPos.y < endY
-        );
+        const { x, y } = ship.position;
+        shipV.set(x, y, 0);
+        shipV.project(this.camera.camera);
+        const xInside = shipV.x > screenStart.x && shipV.x < screenEnd.x;
+        const yInside = shipV.y < screenStart.y && shipV.y > screenEnd.y;
+        return xInside && yInside;
       });
       this.changeState(States.IDLE);
     }
@@ -136,11 +140,15 @@ export class PlayerActions {
     if (this.state !== States.SELECTING) {
       return null;
     }
-    const end = this.waterIntersection(this.mouse);
-    const start = this.waterIntersection(this.selectionStart);
+    const end = this.mouse;
+    const start = this.selectionStart;
+
     if (start && end) {
-      const basis = this.camera.basisMatrix();
-      return { start: start.point, end: end.point, basis };
+      const isStartOnTheLeft = start.x < end.x;
+      if (isStartOnTheLeft) {
+        return { start: start, end: end };
+      }
+      return { start: end, end: start };
     }
   }
 
@@ -165,6 +173,9 @@ export class PlayerActions {
 
   private changeState(newState: States) {
     this.state = newState;
+    if (newState !== States.SELECTING) {
+      this.selectionDiv.style.display = "none";
+    }
     if (newState === States.SHOOTING) {
       this.leaderBoards.hideLeaderBoards();
       this.terrain.minimap.hideMinimap();
@@ -242,32 +253,32 @@ export class PlayerActions {
     }
   }
 
-  pointermove(event: PointerEvent) {
-    this.mouse.x = event.offsetX;
-    this.mouse.y = event.offsetY;
+  private handleSelection() {
     const selection = this.currentSelection();
     if (selection) {
-      const { start, end, basis } = selection;
-      this.shipsManager.selectionRectangle.visible = true;
-      const diff = end.clone().sub(start);
-      //When calculating width and height, we need to do it in the coordinates of the camera
-      diff.applyMatrix4(basis.clone().invert());
-      const width = diff.x;
-      const height = diff.y;
-      this.shipsManager.selectionRectangle.scale.set(width, height, 1);
-      const quaternion = new THREE.Quaternion();
-      selection.basis.decompose(
-        new THREE.Vector3(),
-        quaternion,
-        new THREE.Vector3()
-      );
-      this.shipsManager.selectionRectangle.setRotationFromQuaternion(
-        quaternion
-      );
-      this.shipsManager.selectionRectangle.position.set(start.x, start.y, 0);
+      const { start, end } = selection;
+
+      const width = Math.abs(start.x - end.x);
+      const height = Math.abs(start.y - end.y);
+      const startX = Math.min(start.x, end.x);
+      const startY = Math.min(start.y, end.y);
+
+      this.selectionDiv.style.width = `${width}px`;
+      this.selectionDiv.style.height = `${height}px`;
+      this.selectionDiv.style.left = `${startX}px`;
+      this.selectionDiv.style.top = `${startY}px`;
+      this.selectionDiv.style.display = "block";
+
+      // const finalMatrix = selectionRectangle.matrix.clone();
     } else {
-      this.shipsManager.selectionRectangle.visible = false;
+      this.selectionDiv.style.display = "none";
     }
+  }
+
+  pointermove(event: PointerEvent) {
+    this.mouse.x = event.pageX;
+    this.mouse.y = event.pageY;
+    this.handleSelection();
   }
 
   private pointerdown(event: PointerEvent) {

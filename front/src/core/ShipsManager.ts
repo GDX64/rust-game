@@ -43,7 +43,6 @@ export class ShipsManager {
   private sailsGeometry: THREE.BufferGeometry | null = null;
   private armyFlagsGroup = new THREE.Group();
 
-  selectionRectangle: THREE.Mesh;
   aimCircle;
   hpBar = new HPBar();
   islandsManager: IslandsManager;
@@ -100,23 +99,6 @@ export class ShipsManager {
     this.aimCircle.renderOrder = RenderOrder.AIM;
     this.aimCircle.visible = false;
 
-    const selectionRect = new THREE.PlaneGeometry(1, 1);
-    selectionRect.translate(0.5, 0.5, 0);
-    const selectionRectMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffff00,
-      blending: THREE.NormalBlending,
-      transparent: true,
-      opacity: 0.1,
-      depthWrite: false,
-    });
-    this.selectionRectangle = new THREE.Mesh(
-      selectionRect,
-      selectionRectMaterial
-    );
-    this.selectionRectangle.renderOrder = RenderOrder.AIM;
-    this.selectionRectangle.visible = false;
-
-    this.scene.add(this.selectionRectangle);
     this.scene.add(this.aimCircle);
     this.hpBar.addToScene(scene);
     this.scene.add(this.armyFlagsGroup);

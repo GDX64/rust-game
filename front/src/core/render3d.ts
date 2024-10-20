@@ -222,7 +222,7 @@ export class Render3D {
   }
 
   async init(el: HTMLElement) {
-    this.gameState.change_error(this.state.shootError);
+    this.playerActions.appendSelectionRectange(el);
 
     setInterval(() => this.saveState(), 1_000);
     this.playerActions.bindEvents();

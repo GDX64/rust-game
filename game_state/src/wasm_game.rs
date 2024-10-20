@@ -421,11 +421,11 @@ impl GameWasmState {
         return val;
     }
 
-    pub fn get_player_flag(&self, id: u64) -> String {
+    pub fn get_player_flag(&self, id: u64) -> Option<String> {
         if let Some(player) = self.running_mode.server_state().players.get(&id) {
-            player.flag.clone()
+            Some(player.flag.clone())
         } else {
-            get_flag_names()[0].into()
+            None
         }
     }
 }
