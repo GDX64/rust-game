@@ -114,9 +114,11 @@ export class ShipsManager {
     if (!this.sailsGeometry) {
       return null;
     }
-    const flagTexture = getFlagTexture(
-      this.game.get_player_flag(BigInt(playerID))
-    )?.clone();
+    const country = this.game.get_player_flag(BigInt(playerID));
+    if (!country) {
+      return null;
+    }
+    const flagTexture = getFlagTexture(country)?.clone();
     if (!flagTexture) {
       return null;
     }
@@ -242,6 +244,9 @@ export class ShipsManager {
         return cachedColor;
       }
       const country = this.game.get_player_flag(BigInt(player.id));
+
+      if (!country) return null;
+
       const vibrant = flagColors(country);
       if (vibrant) {
         const color = new THREE.Color(vibrant);
@@ -290,9 +295,10 @@ export class ShipsManager {
   private getArmyFlag(player: number, i: number) {
     let flags = this.armyFlags.get(player);
     if (!flags) {
-      const flatTexture = getFlagTexture(
-        this.game.get_player_flag(BigInt(player))
-      );
+      const country = this.game.get_player_flag(BigInt(player));
+      if (!country) return null;
+
+      const flatTexture = getFlagTexture(country);
       if (!flatTexture) {
         return null;
       }
