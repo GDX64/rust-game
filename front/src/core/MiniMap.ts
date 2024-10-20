@@ -18,17 +18,18 @@ type IslandShape = {
   y: number;
   width: number;
   height: number;
-  id: number;
+  id: number | null;
 };
 
 export class MiniMap {
-  islandShapes: Map<number, IslandShape>;
+  private islandShapes: Map<number, IslandShape>;
+  private mapSizeInPixels;
+  private smallIslandShapes: IslandShape[];
   islandsCanvas;
   mapCanvas;
   mapClick$ = new Subject<{ x: number; y: number }>();
   needUpdate = false;
 
-  mapSizeInPixels;
   constructor(private game: GameWasmState) {
     const mapCanvas = document.createElement("canvas");
     mapCanvas.classList.add("minimap-canvas");
@@ -58,6 +59,7 @@ export class MiniMap {
     this.mapCanvas = mapCanvas;
 
     this.islandShapes = this.buildShapes();
+    this.smallIslandShapes = this.buildSmallShapes();
     this.addCanvasEvents();
   }
 
@@ -128,16 +130,30 @@ export class MiniMap {
     return { scaleX, scaleY };
   }
 
+  private buildSmallShapes() {
+    const { scaleX } = this.scalePair();
+    const errorMargin = scaleX.inverseScale().alpha() * 10;
+    const islandData: [number, number][][] =
+      this.game.get_small_island_paths(errorMargin);
+    const mapData = islandData
+      .map((path) => {
+        if (path.length < 2) {
+          return null;
+        }
+        const shape = this.makeIslandPath(path);
+        return shape;
+      })
+      .filter((x) => x != null);
+    return mapData;
+  }
+
   private buildShapes() {
     const islandData: IslandData[] = this.game.all_island_data();
-    const ctx = this.islandsCanvas.getContext("2d")!;
-    ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
 
-    const { scaleX, scaleY } = this.scalePair();
+    const { scaleX } = this.scalePair();
     const errorMargin = scaleX.inverseScale().alpha() * 10;
     const mapData = islandData
       .map((island) => {
-        const p2d = new Path2D();
         const path: null | [number, number][] = this.game.get_island_path(
           BigInt(island.id),
           errorMargin
@@ -145,53 +161,67 @@ export class MiniMap {
         if (!path || path.length < 2) {
           return null;
         }
-        const x = scaleX.scale(path[0][0]);
-        const y = scaleY.scale(path[0][1]);
-        p2d.moveTo(x, y);
-        let minX = x;
-        let minY = y;
-        let maxX = x;
-        let maxY = y;
-        path.slice(1).forEach(([x, y]) => {
-          const scaledX = scaleX.scale(x);
-          const scaledY = scaleY.scale(y);
-          p2d.lineTo(scaledX, scaledY);
-          minX = Math.min(minX, scaledX);
-          minY = Math.min(minY, scaledY);
-          maxX = Math.max(maxX, scaledX);
-          maxY = Math.max(maxY, scaledY);
-        });
-
-        const islandWidth = maxX - minX;
-        const islandHeight = maxY - minY;
-
-        p2d.closePath();
-        const shape: IslandShape = {
-          path: p2d,
-          width: islandWidth,
-          height: islandHeight,
-          x: minX,
-          y: minY,
-          id: island.id,
-        };
-        return [island.id, shape] as const;
+        const shape = this.makeIslandPath(path);
+        shape.id = island.id;
+        return [island.id, shape];
       })
       .filter((x): x is [number, IslandShape] => x != null);
 
     return new Map(mapData);
   }
 
+  private makeIslandPath(path: [number, number][]) {
+    const { scaleX, scaleY } = this.scalePair();
+    const x = scaleX.scale(path[0][0]);
+    const y = scaleY.scale(path[0][1]);
+    const p2d = new Path2D();
+    p2d.moveTo(x, y);
+    let minX = x;
+    let minY = y;
+    let maxX = x;
+    let maxY = y;
+    path.slice(1).forEach(([x, y]) => {
+      const scaledX = scaleX.scale(x);
+      const scaledY = scaleY.scale(y);
+      p2d.lineTo(scaledX, scaledY);
+      minX = Math.min(minX, scaledX);
+      minY = Math.min(minY, scaledY);
+      maxX = Math.max(maxX, scaledX);
+      maxY = Math.max(maxY, scaledY);
+    });
+
+    const islandWidth = maxX - minX;
+    const islandHeight = maxY - minY;
+
+    p2d.closePath();
+    const shape: IslandShape = {
+      path: p2d,
+      width: islandWidth,
+      height: islandHeight,
+      x: minX,
+      y: minY,
+      id: null,
+    };
+    return shape;
+  }
+
   private updateIslands() {
     const ctx = this.islandsCanvas.getContext("2d")!;
     ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
     const owners: IslandOwners = this.game.island_owners();
-    this.islandShapes.forEach((shape) => {
-      const owner = owners.get(shape.id)?.owner;
+    const islands = [...this.islandShapes.values(), ...this.smallIslandShapes];
+    islands.forEach((shape) => {
+      const isSmallIsland = shape.id == null;
+      const owner = shape.id != null ? owners.get(shape.id)?.owner : null;
       ctx.save();
 
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#000000";
-      ctx.stroke(shape.path);
+      if (isSmallIsland) {
+        ctx.globalAlpha = 0.7;
+      } else {
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#000000";
+        ctx.stroke(shape.path);
+      }
 
       if (owner != null) {
         const country = this.game.get_player_flag(BigInt(owner));
@@ -216,9 +246,10 @@ export class MiniMap {
           };
         }
       } else {
-        ctx.fillStyle = "#616161";
+        ctx.fillStyle = "#7c7c7c";
         ctx.fill(shape.path);
       }
+
       ctx.restore();
     });
   }

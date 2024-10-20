@@ -123,9 +123,9 @@ impl WorldGen {
         Self {
             terrain_interpolation: LinearInterpolation::new(vec![
                 Point2::new(-1.0, -1.0),
-                Point2::new(0.1, 0.0),
-                Point2::new(0.2, 0.03),
-                Point2::new(0.5, 0.10),
+                Point2::new(0.2, 0.0),
+                Point2::new(0.3, 0.03),
+                Point2::new(0.6, 0.10),
                 Point2::new(1.0, 0.4),
             ]),
             low_land: GameNoise::new(Some(seed)),

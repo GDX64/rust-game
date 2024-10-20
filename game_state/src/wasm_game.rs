@@ -409,6 +409,21 @@ impl GameWasmState {
         serde_wasm_bindgen::to_value(&player).unwrap_or(JsValue::NULL)
     }
 
+    pub fn get_small_island_paths(&self, error: f64) -> JsValue {
+        let paths: Vec<_> = self
+            .running_mode
+            .server_state()
+            .game_map
+            .small_islands
+            .values()
+            .map(|island| {
+                return island.island_path(error);
+            })
+            .collect();
+        let val = serde_wasm_bindgen::to_value(&paths).unwrap_or_default();
+        return val;
+    }
+
     pub fn get_island_path(&self, id: u64, error: f64) -> JsValue {
         let island =
             if let Some(island) = self.running_mode.server_state().game_map.islands.get(&id) {

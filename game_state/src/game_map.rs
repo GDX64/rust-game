@@ -12,7 +12,7 @@ use crate::{
     utils::{spiral_search::SpiralSearch, vectors::V2D},
 };
 
-const MIN_ISLAND_SIZE: usize = 300;
+const MIN_ISLAND_SIZE: usize = 150;
 const LAND_WALK_COST: isize = -1;
 
 impl Default for WorldGrid {
@@ -25,6 +25,7 @@ impl Default for WorldGrid {
             islands: BTreeMap::new(),
             path_cache: None,
             total_island_tiles: 0,
+            small_islands: BTreeMap::new(),
         }
     }
 }
@@ -125,6 +126,7 @@ pub struct WorldGrid {
     pub tile_size: f64,
     pub data: Vec<Tile>,
     pub islands: BTreeMap<u64, Island>,
+    pub small_islands: BTreeMap<u64, Island>,
     pub path_cache: Option<PathCache<MooreNeighborhood>>,
     pub total_island_tiles: usize,
 }
@@ -180,6 +182,7 @@ impl WorldGrid {
             islands: BTreeMap::new(),
             path_cache: None,
             total_island_tiles: 0,
+            small_islands: BTreeMap::new(),
         }
     }
 
@@ -264,15 +267,18 @@ impl WorldGrid {
                     water_stack.insert((x, y - 1));
                 } else {
                     let set = self.flood_fill_land(x, y, islands_number, &mut water_stack);
-                    if set.len() > MIN_ISLAND_SIZE {
-                        let mut island = Island::new(set, islands_number, self.tile_size);
-                        let center = island.calc_center();
-                        let x = self.from_tile_unit(center.x as usize);
-                        let y = self.from_tile_unit(center.y as usize);
-                        island.center = V2D::new(x, y);
+                    let island_size = set.len();
+                    let mut island = Island::new(set, islands_number, self.tile_size);
+                    let center = island.calc_center();
+                    let x = self.from_tile_unit(center.x as usize);
+                    let y = self.from_tile_unit(center.y as usize);
+                    island.center = V2D::new(x, y);
+                    if island_size > MIN_ISLAND_SIZE {
                         island_map.insert(islands_number, island);
-                        islands_number += 1;
+                    } else {
+                        self.small_islands.insert(islands_number, island);
                     }
+                    islands_number += 1;
                 }
             }
         }
