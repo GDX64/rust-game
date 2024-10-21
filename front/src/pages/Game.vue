@@ -4,6 +4,11 @@
       <Spinner v-if="!game" class="bg-sec-100 z-10 absolute"></Spinner>
     </Transition>
     <div v-show="game" ref="container"></div>
+    <!-- <button
+      class="absolute z-10 bottom-0 left-0 rounded-full bg-prime-200 text-black"
+    >
+      Audio
+    </button> -->
   </div>
 </template>
 

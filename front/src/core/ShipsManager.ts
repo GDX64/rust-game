@@ -15,6 +15,7 @@ import {
 } from "./RustWorldTypes";
 import { flagColors, getFlagTexture } from "./PlayerStuff";
 import { IslandsManager } from "./IslandsManager";
+import { CameraControl } from "./CameraControl";
 
 const SHIP_SIZE = 10;
 const MAX_SHIPS = 120;
@@ -51,7 +52,7 @@ export class ShipsManager {
     readonly game: GameWasmState,
     public scene: THREE.Scene,
     private water: Water,
-    private camera: THREE.Camera
+    private cameraControl: CameraControl
   ) {
     const geometry = new THREE.SphereGeometry(1, 16, 16);
     const material = new THREE.MeshPhongMaterial({
@@ -67,7 +68,10 @@ export class ShipsManager {
     this.bulletModel.frustumCulled = false;
     this.bulletModel.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.scene.add(this.bulletModel);
-    this.explosionManager = new ExplosionManager(scene);
+    this.explosionManager = new ExplosionManager(
+      scene,
+      this.cameraControl.listener
+    );
 
     const outlineGeometry = new THREE.CircleGeometry(6, 32);
     const outlineMaterial = new THREE.MeshLambertMaterial({
@@ -104,6 +108,10 @@ export class ShipsManager {
     this.scene.add(this.armyFlagsGroup);
 
     this.loadModel();
+  }
+
+  get camera() {
+    return this.cameraControl.camera;
   }
 
   private sailMeshOfPlayer(playerID: number) {

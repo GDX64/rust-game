@@ -69,11 +69,15 @@ export class Render3D {
     this.SEGMENTS_DENSITY = this.gameState.tile_size();
     this.PLANE_SEGMENTS = this.PLANE_WIDTH / this.SEGMENTS_DENSITY;
     this.water = Water.startWater(this.PLANE_WIDTH, this.gameState);
+    this.cameraControls = new CameraControl(
+      this.camera,
+      this.gameState.start_position()
+    );
     this.shipsManager = new ShipsManager(
       this.gameState,
       this.scene,
       this.water,
-      this.camera
+      this.cameraControls
     );
     this.terrain = Terrain.new(this.gameState);
     this.canvas = document.createElement("canvas");
@@ -83,10 +87,6 @@ export class Render3D {
     this.canvas.style.top = "0";
     this.canvas.style.left = "0";
 
-    this.cameraControls = new CameraControl(
-      this.camera,
-      this.gameState.start_position()
-    );
     this.leaderboards = new LeaderBoards(this.gameState);
 
     this.playerActions = new PlayerActions(

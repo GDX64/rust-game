@@ -42,6 +42,7 @@ const MAX_ROTATION_SPEED = 0.03;
 export class CameraControl {
   target = new LerpBox().duration(0.166);
   position = new LerpBox().duration(0.166);
+  listener = new THREE.AudioListener();
   private keys: Record<string, boolean> = {};
   constructor(public camera: THREE.Camera, start_position: V2D) {
     camera.position.z = 100;
@@ -54,6 +55,7 @@ export class CameraControl {
     camera.up.set(0, 0, 1);
     camera.lookAt(this.target.to);
     this.position.updateTo(this.camera.position.clone());
+    this.camera.add(this.listener);
   }
 
   private lookDirectionProjected() {

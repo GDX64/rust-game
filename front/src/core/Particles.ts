@@ -6,18 +6,22 @@ import { RenderOrder } from "./RenderOrder";
 import { ExplosionData } from "./RustWorldTypes";
 import explosionImage from "../assets/explosion.png";
 import { ExplosionKind } from "rust";
+import { ExplosionAudioManager } from "./ExplosionAudioManager";
 
 const PARTICLES = 50;
 
 export class ExplosionManager {
-  explosions: Map<number, Explosion> = new Map();
-  explosionPool: Explosion[] = [];
-  texture = new THREE.TextureLoader().load(explosionImage);
-  group = new THREE.Group();
-  currentTime = 0;
-  constructor(scene: THREE.Scene) {
+  private explosions: Map<number, Explosion> = new Map();
+  private explosionPool: Explosion[] = [];
+  private texture = new THREE.TextureLoader().load(explosionImage);
+  private group = new THREE.Group();
+  private currentTime = 0;
+  private audioManager;
+  constructor(scene: THREE.Scene, listener: THREE.AudioListener) {
     scene.add(this.group);
     this.group.renderOrder = RenderOrder.PARTICLES;
+    this.audioManager = new ExplosionAudioManager(listener);
+    scene.add(this.audioManager.audioGroup);
   }
 
   destroy() {
@@ -61,6 +65,7 @@ export class ExplosionManager {
     });
     explosion.addToScene(this.group);
     this.explosions.set(data.id, explosion);
+    this.audioManager.playAt(position);
   }
 
   tick(time: number) {
@@ -165,7 +170,10 @@ export class Explosion {
     const orbit = new OrbitControls(camera, renderer.domElement);
     document.body.appendChild(renderer.domElement);
 
-    const explosionManager = new ExplosionManager(scene);
+    const explosionManager = new ExplosionManager(
+      scene,
+      new THREE.AudioListener()
+    );
     document.addEventListener("click", () => {
       // explosionManager.explodeAt(
       //   new THREE.Vector3(0, 0, 0),
