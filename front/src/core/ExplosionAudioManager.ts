@@ -1,13 +1,17 @@
 import * as THREE from "three";
-import explosionURL from "../assets/explosion.mp3";
+import explosionURL from "../assets/explosion2.ogg";
+// import explosionURL from "../assets/explosion.mp3";
 import { awaitTime } from "../utils/promiseUtils";
+
+const TOO_FAR = 1000;
 export class ExplosionAudioManager {
-  audioBuffer: AudioBuffer | null = null;
+  private audioBuffer: AudioBuffer | null = null;
   audioGroup = new THREE.Group();
-  freeAudioSet = new Set<THREE.PositionalAudio>();
+  private freeAudioSet = new Set<THREE.PositionalAudio>();
+  private soundsToPlay: THREE.Vector3[] = [];
   constructor(private listener: THREE.AudioListener) {
     this.freeAudioSet = new Set(
-      [...Array(10)].map(() => {
+      [...Array(100)].map(() => {
         return new THREE.PositionalAudio(this.listener);
       })
     );
@@ -19,7 +23,37 @@ export class ExplosionAudioManager {
     this.loadAudioBuffer();
   }
 
-  async playAt(position: THREE.Vector3) {
+  playAt(position: THREE.Vector3) {
+    if (!this.soundsToPlay.length) {
+      setTimeout(() => this.groupSounds(), 16);
+    }
+    const distance = this.listener
+      .getWorldPosition(new THREE.Vector3())
+      .distanceTo(position);
+    if (distance > TOO_FAR) {
+      return;
+    }
+    this.soundsToPlay.push(position);
+    // this.playForReal(position, 1);
+  }
+
+  private groupSounds() {
+    if (!this.soundsToPlay.length) {
+      return;
+    }
+    const positions = this.soundsToPlay;
+    this.soundsToPlay = [];
+    debugger;
+    const averagePosition = new THREE.Vector3(0, 0, 0);
+    for (const position of positions) {
+      averagePosition.add(position);
+    }
+    averagePosition.divideScalar(positions.length);
+    console.log("Playing audio at", averagePosition);
+    this.playForReal(averagePosition, positions.length);
+  }
+
+  private async playForReal(position: THREE.Vector3, numberOfSounds: number) {
     const audio = this.freeAudioSet.values().next().value;
     if (!audio || !this.audioBuffer) {
       return;
@@ -27,13 +61,15 @@ export class ExplosionAudioManager {
     audio.position.copy(position);
     console.log("Playing audio at", audio.parent?.position);
     audio.setBuffer(this.audioBuffer);
-    audio.setVolume(50);
+    const MAX_VOLUME = 10;
+    audio.setVolume(Math.min(0.5 * numberOfSounds, MAX_VOLUME));
     audio.play();
+    audio.setRefDistance(20);
 
     console.log(audio.duration);
     audio.loop = false;
     this.freeAudioSet.delete(audio);
-    await awaitTime(3000);
+    await awaitTime(2000);
     audio.stop();
     console.log("Audio ended");
     this.freeAudioSet.add(audio);
