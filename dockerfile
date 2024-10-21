@@ -20,7 +20,7 @@ COPY ./backend ./backend
 COPY ./game_state ./game_state
 RUN cd ./backend && cargo build --release --target x86_64-unknown-linux-gnu
 
-FROM node:22 as FrontendBuilder
+FROM node:20 as FrontendBuilder
 
 WORKDIR /app
 
@@ -28,7 +28,10 @@ COPY ./package.json ./package.json
 
 COPY ./front/package.json ./front/package.json
 
-RUN npm install
+COPY ./package-lock.json ./package-lock.json
+
+RUN npm config set strict-ssl false
+RUN npm install --force --loglevel verbose
 
 COPY --from=builder /app/game_state/pkg /app/game_state/pkg
 
@@ -45,7 +48,7 @@ COPY ./front ./front
 RUN cd ./front && npm run build
 
 # Final run stage
-FROM rust:slim as Runner
+FROM ubuntu:24.04 as Runner
 
 VOLUME [ "/data" ]
 
