@@ -56,6 +56,7 @@ export class CameraControl {
     camera.lookAt(this.target.to);
     this.position.updateTo(this.camera.position.clone());
     this.camera.add(this.listener);
+    this.listener.context;
   }
 
   private lookDirectionProjected() {

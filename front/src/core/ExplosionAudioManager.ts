@@ -3,7 +3,7 @@ import explosionURL from "../assets/explosion2.ogg";
 // import explosionURL from "../assets/explosion.mp3";
 import { awaitTime } from "../utils/promiseUtils";
 
-const TOO_FAR = 1000;
+const TOO_FAR = 2000;
 export class ExplosionAudioManager {
   private audioBuffer: AudioBuffer | null = null;
   audioGroup = new THREE.Group();
@@ -11,7 +11,7 @@ export class ExplosionAudioManager {
   private soundsToPlay: THREE.Vector3[] = [];
   constructor(private listener: THREE.AudioListener) {
     this.freeAudioSet = new Set(
-      [...Array(100)].map(() => {
+      [...Array(30)].map(() => {
         return new THREE.PositionalAudio(this.listener);
       })
     );
@@ -25,7 +25,7 @@ export class ExplosionAudioManager {
 
   playAt(position: THREE.Vector3) {
     if (!this.soundsToPlay.length) {
-      setTimeout(() => this.groupSounds(), 16);
+      setTimeout(() => this.groupSounds(), 100);
     }
     const distance = this.listener
       .getWorldPosition(new THREE.Vector3())
@@ -43,13 +43,11 @@ export class ExplosionAudioManager {
     }
     const positions = this.soundsToPlay;
     this.soundsToPlay = [];
-    debugger;
     const averagePosition = new THREE.Vector3(0, 0, 0);
     for (const position of positions) {
       averagePosition.add(position);
     }
     averagePosition.divideScalar(positions.length);
-    console.log("Playing audio at", averagePosition);
     this.playForReal(averagePosition, positions.length);
   }
 
@@ -59,19 +57,16 @@ export class ExplosionAudioManager {
       return;
     }
     audio.position.copy(position);
-    console.log("Playing audio at", audio.parent?.position);
     audio.setBuffer(this.audioBuffer);
     const MAX_VOLUME = 10;
-    audio.setVolume(Math.min(0.5 * numberOfSounds, MAX_VOLUME));
-    audio.play();
+    audio.setVolume(Math.min(0.1 * numberOfSounds, MAX_VOLUME));
+    audio.play(0.1 * Math.random());
     audio.setRefDistance(20);
 
-    console.log(audio.duration);
     audio.loop = false;
     this.freeAudioSet.delete(audio);
     await awaitTime(2000);
     audio.stop();
-    console.log("Audio ended");
     this.freeAudioSet.add(audio);
   }
 
@@ -81,23 +76,18 @@ export class ExplosionAudioManager {
       "click",
       () => {
         this.listener.context.resume();
-
-        console.log("resumed", this.listener.context.state);
       },
       { once: true }
     );
     await new Promise<void>((resolve) => {
       this.listener.context.addEventListener("statechange", () => {
-        console.log(this.listener.context.state);
         if (this.listener.context.state === "running") {
           resolve();
         }
       });
     });
-    console.log("Audio context is running");
     audioLoader.load(explosionURL, (buffer) => {
       this.audioBuffer = buffer;
-      console.log("Audio loaded", buffer);
     });
   }
 }
