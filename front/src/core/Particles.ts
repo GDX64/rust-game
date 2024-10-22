@@ -65,7 +65,7 @@ export class ExplosionManager {
     });
     explosion.addToScene(this.group);
     this.explosions.set(data.id, explosion);
-    this.audioManager.playAt(position);
+    this.audioManager.playAt(position, data.kind);
   }
 
   tick(time: number) {

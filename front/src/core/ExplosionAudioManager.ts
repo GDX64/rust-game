@@ -1,17 +1,20 @@
 import * as THREE from "three";
-import explosionURL from "../assets/explosion2.ogg";
-// import explosionURL from "../assets/explosion.mp3";
+import shotURL from "../assets/explosion2.ogg";
+import explosionURL from "../assets/explosion.ogg";
 import { awaitTime } from "../utils/promiseUtils";
+import { ExplosionKind } from "rust";
 
-const TOO_FAR = 2000;
+const MAX_SIMULTANEOUS_SOUNDS = 30;
+
 export class ExplosionAudioManager {
-  private audioBuffer: AudioBuffer | null = null;
+  private explosionBuffer: AudioBuffer | null = null;
+  private shotBuffer: AudioBuffer | null = null;
   audioGroup = new THREE.Group();
   private freeAudioSet = new Set<THREE.PositionalAudio>();
-  private soundsToPlay: THREE.Vector3[] = [];
+  private soundsToPlay: { position: THREE.Vector3; kind: ExplosionKind }[] = [];
   constructor(private listener: THREE.AudioListener) {
     this.freeAudioSet = new Set(
-      [...Array(30)].map(() => {
+      [...Array(MAX_SIMULTANEOUS_SOUNDS)].map(() => {
         return new THREE.PositionalAudio(this.listener);
       })
     );
@@ -23,49 +26,54 @@ export class ExplosionAudioManager {
     this.loadAudioBuffer();
   }
 
-  playAt(position: THREE.Vector3) {
+  playAt(position: THREE.Vector3, kind: ExplosionKind) {
     if (!this.soundsToPlay.length) {
       setTimeout(() => this.groupSounds(), 100);
     }
-    const distance = this.listener
-      .getWorldPosition(new THREE.Vector3())
-      .distanceTo(position);
-    if (distance > TOO_FAR) {
-      return;
-    }
-    this.soundsToPlay.push(position);
-    // this.playForReal(position, 1);
+    this.soundsToPlay.push({ position, kind });
   }
 
   private groupSounds() {
     if (!this.soundsToPlay.length) {
       return;
     }
-    const positions = this.soundsToPlay;
-    this.soundsToPlay = [];
-    const averagePosition = new THREE.Vector3(0, 0, 0);
-    for (const position of positions) {
-      averagePosition.add(position);
+
+    const positions = groupBy(this.soundsToPlay, (sound) => sound.kind);
+    for (const [kind, values] of positions) {
+      this.soundsToPlay = [];
+      const averagePosition = new THREE.Vector3(0, 0, 0);
+      for (const { position } of values) {
+        averagePosition.add(position);
+      }
+      averagePosition.divideScalar(values.length);
+      this.playForReal(averagePosition, values.length, kind);
     }
-    averagePosition.divideScalar(positions.length);
-    this.playForReal(averagePosition, positions.length);
   }
 
-  private async playForReal(position: THREE.Vector3, numberOfSounds: number) {
+  private async playForReal(
+    position: THREE.Vector3,
+    numberOfSounds: number,
+    kind: ExplosionKind
+  ) {
     const audio = this.freeAudioSet.values().next().value;
-    if (!audio || !this.audioBuffer) {
+    if (!audio || !this.explosionBuffer || !this.shotBuffer) {
       return;
     }
     audio.position.copy(position);
-    audio.setBuffer(this.audioBuffer);
+    if (kind === ExplosionKind.Shot) {
+      audio.setBuffer(this.shotBuffer);
+    } else {
+      audio.setBuffer(this.explosionBuffer);
+    }
     const MAX_VOLUME = 10;
     audio.setVolume(Math.min(0.1 * numberOfSounds, MAX_VOLUME));
     audio.play(0.1 * Math.random());
-    audio.setRefDistance(20);
+    audio.setRefDistance(50);
 
     audio.loop = false;
     this.freeAudioSet.delete(audio);
-    await awaitTime(2000);
+    const time = kind === ExplosionKind.Shot ? 2000 : 3000;
+    await awaitTime(time);
     audio.stop();
     this.freeAudioSet.add(audio);
   }
@@ -86,8 +94,23 @@ export class ExplosionAudioManager {
         }
       });
     });
+    audioLoader.load(shotURL, (buffer) => {
+      this.shotBuffer = buffer;
+    });
     audioLoader.load(explosionURL, (buffer) => {
-      this.audioBuffer = buffer;
+      this.explosionBuffer = buffer;
     });
   }
+}
+
+function groupBy<T, K>(array: T[], key: (item: T) => K) {
+  const groups = new Map<K, T[]>();
+  for (const item of array) {
+    const groupKey = key(item);
+    if (!groups.has(groupKey)) {
+      groups.set(groupKey, []);
+    }
+    groups.get(groupKey)!.push(item);
+  }
+  return groups;
 }
