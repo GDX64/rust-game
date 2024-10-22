@@ -13,6 +13,7 @@ import { Terrain } from "./Terrain";
 import { PlayerActions } from "./PlayerActions";
 import { LeaderBoards } from "./LeaderBoards";
 import { config } from "../config/Config";
+import { ExplosionAudioManager } from "./ExplosionAudioManager";
 
 function defaultState() {
   return {
@@ -125,6 +126,11 @@ export class Render3D {
     //   },
     //   "removeBot"
     // );
+    this.gui
+      .add(ExplosionAudioManager, "refdistance", 0, 500)
+      .onChange((val) => {
+        ExplosionAudioManager.refdistance = val;
+      });
     this.gui.add(this.state, "online").onChange((val) => {
       this.saveState();
       window.location.reload();

@@ -7,6 +7,8 @@ import { ExplosionKind } from "rust";
 const MAX_SIMULTANEOUS_SOUNDS = 30;
 
 export class ExplosionAudioManager {
+  static refdistance = 100;
+
   private explosionBuffer: AudioBuffer | null = null;
   private shotBuffer: AudioBuffer | null = null;
   audioGroup = new THREE.Group();
@@ -15,7 +17,13 @@ export class ExplosionAudioManager {
   constructor(private listener: THREE.AudioListener) {
     this.freeAudioSet = new Set(
       [...Array(MAX_SIMULTANEOUS_SOUNDS)].map(() => {
-        return new THREE.PositionalAudio(this.listener);
+        const audio = new THREE.PositionalAudio(this.listener);
+
+        // audio.panner.distanceModel = "linear";
+        // audio.panner.rolloffFactor = 1;
+        // audio.panner.refDistance = 1;
+
+        return audio;
       })
     );
 
@@ -68,7 +76,7 @@ export class ExplosionAudioManager {
     const MAX_VOLUME = 10;
     audio.setVolume(Math.min(0.1 * numberOfSounds, MAX_VOLUME));
     audio.play(0.1 * Math.random());
-    audio.setRefDistance(50);
+    audio.setRefDistance(ExplosionAudioManager.refdistance);
 
     audio.loop = false;
     this.freeAudioSet.delete(audio);
