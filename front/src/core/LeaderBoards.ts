@@ -29,6 +29,7 @@ export class LeaderBoards {
     this.canvas.style.position = "absolute";
     this.canvas.style.top = "0";
     this.canvas.style.left = "0";
+    this.canvas.style.pointerEvents = "none";
   }
 
   measureHeader() {

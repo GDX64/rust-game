@@ -230,7 +230,10 @@ export class Render3D {
   async init(el: HTMLElement) {
     this.playerActions.appendSelectionRectange(el);
 
-    setInterval(() => this.saveState(), 1_000);
+    if (!config.isProd) {
+      setInterval(() => this.saveState(), 1_000);
+    }
+
     this.playerActions.bindEvents();
     const scene = this.scene;
 
