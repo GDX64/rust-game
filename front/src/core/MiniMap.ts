@@ -41,8 +41,8 @@ export class MiniMap {
 
     mapCanvas.style.width = mapSize + "px";
     mapCanvas.style.transition = "opacity 0.3s";
-    // mapCanvas.style.border = "2px solid gray";
-    // mapCanvas.style.borderRadius = "5px";
+    mapCanvas.style.border = "2px solid #f3dd5e";
+    mapCanvas.style.borderRadius = "100%";
     mapCanvas.style.right = "3px";
     mapCanvas.style.bottom = "3px";
     mapCanvas.style.position = "absolute";
@@ -271,16 +271,19 @@ export class MiniMap {
     }
 
     const ctx = this.mapCanvas.getContext("2d")!;
-    ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
-    ctx.drawImage(this.islandsCanvas, 0, 0);
 
     const cameraPosition = camera.position;
     const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
-
-    //draw triangle for camera
-    ctx.fillStyle = "#ffff00";
+    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
+    const rotationOnXYYFromY = rotationOnXY + (3 * Math.PI) / 2;
 
     ctx.save();
+    ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
+    ctx.translate(this.mapSizeInPixels / 2, this.mapSizeInPixels / 2);
+    ctx.rotate(rotationOnXYYFromY);
+    ctx.translate(-this.mapSizeInPixels / 2, -this.mapSizeInPixels / 2);
+    ctx.drawImage(this.islandsCanvas, 0, 0);
+    // ctx.fillRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
 
     const PLANE_WIDTH = this.game.map_size();
 
@@ -300,9 +303,10 @@ export class MiniMap {
     const yOnCanvas = scaleY.scale(cameraPosition.y);
 
     ctx.save();
+    //draw triangle for camera
+    ctx.fillStyle = "#ffff00";
     ctx.translate(xOnCanvas, yOnCanvas);
 
-    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
     ctx.rotate(-rotationOnXY);
 
     const ARROW_SIZE = 9;
@@ -330,7 +334,6 @@ export class MiniMap {
       const texture = getFlagImage(players.flag);
       result.forEach(({ center: [x, y], count }) => {
         ctx.save();
-        ctx.beginPath();
         const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
         const radius = Math.floor(MAX_RADIUS * factor);
         x = scaleX.scale(x) - radius;
@@ -339,11 +342,14 @@ export class MiniMap {
         y = Math.floor(y);
         const width = radius * 2;
         const height = Math.floor(width * flagAspectRatio);
-        ctx.rect(x, y, width, height);
+        ctx.beginPath();
+        ctx.translate(x, y);
+        ctx.rotate(-rotationOnXYYFromY);
+        ctx.rect(0, 0, width, height);
         ctx.stroke();
         ctx.clip();
 
-        ctx.drawImage(texture, x, y, width, height);
+        ctx.drawImage(texture, 0, 0, width, height);
         ctx.restore();
         // ctx.fillStyle = "#ffffff";
         // ctx.fill();
