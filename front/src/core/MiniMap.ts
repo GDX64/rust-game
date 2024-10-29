@@ -42,7 +42,7 @@ export class MiniMap {
 
     mapCanvas.style.width = mapSize + "px";
     mapCanvas.style.transition = "opacity 0.3s";
-    mapCanvas.style.border = "2px solid #f3dd5e";
+    mapCanvas.style.border = "2px solid #fff1a1";
     mapCanvas.style.borderRadius = "100%";
     mapCanvas.style.right = "3px";
     mapCanvas.style.bottom = "3px";
@@ -342,12 +342,12 @@ export class MiniMap {
     const MAX_RADIUS_COUNT = 100;
     const flagAspectRatio = 0.67;
     ctx.strokeStyle = "#ffffff";
-    [...players.values()].flatMap((players) => {
+    for (const playerInfo of players.values()) {
       const result: CenterResults[] = this.game.get_all_center_of_player(
-        players.id
+        playerInfo.id
       );
       // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
-      const texture = getFlagImage(players.flag);
+      const texture = getFlagImage(playerInfo.flag);
       result.forEach(({ center: [x, y], count }) => {
         ctx.save();
         const factor = Math.sqrt(Math.min(1, count / MAX_RADIUS_COUNT));
@@ -367,10 +367,18 @@ export class MiniMap {
 
         ctx.drawImage(texture, 0, 0, width, height);
         ctx.restore();
-        // ctx.fillStyle = "#ffffff";
-        // ctx.fill();
       });
-    });
+    }
+
+    //Draw NORTH
+    ctx.globalAlpha = 1;
+    const NORTH_MARGIN = 15;
+    const yNorth = scaleY.scale(PLANE_WIDTH / 2) + NORTH_MARGIN;
+    const xNorth = scaleX.scale(0);
+    ctx.fillStyle = "#fff1a1";
+    ctx.font = "16px sans-serif";
+    ctx.fillText("N", xNorth, yNorth);
+
     ctx.restore();
   }
 }
