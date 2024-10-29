@@ -25,6 +25,7 @@ export class MiniMap {
   private islandShapes: Map<number, IslandShape>;
   private mapSizeInPixels;
   private smallIslandShapes: IslandShape[];
+  private lastDrawMatrix: DOMMatrix = new DOMMatrix();
   islandsCanvas;
   mapCanvas;
   mapClick$ = new Subject<{ x: number; y: number }>();
@@ -106,8 +107,13 @@ export class MiniMap {
       event.stopPropagation();
       const x = event.offsetX;
       const y = event.offsetY;
-      const xWorld = miniMapToWorldX.scale(x);
-      const yWorld = miniMapToWorldY.scale(y);
+      const point = new DOMPoint(x, y);
+      const transformedPoint = point.matrixTransform(
+        this.lastDrawMatrix.inverse()
+      );
+
+      const xWorld = miniMapToWorldX.scale(transformedPoint.x);
+      const yWorld = miniMapToWorldY.scale(transformedPoint.y);
       this.mapClick$.next({ x: xWorld, y: yWorld });
     };
   }
@@ -264,6 +270,18 @@ export class MiniMap {
     this.mapCanvas.style.pointerEvents = "auto";
   }
 
+  private currentMatrix(camera: THREE.Camera) {
+    const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
+    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
+    const rotationOnXYYFromY = rotationOnXY + (3 * Math.PI) / 2;
+    const matrix = new DOMMatrix();
+    matrix.translateSelf(this.mapSizeInPixels / 2, this.mapSizeInPixels / 2);
+    const rotationDegrees = (rotationOnXYYFromY * 180) / Math.PI;
+    matrix.rotateSelf(0, 0, rotationDegrees);
+    matrix.translateSelf(-this.mapSizeInPixels / 2, -this.mapSizeInPixels / 2);
+    return { matrix, rotationOnXY, rotationOnXYYFromY };
+  }
+
   updateCanvas(camera: THREE.Camera) {
     if (this.game.has_map_changed() || this.needUpdate) {
       this.updateIslands();
@@ -271,19 +289,17 @@ export class MiniMap {
     }
 
     const ctx = this.mapCanvas.getContext("2d")!;
+    const { matrix, rotationOnXY, rotationOnXYYFromY } =
+      this.currentMatrix(camera);
+
+    this.lastDrawMatrix = matrix;
 
     const cameraPosition = camera.position;
-    const cameraDirection = camera.getWorldDirection(new THREE.Vector3());
-    const rotationOnXY = Math.atan2(cameraDirection.y, cameraDirection.x);
-    const rotationOnXYYFromY = rotationOnXY + (3 * Math.PI) / 2;
 
     ctx.save();
     ctx.clearRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
-    ctx.translate(this.mapSizeInPixels / 2, this.mapSizeInPixels / 2);
-    ctx.rotate(rotationOnXYYFromY);
-    ctx.translate(-this.mapSizeInPixels / 2, -this.mapSizeInPixels / 2);
+    ctx.setTransform(matrix);
     ctx.drawImage(this.islandsCanvas, 0, 0);
-    // ctx.fillRect(0, 0, this.mapSizeInPixels, this.mapSizeInPixels);
 
     const PLANE_WIDTH = this.game.map_size();
 
