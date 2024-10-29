@@ -43,6 +43,7 @@ export class MiniMap {
     mapCanvas.style.width = mapSize + "px";
     mapCanvas.style.transition = "opacity 0.3s";
     mapCanvas.style.border = "2px solid #fff1a1";
+    mapCanvas.style.background = "#00000033";
     mapCanvas.style.borderRadius = "100%";
     mapCanvas.style.right = "3px";
     mapCanvas.style.bottom = "3px";
@@ -289,8 +290,7 @@ export class MiniMap {
     }
 
     const ctx = this.mapCanvas.getContext("2d")!;
-    const { matrix, rotationOnXY, rotationOnXYYFromY } =
-      this.currentMatrix(camera);
+    const { matrix, rotationOnXY } = this.currentMatrix(camera);
 
     this.lastDrawMatrix = matrix;
 
@@ -335,7 +335,8 @@ export class MiniMap {
     ctx.fill();
     ctx.restore();
 
-    //draw boats
+    //draw boat flags
+    ctx.resetTransform();
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
     ctx.globalAlpha = 0.9;
     const MAX_RADIUS = 12;
@@ -346,7 +347,6 @@ export class MiniMap {
       const result: CenterResults[] = this.game.get_all_center_of_player(
         playerInfo.id
       );
-      // ctx.fillStyle = flagColors(players.flag) ?? "#ffffff";
       const texture = getFlagImage(playerInfo.flag);
       result.forEach(({ center: [x, y], count }) => {
         ctx.save();
@@ -359,8 +359,8 @@ export class MiniMap {
         const width = radius * 2;
         const height = Math.floor(width * flagAspectRatio);
         ctx.beginPath();
-        ctx.translate(x, y);
-        ctx.rotate(-rotationOnXYYFromY);
+        const transformed = new DOMPoint(x, y).matrixTransform(matrix);
+        ctx.translate(transformed.x, transformed.y);
         ctx.rect(0, 0, width, height);
         ctx.stroke();
         ctx.clip();
