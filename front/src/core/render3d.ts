@@ -14,6 +14,8 @@ import { PlayerActions } from "./PlayerActions";
 import { LeaderBoards } from "./LeaderBoards";
 import { config } from "../config/Config";
 import { ExplosionAudioManager } from "./ExplosionAudioManager";
+import skyboxURL from "../assets/pure_sky.hdr?url";
+import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
 
 function defaultState() {
   return {
@@ -255,6 +257,16 @@ export class Render3D {
     });
     this.renderer = renderer;
 
+    const loader = new RGBELoader();
+    loader.load(skyboxURL, (texture) => {
+      // texture.mapping = THREE.CubeReflectionMapping;
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      // texture.flipY = false;
+      scene.backgroundRotation = new THREE.Euler(Math.PI / 2, 0, 0);
+      scene.background = texture;
+      scene.environment = texture;
+    });
+
     const fog = new THREE.Fog(0x999999, 0, 4000);
     this.scene.fog = fog;
 
@@ -347,7 +359,8 @@ export class Render3D {
   }
 
   private makeSun(scene: THREE.Scene) {
-    const sunPosition = new THREE.Vector3(0, 4000, 500);
+    const sunPosition = new THREE.Vector3(4000, 0, 500);
+    sunPosition.applyAxisAngle(new THREE.Vector3(0, 0, 1), -Math.PI * 0.18);
     const light = new THREE.DirectionalLight(0xffffff, 10);
     const ambientLight = new THREE.AmbientLight(0x404040, 30);
     light.position.set(sunPosition.x, sunPosition.y, sunPosition.z);
