@@ -335,6 +335,17 @@ export class MiniMap {
     ctx.fill();
     ctx.restore();
 
+    //Draw NORTH
+    ctx.globalAlpha = 1;
+    const NORTH_MARGIN = 15;
+    const yNorth = scaleY.scale(PLANE_WIDTH / 2) + NORTH_MARGIN;
+    const xNorth = scaleX.scale(0);
+    ctx.fillStyle = "#fff1a1";
+    ctx.font = "16px sans-serif";
+    ctx.fillText("N", xNorth, yNorth);
+
+    ctx.restore();
+
     //draw boat flags
     ctx.resetTransform();
     const players: Map<number, PlayerInfo> = this.game.get_all_players();
@@ -369,16 +380,5 @@ export class MiniMap {
         ctx.restore();
       });
     }
-
-    //Draw NORTH
-    ctx.globalAlpha = 1;
-    const NORTH_MARGIN = 15;
-    const yNorth = scaleY.scale(PLANE_WIDTH / 2) + NORTH_MARGIN;
-    const xNorth = scaleX.scale(0);
-    ctx.fillStyle = "#fff1a1";
-    ctx.font = "16px sans-serif";
-    ctx.fillText("N", xNorth, yNorth);
-
-    ctx.restore();
   }
 }
