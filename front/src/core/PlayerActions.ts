@@ -128,8 +128,12 @@ export class PlayerActions {
         const { x, y } = ship.position;
         shipV.set(x, y, 0);
         shipV.project(this.camera.camera);
-        const xInside = shipV.x > screenStart.x && shipV.x < screenEnd.x;
-        const yInside = shipV.y < screenStart.y && shipV.y > screenEnd.y;
+        const xMin = Math.min(screenStart.x, screenEnd.x);
+        const xMax = Math.max(screenStart.x, screenEnd.x);
+        const yMin = Math.min(screenStart.y, screenEnd.y);
+        const yMax = Math.max(screenStart.y, screenEnd.y);
+        const xInside = shipV.x > xMin && shipV.x < xMax;
+        const yInside = shipV.y < yMax && shipV.y > yMin;
         return xInside && yInside;
       });
       this.changeState(States.IDLE);
