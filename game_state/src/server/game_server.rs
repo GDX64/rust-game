@@ -110,7 +110,7 @@ impl GameServer {
         self.add_to_frame(StateMessage::CreatePlayer {
             id: bot.player.id,
             name,
-            flag: None,
+            flag: PlayerState::get_player_flag(bot.player.id),
         });
         self.bots.push(bot);
     }
@@ -213,6 +213,8 @@ impl GameServer {
         let has_no_players = self.players.is_empty();
 
         self.players.insert(id, pair);
+
+        let flag = flag.unwrap_or(PlayerState::get_player_flag(id));
 
         let create_player_msg = StateMessage::CreatePlayer {
             id,

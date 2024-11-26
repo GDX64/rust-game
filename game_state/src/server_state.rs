@@ -119,7 +119,7 @@ pub enum StateMessage {
     CreatePlayer {
         id: u64,
         name: String,
-        flag: Option<String>,
+        flag: String,
     },
     RemovePlayer {
         id: u64,
