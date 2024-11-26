@@ -15,12 +15,11 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, ref, shallowRef } from "vue";
 import { ArchpelagusGame } from "../lib";
-import { onBeforeRouteLeave, useRouter } from "vue-router";
+import { onBeforeRouteLeave } from "vue-router";
 import Spinner from "../components/Spinner.vue";
 import { awaitTime } from "../utils/promiseUtils";
 
 const container = ref<HTMLElement>();
-const router = useRouter();
 
 const game = shallowRef<ArchpelagusGame>();
 
@@ -37,10 +36,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   game.value?.destroy();
-});
-
-onBeforeRouteLeave((guard) => {
-  queueMicrotask(() => router.go(0));
 });
 </script>
 

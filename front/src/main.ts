@@ -5,10 +5,11 @@ import Home from "./pages/Home.vue";
 import "./index.css";
 import { ServerRequests } from "./requests/ServerRequests";
 
+const GAME_ROUTE = "/game";
 const routes: RouteRecordRaw[] = [
   { path: "/", component: Home },
   {
-    path: "/game",
+    path: GAME_ROUTE,
     component: () => import("./pages/Game.vue"),
   },
 ];
@@ -16,6 +17,12 @@ const routes: RouteRecordRaw[] = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.afterEach((to, from) => {
+  if (from.path === GAME_ROUTE && to.path !== GAME_ROUTE) {
+    router.go(0);
+  }
 });
 
 window.addEventListener("error", (event) => {
