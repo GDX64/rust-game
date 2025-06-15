@@ -4,3 +4,4 @@ pkg
 dist
 img.tar
 assets_ignore
+data/certbot/
