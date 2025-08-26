@@ -112,7 +112,7 @@ mod test {
 
     #[test]
     fn running_mode() {
-        let client = LocalClient::new("test_player".to_string(), 0);
+        let client = LocalClient::new("test_player".to_string(), 0, Some("us".to_string()));
         let mut local = super::RunningMode::new(Box::new(client));
         local.send_game_message(GameMessage::AddBot);
         local.send_game_message(GameMessage::AddBot);
