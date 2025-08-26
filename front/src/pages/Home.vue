@@ -27,7 +27,7 @@
           ></ServerSelector>
           <div class="px-1 flex gap-2 select-none items-center w-max">
             <label class="flex items-center w-max gap-2">
-              <input type="checkbox" v-model="online" />
+              <input type="checkbox" v-model="online" disabled />
               <div class="">Online</div>
             </label>
             <TextInput
@@ -35,6 +35,11 @@
               placeholder="Seed, ex: 123"
               :disabled="online"
             ></TextInput>
+          </div>
+          <div class="warning max-w-[300px] w-full">
+            I had to turn off online gameplay because hosting real time games in
+            aws is kind of expensive, we are going to need to wait until I get a
+            raspberry pi
           </div>
         </div>
       </div>
@@ -74,7 +79,7 @@ import TextInput from "./TextInput.vue";
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
 const userName = ref("");
-const online = ref(true);
+const online = ref(false);
 const localSeed = ref("");
 
 const serverSelected = ref<ServerList>();
