@@ -1,13 +1,13 @@
 use crate::player::Player;
 use crate::player_state::PlayerState;
-use crate::server::game_server::*;
 use crate::server::local_client::LocalClient;
+use crate::server::online_client::{ChannelConstructor, OnlineClient, OnlineClientChannel};
 use crate::server::running_mode::{RunningEvent, RunningMode};
+use crate::server::{game_server::*, ws_channel::WSChannel};
 use crate::server_state::*;
 use crate::ship::ShipState;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
-use crate::{get_flag_names, server::online_client::OnlineClient};
 use cgmath::{MetricSpace, Vector2};
 use core::f64;
 use js_sys::Promise;
@@ -27,7 +27,11 @@ pub struct GameWasmState {
 
 #[wasm_bindgen]
 impl GameWasmState {
-    pub fn new_online(client: OnlineClient) -> Self {
+    pub fn new_online(url: &str) -> Self {
+        let client = OnlineClient::new(Box::new(WasmChannelConstructor {
+            url: url.to_string(),
+        }));
+
         Self {
             player: Player::new(0),
             running_mode: RunningMode::new(Box::new(client)),
@@ -181,8 +185,7 @@ impl GameWasmState {
         self.player = Player::new(self.running_mode.id());
     }
 
-    pub fn start_online(&mut self, on_data: OnlineClient) {
-        self.running_mode = RunningMode::new(Box::new(on_data));
+    pub fn start_online(&mut self) {
         self.player = Player::new(self.running_mode.id());
     }
 
@@ -507,4 +510,24 @@ fn recursive_divide(ships: Vec<&ShipState>, i: usize) -> Vec<DivideResult> {
     let r2 = recursive_divide(right, i - 1);
     r1.extend(r2);
     return r1;
+}
+
+impl OnlineClientChannel for WSChannel {
+    fn receiver(&mut self) -> Option<futures::channel::mpsc::Receiver<Vec<u8>>> {
+        self.receiver()
+    }
+
+    fn send(&mut self, msg: Vec<u8>) {
+        self.send(msg);
+    }
+}
+
+struct WasmChannelConstructor {
+    url: String,
+}
+
+impl ChannelConstructor for WasmChannelConstructor {
+    fn new(&self) -> Box<dyn OnlineClientChannel> {
+        Box::new(WSChannel::new(&self.url))
+    }
 }

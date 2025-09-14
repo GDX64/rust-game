@@ -1,27 +1,32 @@
-use super::{game_server::GameMessage, local_client::Client, ws_channel::WSChannel};
-use crate::utils::scheduling::{Interval, WasmSleep};
+use super::{game_server::GameMessage, local_client::Client};
 use actor::Actor;
-use futures::{join, select, stream::FusedStream, FutureExt, SinkExt, StreamExt};
+use futures::{join, SinkExt, StreamExt};
 use std::{
     future::Future,
     pin::Pin,
     task::{Context, Waker},
 };
-use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
+pub trait ChannelConstructor {
+    fn new(&self) -> Box<dyn OnlineClientChannel>;
+}
+
+pub trait OnlineClientChannel {
+    fn send(&mut self, msg: Vec<u8>);
+    fn receiver(&mut self) -> Option<futures::channel::mpsc::Receiver<Vec<u8>>>;
+}
+
 pub struct OnlineClient {
     actor: Option<Actor<GameMessage>>,
-    url: String,
+    constructor: Box<dyn ChannelConstructor>,
     future: Option<Pin<Box<dyn Future<Output = ()>>>>,
 }
 
-#[wasm_bindgen]
 impl OnlineClient {
-    pub fn new(url: &str) -> OnlineClient {
+    pub fn new(constructor: Box<dyn ChannelConstructor>) -> OnlineClient {
         let mut client = OnlineClient {
             actor: None,
-            url: url.to_string(),
+            constructor,
             future: None,
         };
         client.reconnect();
@@ -61,45 +66,29 @@ impl Client for OnlineClient {
     }
 
     fn reconnect(&mut self) {
-        let url = self.url.clone();
+        let mut ws = self.constructor.new();
 
         let (actor, future) = Actor::<GameMessage>::spawn(move |mut sender, mut receiver| {
-            let mut ws = WSChannel::new(&url);
-
             let mut ws_receiver = ws.receiver().expect("Failed to get receiver");
 
             let sender_future = async move {
                 loop {
-                    if receiver.is_terminated() {
+                    if let Some(msg) = receiver.next().await {
+                        let mut v = vec![msg];
+                        while let Ok(Some(value)) = receiver.try_next() {
+                            v.push(value);
+                        }
+                        ws.send(GameMessage::serialize_arr(&v));
+                    } else {
                         break;
                     }
-                    let borrowed = &mut receiver;
-                    let v = borrowed.take_until(WasmSleep::sleep(16)).collect().await;
-                    ws.send(GameMessage::serialize_arr(&v));
                 }
             };
 
             let receiver_future = async move {
-                log::info!("Reconnecting to {}", url);
-                let mut interval = Interval::new(1000);
-                let mut ticks_idle = 0;
+                log::info!("Reconnecting...");
                 loop {
-                    let ans = select! {
-                        ans = ws_receiver.next().fuse() => {
-                            ticks_idle = 0;
-                            ans
-                        },
-                        _ = interval.tick().fuse() => {
-                            ticks_idle += 1;
-                            if ticks_idle > 5{
-                                log::warn!("Connection idle detected");
-                                None
-                            }else{
-                                continue;
-                            }
-                        }
-                    };
-                    match ans {
+                    match ws_receiver.next().await {
                         Some(msg) => {
                             let msg = GameMessage::from_arr_bytes(&msg);
                             msg.into_iter().for_each(|msg| {
