@@ -22,7 +22,7 @@ pub enum GameMessage {
     AddBot,
     AddBotShipAt(f64, f64),
     RemoveBot,
-    PlayerCreated { x: f64, y: f64, id: u64 },
+    PlayerCreated { x: f64, y: f64, id: u64, seed: u32 },
     AskBroadcast { player: u64 },
     ConnectionDown,
     Ping(u64),
@@ -233,6 +233,7 @@ impl GameServer {
                 x: start_x,
                 y: start_y,
                 id,
+                seed: self.seed,
             },
         );
 
@@ -302,8 +303,8 @@ impl GameServer {
 
         if self.frames % SYNC_EVERY_N_FRAMES == 0 {
             self.remove_inactive_players();
-            let state = self.game_state.state_message();
-            self.broadcast(GameMessage::FrameMessage(vec![state]));
+            // let state = self.game_state.state_message();
+            // self.broadcast(GameMessage::FrameMessage(vec![state]));
         }
 
         self.add_to_frame(StateMessage::Tick(dt));

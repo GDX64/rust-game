@@ -1,18 +1,13 @@
+use super::game_server::{self, GameMessage};
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 pub use wasm_bindgen::prelude::*;
-
-use crate::server_state::ServerState;
-
-use super::game_server::{self, GameMessage};
 
 pub trait Client {
     fn send(&mut self, msg: GameMessage);
     fn tick(&mut self, dt: f64);
     fn next_message(&mut self) -> Option<GameMessage>;
-    fn server_state(&self) -> Option<&ServerState>;
     fn reconnect(&mut self);
-    fn get_seed(&self) -> u32;
 }
 
 #[wasm_bindgen]
@@ -20,7 +15,6 @@ pub struct LocalClient {
     game: game_server::GameServer,
     receiver: Receiver<Vec<u8>>,
     receive_buffer: Vec<GameMessage>,
-    seed: u32,
 }
 
 #[wasm_bindgen]
@@ -34,7 +28,6 @@ impl LocalClient {
             game,
             receiver,
             receive_buffer: vec![],
-            seed,
         }
     }
 }
@@ -48,16 +41,8 @@ impl Client for LocalClient {
         self.game.tick(dt);
     }
 
-    fn server_state(&self) -> Option<&ServerState> {
-        Some(&self.game.game_state)
-    }
-
     fn reconnect(&mut self) {
         // does not need to do anything in this case
-    }
-
-    fn get_seed(&self) -> u32 {
-        self.seed
     }
 
     fn next_message(&mut self) -> Option<GameMessage> {

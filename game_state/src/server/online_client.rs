@@ -1,27 +1,28 @@
-use crate::{
-    server_state::ServerState,
-    utils::scheduling::{Interval, WasmSleep},
-};
-
 use super::{game_server::GameMessage, local_client::Client, ws_channel::WSChannel};
+use crate::utils::scheduling::{Interval, WasmSleep};
 use actor::Actor;
 use futures::{join, select, stream::FusedStream, FutureExt, SinkExt, StreamExt};
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Waker},
+};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct OnlineClient {
     actor: Option<Actor<GameMessage>>,
     url: String,
-    seed: u32,
+    future: Option<Pin<Box<dyn Future<Output = ()>>>>,
 }
 
 #[wasm_bindgen]
 impl OnlineClient {
-    pub fn new(url: &str, seed: u32) -> OnlineClient {
+    pub fn new(url: &str) -> OnlineClient {
         let mut client = OnlineClient {
             actor: None,
             url: url.to_string(),
-            seed,
+            future: None,
         };
         client.reconnect();
         client
@@ -42,26 +43,27 @@ impl Client for OnlineClient {
         }
     }
 
-    fn get_seed(&self) -> u32 {
-        self.seed
-    }
-
     fn next_message(&mut self) -> Option<GameMessage> {
         self.next()
     }
 
     fn tick(&mut self, _dt: f64) {
-        //
-    }
-
-    fn server_state(&self) -> Option<&ServerState> {
-        return None;
+        // polls the future to keep the connection alive
+        if let Some(ref mut future) = self.future {
+            let result = future
+                .as_mut()
+                .poll(&mut Context::from_waker(Waker::noop()));
+            if result.is_ready() {
+                self.future = None;
+                self.actor = None;
+            }
+        }
     }
 
     fn reconnect(&mut self) {
         let url = self.url.clone();
 
-        let actor = Actor::<GameMessage>::spawn(move |mut sender, mut receiver| {
+        let (actor, future) = Actor::<GameMessage>::spawn(move |mut sender, mut receiver| {
             let mut ws = WSChannel::new(&url);
 
             let mut ws_receiver = ws.receiver().expect("Failed to get receiver");
@@ -122,6 +124,7 @@ impl Client for OnlineClient {
                 join!(receiver_future, sender_future);
             };
         });
+        self.future = Some(Box::pin(future));
         self.actor = Some(actor);
     }
 }
@@ -139,15 +142,17 @@ mod actor {
     impl<T> Actor<T> {
         pub fn spawn<F: Future<Output = ()> + 'static>(
             f: impl FnOnce(Sender<T>, Receiver<T>) -> F,
-        ) -> Actor<T> {
+        ) -> (Actor<T>, F) {
             let (sender_actor, receiver_main) = channel(100);
             let (sender_main, receiver_actor) = channel(100);
             let future = f(sender_actor, receiver_actor);
-            wasm_bindgen_futures::spawn_local(future);
-            return Actor {
-                sender: sender_main,
-                receiver: receiver_main,
-            };
+            return (
+                Actor {
+                    sender: sender_main,
+                    receiver: receiver_main,
+                },
+                future,
+            );
         }
     }
 }
