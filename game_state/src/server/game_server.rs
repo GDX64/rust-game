@@ -148,6 +148,7 @@ impl GameServer {
     }
 
     fn handle_single_message(&mut self, msg: GameMessage) {
+        log::info!("Received message: {:?}", msg);
         match msg {
             GameMessage::FrameMessage(_msg) => {
                 log::error!("Server should not receive FrameMessage");

@@ -23,7 +23,7 @@ impl<K: EventKey> EventHub<K> {
         }
     }
 
-    pub fn subscribe(&mut self) -> Subscription<K> {
+    fn subscribe(&mut self) -> Subscription<K> {
         let (sender, receiver) = futures::channel::mpsc::channel(10);
         self.senders.push(sender);
         Subscription { receiver }
@@ -44,6 +44,20 @@ impl<K: EventKey> EventHub<K> {
                 }
             })
             .collect();
+    }
+
+    pub async fn when<T, F>(&mut self, f: F) -> anyhow::Result<T>
+    where
+        T: Serialize + 'static,
+        F: Fn(K) -> Option<T> + 'static,
+    {
+        let mut recv = self.subscribe();
+        while let Some(event) = recv.receiver.next().await {
+            if let Some(val) = f(event) {
+                return Ok(val);
+            }
+        }
+        return Err(anyhow::anyhow!("No event received"));
     }
 
     pub fn as_promise<T, F>(&mut self, f: F) -> Promise

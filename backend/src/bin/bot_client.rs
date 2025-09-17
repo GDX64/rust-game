@@ -2,9 +2,11 @@ use futures::{
     channel::mpsc::{Receiver, Sender},
     SinkExt, StreamExt,
 };
-use game_state::{ChannelConstructor, OnlineClient, OnlineClientChannel, RunningMode};
+use game_state::{
+    BotPlayer, ChannelConstructor, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
+};
 use std::{env, time::Duration};
-use tokio::{net::TcpStream, time::interval};
+use tokio::{net::TcpStream, select, time::interval};
 use tokio_tungstenite::tungstenite::Message;
 
 #[tokio::main]
@@ -14,9 +16,19 @@ async fn main() {
     let online_mode = OnlineClient::new(Box::new(constructor));
     let mut runner = RunningMode::new(Box::new(online_mode));
     let mut interval = interval(Duration::from_millis(16));
+    let mut bot = BotPlayer::new(0);
     loop {
-        interval.tick().await;
-        runner.tick(0.016);
+        let tick = interval.tick();
+        tick.await;
+        if bot.player.id != runner.id() {
+            bot = BotPlayer::new(runner.id());
+        }
+        let dt = 0.016;
+        runner.tick(dt);
+        bot.tick(dt, runner.server_state());
+        bot.player.collect_messages().into_iter().for_each(|msg| {
+            runner.send_game_message(game_state::GameMessage::InputMessage(msg));
+        });
     }
 }
 
@@ -42,19 +54,25 @@ impl MyChannel {
         tokio::spawn(async move {
             let ws = make_client(&url).await;
             let (mut write, mut read) = ws.split();
-            while let Some(msg) = w_receiver.next().await {
-                write.send(Message::Binary(msg.into())).await.unwrap();
-            }
-            while let Some(message) = read.next().await {
-                match message {
-                    Ok(Message::Binary(msg)) => {
-                        r_sender.try_send(msg.into()).unwrap();
-                    }
-                    _ => {
-                        log::error!("Error receiving message");
+            let f1 = async move {
+                while let Some(msg) = w_receiver.next().await {
+                    println!("Sending a message to server");
+                    write.send(Message::Binary(msg.into())).await.unwrap();
+                }
+            };
+            let f2 = async move {
+                while let Some(message) = read.next().await {
+                    match message {
+                        Ok(Message::Binary(msg)) => {
+                            r_sender.try_send(msg.into()).unwrap();
+                        }
+                        _ => {
+                            log::error!("Error receiving message");
+                        }
                     }
                 }
-            }
+            };
+            return futures::join!(f1, f2);
         });
         Self {
             receiver: Some(r_receiver),
