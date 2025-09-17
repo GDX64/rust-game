@@ -1,6 +1,6 @@
 use axum::{
     extract::{ws::Message, Query, State, WebSocketUpgrade},
-    http::{HeaderValue, StatusCode},
+    http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
@@ -69,7 +69,8 @@ async fn main() {
     let static_dir = static_dir.fallback(ServeFile::new("./dist/index.html"));
 
     let cors = CorsLayer::new()
-        .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
+        .allow_origin(Any)
+        // .allow_origin("http://localhost:5173".parse::<HeaderValue>().unwrap())
         .allow_methods(Any)
         .allow_headers(Any);
 

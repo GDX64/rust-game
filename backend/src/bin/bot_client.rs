@@ -9,7 +9,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 #[tokio::main]
 async fn main() {
-    let addr = env::var("SERVER_ADDR").expect("SERVER_ADDR not set");
+    let addr = env::var("SERVER_ADDR").unwrap_or("127.0.0.1:5000".into());
     let constructor = MyChannelConstructor { url: addr };
     let online_mode = OnlineClient::new(Box::new(constructor));
     let mut runner = RunningMode::new(Box::new(online_mode));
@@ -75,9 +75,15 @@ impl OnlineClientChannel for MyChannel {
 
 pub async fn make_client(addr: &str) -> tokio_tungstenite::WebSocketStream<TcpStream> {
     let stream = TcpStream::connect(addr).await.expect("Failed to connect");
-    let (ws_stream, _) = tokio_tungstenite::client_async(format!("ws://{}", addr), stream)
+    let addr = format!("ws://{}/ws?server_id=AWS+SP1", addr);
+    println!("Connecting to {addr}");
+    let (ws_stream, _) = tokio_tungstenite::client_async(addr, stream)
         .await
-        .expect("Failed to connect");
+        .map_err(|e| {
+            println!("Error connecting to server: {}", e);
+            e
+        })
+        .unwrap();
 
     return ws_stream;
 }
