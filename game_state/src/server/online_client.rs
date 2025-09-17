@@ -1,4 +1,6 @@
-use super::{game_server::GameMessage, local_client::Client};
+use crate::server::Client;
+
+use super::game_server::GameMessage;
 use actor::Actor;
 use futures::{join, SinkExt, StreamExt};
 use std::{

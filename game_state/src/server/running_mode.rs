@@ -1,5 +1,5 @@
 use super::game_server::GameMessage;
-use super::local_client::Client;
+use crate::server::Client;
 use crate::server_state::{ServerState, StateMessage};
 use crate::utils::event_hub::{EventHub, EventKey};
 use crate::utils::vectors::V2D;

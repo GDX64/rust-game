@@ -1,14 +1,8 @@
 use super::game_server::{self, GameMessage};
+use super::Client;
 use futures::channel::mpsc::{channel, Receiver};
 use log::info;
 pub use wasm_bindgen::prelude::*;
-
-pub trait Client {
-    fn send(&mut self, msg: GameMessage);
-    fn tick(&mut self, dt: f64);
-    fn next_message(&mut self) -> Option<GameMessage>;
-    fn reconnect(&mut self);
-}
 
 #[wasm_bindgen]
 pub struct LocalClient {

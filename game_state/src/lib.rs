@@ -14,6 +14,8 @@ mod utils;
 mod world_gen;
 pub use player_state::PlayerState;
 pub use server::game_server::{DBStatsMessage, GameServer, TICK_TIME};
+pub use server::online_client::*;
+pub use server::running_mode::*;
 use std::sync::OnceLock;
 #[cfg(target_arch = "wasm32")]
 mod wasm_game;
