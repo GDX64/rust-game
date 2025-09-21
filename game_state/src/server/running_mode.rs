@@ -176,3 +176,76 @@ mod test {
         // );
     }
 }
+
+mod actor {
+    use std::{future::Future, sync::Arc};
+
+    use async_task::Task;
+    use futures::{
+        channel::mpsc::{channel, Receiver, Sender},
+        SinkExt, StreamExt,
+    };
+
+    use crate::GlExec;
+
+    trait GlActor: Send + 'static {
+        type Message: Send + 'static;
+        fn on_message(&mut self, msg: Self::Message) -> impl Future<Output = ()> + Send + '_;
+
+        fn to_wrapped(self) -> WrappedActor<Self>
+        where
+            Self: Sized,
+        {
+            WrappedActor::new(self)
+        }
+    }
+
+    struct WrappedActor<A: GlActor> {
+        sender: Sender<A::Message>,
+        task: Arc<Task<()>>,
+    }
+
+    impl<A: GlActor> WrappedActor<A> {
+        pub fn new(actor: A) -> Self {
+            let (sender, mut receiver) = channel(100);
+            let task = GlExec::spawn(async move {
+                let mut actor = actor;
+                while let Some(msg) = receiver.next().await {
+                    actor.on_message(msg).await;
+                }
+            });
+            let wrapped = Self {
+                sender,
+                task: task.into(),
+            };
+            return wrapped;
+        }
+
+        pub async fn send(&mut self, msg: A::Message) {
+            self.sender.send(msg).await.unwrap();
+        }
+    }
+
+    #[test]
+    fn interface_test() {
+        #[derive(Debug)]
+        enum Message {
+            Hello(String),
+        }
+
+        struct TestActor {
+            counter: u32,
+        }
+
+        impl GlActor for TestActor {
+            type Message = ();
+            async fn on_message(&mut self, msg: Self::Message) -> () {
+                self.counter += 1;
+            }
+        }
+
+        let test_actor = TestActor { counter: 0 };
+        let wrapped = test_actor.to_wrapped();
+        wrapped.send(Message::Hello("world".into())).await;
+    }
+}
