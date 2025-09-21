@@ -25,7 +25,11 @@ async fn main() {
 
     let mut tasks = vec![];
     for _ in 0..20 {
-        tasks.push(tokio::spawn(make_bot()));
+        tasks.push(tokio::spawn(async move {
+            loop {
+                make_bot().await;
+            }
+        }));
     }
 
     join_all(tasks).await;
@@ -81,10 +85,12 @@ impl MyChannel {
             let (mut write, mut read) = ws.split();
             let f1 = async move {
                 while let Some(msg) = w_receiver.next().await {
-                    write
-                        .send(Message::Binary(msg.into()))
-                        .await
-                        .expect("Failed to send message");
+                    if let Err(e) = write.send(Message::Binary(msg.into())).await {
+                        log::error!("Error sending message: {}", e);
+                        write.close().await.ok();
+                        w_receiver.close();
+                        break;
+                    }
                 }
                 log::info!("WebSocket write loop ended");
             };
@@ -92,9 +98,10 @@ impl MyChannel {
                 while let Some(message) = read.next().await {
                     match message {
                         Ok(Message::Binary(msg)) => {
-                            r_sender
-                                .try_send(msg.into())
-                                .expect("Failed to send message to receiver");
+                            if let Err(e) = r_sender.try_send(msg.into()) {
+                                log::error!("Error sending to channel: {}", e);
+                                r_sender.close().await.ok();
+                            }
                         }
                         _ => {
                             log::error!("Error receiving message");
