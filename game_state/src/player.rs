@@ -33,6 +33,7 @@ pub struct Player {
     actions_buffer: Receiver<StateMessage>,
     pub rng: fastrand::Rng,
     pub shoot_radius: f64,
+    pub position: V2D,
 }
 
 impl Player {
@@ -46,6 +47,7 @@ impl Player {
             selected_ships: Vec::new(),
             rng: fastrand::Rng::with_seed(id.into()),
             shoot_radius: 10.0,
+            position: V2D::new(0.0, 0.0),
         }
     }
 

@@ -26,7 +26,6 @@ pub enum GameMessage {
         x: f64,
         y: f64,
         id: PlayerID,
-        seed: u32,
     },
     AskBroadcast {
         connection_id: ConnectionID,
@@ -34,7 +33,10 @@ pub enum GameMessage {
     ConnectionDown,
     Ping(ConnectionID),
     Pong,
-    Reconnection(ConnectionID),
+    Reconnection {
+        id: ConnectionID,
+        seed: u32,
+    },
     None,
     CreatePlayer {
         name: Option<String>,
@@ -206,7 +208,7 @@ impl GameServer {
             GameMessage::PlayerCreated { .. } => {}
             GameMessage::None => {}
             GameMessage::ConnectionDown => {}
-            GameMessage::Reconnection(_id) => {}
+            GameMessage::Reconnection { .. } => {}
         };
     }
 
@@ -248,7 +250,8 @@ impl GameServer {
         }
 
         self.connections.insert(id, pair);
-        self.send_message_to_connection(id, GameMessage::Reconnection(id));
+        let seed = self.seed;
+        self.send_message_to_connection(id, GameMessage::Reconnection { id, seed });
 
         return id;
     }
@@ -272,7 +275,6 @@ impl GameServer {
             x: start_x,
             y: start_y,
             id,
-            seed: self.seed,
         });
 
         for _ in 0..PLAYER_START_SHIPS {

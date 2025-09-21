@@ -25,7 +25,7 @@ async fn main() {
 
     let mut tasks = vec![];
 
-    for _ in 0..10 {
+    for _ in 0..1 {
         tasks.push(tokio::spawn(async move {
             loop {
                 make_bot().await;
@@ -42,23 +42,11 @@ async fn make_bot() {
     let online_mode = OnlineClient::new(Box::new(constructor));
     let mut runner = RunningMode::new(Box::new(online_mode));
     let mut interval = interval(Duration::from_millis(16));
-    let mut bot = BotPlayer::default();
     loop {
         let tick = interval.tick();
         tick.await;
-        if bot.player.id != runner.id() {
-            bot = BotPlayer::new(runner.id());
-        }
         let dt = 0.016;
         runner.tick(dt);
-        bot.tick(dt, runner.server_state());
-        bot.player.collect_messages().into_iter().for_each(|msg| {
-            runner.send_game_message(game_state::GameMessage::InputMessage(msg));
-        });
-        if bot.is_dead() {
-            println!("bot is dead");
-            break;
-        }
     }
 }
 
