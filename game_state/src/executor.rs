@@ -84,6 +84,7 @@ impl GlExec {
     pub fn register_globally(&self) {
         GLOBAL_REACTOR_SENDER.get_or_init(|| self.reactor.tick_sender.clone());
         GLOBAL_EXECUTOR_SENDER.get_or_init(|| self.queue.0.clone());
+        log::info!("Global executor registered");
     }
 
     pub fn spawn_global<F, T>(future: F) -> Task<T>

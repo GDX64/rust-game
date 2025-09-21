@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { GameWasmState, LocalClient, OnlineClient } from "rust";
+import { GameWasmState, LocalClient } from "rust";
 import { GUI } from "dat.gui";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -215,8 +215,7 @@ export class Render3D {
     let game;
     if (isOnline) {
       const url = `${config.websocketURL}?${queryParms.toString()}`;
-      const onlineData = OnlineClient.new(url, seed);
-      game = GameWasmState.new_online(onlineData);
+      game = GameWasmState.new_online(url);
     } else {
       const flag = queryParms.get("flag");
       const localClient = LocalClient.new("player", seed, flag ?? undefined);

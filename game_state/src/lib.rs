@@ -38,4 +38,5 @@ pub fn start() {
     console_log::init_with_level(log::Level::Debug).expect("error initializing logger");
     use std::panic;
     panic::set_hook(Box::new(console_error_panic_hook::hook));
+    log::info!("WASM module initialized");
 }

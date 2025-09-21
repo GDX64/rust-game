@@ -27,7 +27,7 @@
           ></ServerSelector>
           <div class="px-1 flex gap-2 select-none items-center w-max">
             <label class="flex items-center w-max gap-2">
-              <input type="checkbox" v-model="online" disabled />
+              <input type="checkbox" v-model="online" :disabled="!isDev" />
               <div class="">Online</div>
             </label>
             <TextInput
@@ -79,7 +79,8 @@ import TextInput from "./TextInput.vue";
 const router = useRouter();
 const selectedFlag = ref<string | null>(null);
 const userName = ref("");
-const online = ref(false);
+const isDev = import.meta.env.DEV;
+const online = ref(isDev);
 const localSeed = ref("");
 
 const serverSelected = ref<ServerList>();

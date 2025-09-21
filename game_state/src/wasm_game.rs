@@ -4,14 +4,15 @@ use crate::server::local_client::LocalClient;
 use crate::server::online_client::{ChannelConstructor, OnlineClient, OnlineClientChannel};
 use crate::server::running_mode::{RunningEvent, RunningMode};
 use crate::server::{game_server::*, ws_channel::WSChannel};
-use crate::server_state::*;
 use crate::ship::ShipState;
 use crate::utils::vectors::V2D;
 use crate::world_gen::WorldGenConfig;
+use crate::{server_state::*, GlExec};
 use cgmath::{MetricSpace, Vector2};
 use core::f64;
 use js_sys::Promise;
 use serde::Serialize;
+use std::time::SystemTime;
 use wasm_bindgen::prelude::*;
 
 const TOO_FAR: f64 = 1_500.0;
@@ -23,11 +24,13 @@ pub struct GameWasmState {
     running_mode: RunningMode,
     player: Player,
     pub current_time: f64,
+    exec: GlExec,
 }
 
 #[wasm_bindgen]
 impl GameWasmState {
     pub fn new_online(url: &str) -> Self {
+        let exec = GlExec::new_global(SystemTime::UNIX_EPOCH);
         let client = OnlineClient::new(Box::new(WasmChannelConstructor {
             url: url.to_string(),
         }));
@@ -36,13 +39,16 @@ impl GameWasmState {
             player: Player::new(0),
             running_mode: RunningMode::new(Box::new(client)),
             current_time: 0.0,
+            exec,
         }
     }
     pub fn new_local(client: LocalClient) -> Self {
+        let exec = GlExec::new_global(SystemTime::UNIX_EPOCH);
         Self {
             player: Player::new(0),
             running_mode: RunningMode::new(Box::new(client)),
             current_time: 0.0,
+            exec,
         }
     }
 
@@ -190,6 +196,7 @@ impl GameWasmState {
     }
 
     pub fn tick(&mut self, time: f64) {
+        self.exec.tick(SystemTime::UNIX_EPOCH);
         if self.has_id_changed() {
             self.player = Player::new(self.running_mode.id());
         }
