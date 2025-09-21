@@ -24,7 +24,7 @@ async fn main() {
     });
 
     let mut tasks = vec![];
-    for _ in 0..10 {
+    for _ in 0..20 {
         tasks.push(tokio::spawn(make_bot()));
     }
 
@@ -81,20 +81,27 @@ impl MyChannel {
             let (mut write, mut read) = ws.split();
             let f1 = async move {
                 while let Some(msg) = w_receiver.next().await {
-                    write.send(Message::Binary(msg.into())).await.unwrap();
+                    write
+                        .send(Message::Binary(msg.into()))
+                        .await
+                        .expect("Failed to send message");
                 }
+                log::info!("WebSocket write loop ended");
             };
             let f2 = async move {
                 while let Some(message) = read.next().await {
                     match message {
                         Ok(Message::Binary(msg)) => {
-                            r_sender.try_send(msg.into()).unwrap();
+                            r_sender
+                                .try_send(msg.into())
+                                .expect("Failed to send message to receiver");
                         }
                         _ => {
                             log::error!("Error receiving message");
                         }
                     }
                 }
+                log::info!("WebSocket read loop ended");
             };
             return futures::join!(f1, f2);
         });
