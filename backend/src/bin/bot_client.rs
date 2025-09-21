@@ -42,7 +42,7 @@ async fn make_bot() {
     let online_mode = OnlineClient::new(Box::new(constructor));
     let mut runner = RunningMode::new(Box::new(online_mode));
     let mut interval = interval(Duration::from_millis(16));
-    let mut bot = BotPlayer::new(0);
+    let mut bot = BotPlayer::default();
     loop {
         let tick = interval.tick();
         tick.await;

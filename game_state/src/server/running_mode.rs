@@ -1,4 +1,7 @@
+use std::collections::BTreeSet;
+
 use super::game_server::GameMessage;
+use crate::player_state::PlayerID;
 use crate::server::Client;
 use crate::server_state::{ServerState, StateMessage};
 use crate::utils::event_hub::{EventHub, EventKey};
@@ -8,7 +11,7 @@ use log::info;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunningEvent {
-    MyID(u64),
+    MyID(PlayerID),
     PositionChanged(V2D),
     Pong,
 }
@@ -20,7 +23,7 @@ pub struct RunningMode {
     client: Box<dyn Client>,
     frame_acc: f64,
     frame_buffer: Vec<Vec<StateMessage>>,
-    player_id: Option<u64>,
+    players: BTreeSet<PlayerID>,
     pub start_position: V2D,
     pub events: EventHub<RunningEvent>,
 }
@@ -36,7 +39,7 @@ impl RunningMode {
             client,
             frame_acc: 0.0,
             frame_buffer: vec![],
-            player_id: None,
+            players: BTreeSet::new(),
             start_position: V2D::new(0.0, 0.0),
             events: EventHub::new(),
         }
@@ -55,19 +58,16 @@ impl RunningMode {
                     self.frame_buffer.insert(0, msg);
                 }
                 GameMessage::PlayerCreated { id, x, y, seed } => {
-                    info!("My ID is: {}", id);
+                    info!("My ID is: {:?}", id);
                     self.game_state = ServerState::new(seed);
-                    self.player_id = Some(id);
+                    self.players.insert(id);
                     self.start_position = V2D::new(x, y);
                     self.events.notify(RunningEvent::MyID(id));
                     self.events
                         .notify(RunningEvent::PositionChanged(self.start_position));
-                    self.send_game_message(GameMessage::AskBroadcast { player: id });
                 }
-                GameMessage::Reconnection => {
-                    if let Some(id) = self.player_id {
-                        self.send_game_message(GameMessage::AskBroadcast { player: id });
-                    }
+                GameMessage::Reconnection(connection_id) => {
+                    self.send_game_message(GameMessage::AskBroadcast { connection_id });
                 }
                 GameMessage::ConnectionDown => {
                     self.client.reconnect();
@@ -101,8 +101,8 @@ impl RunningMode {
         self.game_state.clear_flags();
     }
 
-    pub fn id(&self) -> u64 {
-        self.player_id.unwrap_or_default()
+    pub fn id(&self) -> PlayerID {
+        self.players.iter().next().cloned().unwrap_or_default()
     }
 
     pub fn send_game_message(&mut self, msg: GameMessage) {

@@ -30,6 +30,14 @@ impl BotPlayer {
         }
     }
 
+    pub fn default() -> Self {
+        Self {
+            player: Player::new(PlayerID::new(0)),
+            bot_state: BotState::WaitingShips,
+            time_to_next_action: 0.0,
+        }
+    }
+
     pub fn is_dead(&self) -> bool {
         matches!(self.bot_state, BotState::Dead)
     }

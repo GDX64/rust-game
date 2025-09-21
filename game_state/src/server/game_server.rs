@@ -34,8 +34,12 @@ pub enum GameMessage {
     ConnectionDown,
     Ping(ConnectionID),
     Pong,
-    Reconnection,
+    Reconnection(ConnectionID),
     None,
+    CreatePlayer {
+        name: Option<String>,
+        flag: Option<String>,
+    },
 }
 
 impl GameMessage {
@@ -53,6 +57,7 @@ struct PlayerBufferSenderPair {
     buffer: Vec<GameMessage>,
     sender: Option<PlayerSender>,
     connection_down_time: Option<u64>,
+    players: Vec<PlayerID>,
 }
 
 pub enum DBStatsMessage {
@@ -60,10 +65,10 @@ pub enum DBStatsMessage {
 }
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug, Default)]
-struct ConnectionID(u64);
+pub struct ConnectionID(u64);
 
 impl ConnectionID {
-    fn new(id: u64) -> ConnectionID {
+    pub fn new(id: u64) -> ConnectionID {
         ConnectionID(id)
     }
 }
@@ -140,8 +145,8 @@ impl GameServer {
     }
 
     pub fn next_connection_id(&mut self) -> ConnectionID {
-        self.player_id_counter += 1;
-        ConnectionID::new(self.player_id_counter)
+        self.connection_id_counter += 1;
+        ConnectionID::new(self.connection_id_counter)
     }
 
     fn send_message_to_connection(&mut self, id: ConnectionID, message: GameMessage) {
@@ -193,12 +198,15 @@ impl GameServer {
             GameMessage::Ping(id) => {
                 self.send_message_to_connection(id, GameMessage::Pong);
             }
+            GameMessage::CreatePlayer { name, flag } => {
+                self.create_player(name.as_deref().unwrap_or("Unknown"), flag);
+            }
             // Those messages should not be received in the server
             GameMessage::Pong => {}
             GameMessage::PlayerCreated { .. } => {}
             GameMessage::None => {}
             GameMessage::ConnectionDown => {}
-            GameMessage::Reconnection => {}
+            GameMessage::Reconnection(_id) => {}
         };
     }
 
@@ -229,6 +237,7 @@ impl GameServer {
             buffer: vec![],
             sender: Some(sender),
             connection_down_time: None,
+            players: vec![],
         };
 
         let has_no_players = self.connections.is_empty();
@@ -239,7 +248,7 @@ impl GameServer {
         }
 
         self.connections.insert(id, pair);
-        self.send_message_to_connection(id, GameMessage::Reconnection);
+        self.send_message_to_connection(id, GameMessage::Reconnection(id));
 
         return id;
     }
@@ -335,15 +344,19 @@ impl GameServer {
 
     fn remove_inactive_players(&mut self) {
         let now = crate::utils::system_things::get_time();
-        let mut to_remove = vec![];
+        let mut players_to_remove = vec![];
+        let mut connections_to_remove = vec![];
         for (id, player) in self.connections.iter() {
             if let Some(connection_down_time) = player.connection_down_time {
                 if now - connection_down_time > MAX_DOWN_TIME {
-                    to_remove.push(*id);
+                    connections_to_remove.push(*id);
+                    player.players.iter().for_each(|player_id| {
+                        players_to_remove.push(*player_id);
+                    });
                 }
             }
         }
-        for id in to_remove {
+        for id in connections_to_remove {
             match self.connections.remove(&id) {
                 Some(player) => {
                     if let Some(mut sender) = player.sender {
@@ -354,6 +367,8 @@ impl GameServer {
                     log::warn!("Player {:?} not found to remove", id);
                 }
             }
+        }
+        for id in players_to_remove {
             self.add_to_frame(StateMessage::RemovePlayer { id });
 
             let player_state = self.game_state.players.get(&id).cloned();
@@ -367,7 +382,7 @@ impl GameServer {
 
             log::warn!("Player {:?} removed because of inactivity", id);
         }
-        log::info!("Total players: {}", self.connections.len());
+        log::info!("Total connections: {}", self.connections.len());
     }
 
     pub fn flush_send_buffers(&mut self) {

@@ -46,7 +46,7 @@ impl Apps {
         }
     }
 
-    fn get_game_server(&self) -> MutexGuard<ServerPool> {
+    fn get_game_server<'a>(&'a self) -> MutexGuard<'a, ServerPool> {
         self.game_server.lock().expect("Failed to lock game server")
     }
 }
@@ -158,7 +158,7 @@ async fn ws_handler(
                     return;
                 }
             };
-            log::info!("Player {player_name} connected to server {server_id} with id {id}");
+            log::info!("Player {player_name} connected to server {server_id}");
             loop {
                 let msg = receive.next().await;
                 match msg {
@@ -174,7 +174,7 @@ async fn ws_handler(
                         }
                     }
                     _ => {
-                        log::info!("Player {id} disconnected");
+                        log::info!("Player {:?} disconnected", player_id);
                         state
                             .get_game_server()
                             .get_server(&server_id)
