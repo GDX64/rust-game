@@ -76,6 +76,13 @@ struct MyChannel {
     sender: Sender<Vec<u8>>,
 }
 
+impl Drop for MyChannel {
+    fn drop(&mut self) {
+        self.sender.close_channel();
+        println!("Channel dropped");
+    }
+}
+
 impl MyChannel {
     fn new(url: String) -> Self {
         let (w_sender, mut w_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(10_000);
@@ -86,29 +93,31 @@ impl MyChannel {
             let f1 = async move {
                 while let Some(msg) = w_receiver.next().await {
                     if let Err(e) = write.send(Message::Binary(msg.into())).await {
-                        log::error!("Error sending message: {}", e);
-                        write.close().await.ok();
-                        w_receiver.close();
+                        eprintln!("Error sending message: {}", e);
                         break;
                     }
                 }
-                log::info!("WebSocket write loop ended");
+                write.close().await.ok();
+                w_receiver.close();
+                println!("WebSocket write loop ended")
             };
             let f2 = async move {
                 while let Some(message) = read.next().await {
                     match message {
                         Ok(Message::Binary(msg)) => {
                             if let Err(e) = r_sender.try_send(msg.into()) {
-                                log::error!("Error sending to channel: {}", e);
-                                r_sender.close().await.ok();
+                                eprintln!("Error sending to channel: {}", e);
+                                break;
                             }
                         }
                         _ => {
-                            log::error!("Error receiving message");
+                            eprintln!("Error receiving message");
+                            break;
                         }
                     }
                 }
-                log::info!("WebSocket read loop ended");
+                r_sender.close().await.ok();
+                println!("WebSocket read loop ended");
             };
             return futures::join!(f1, f2);
         });
