@@ -1,6 +1,9 @@
 use cgmath::MetricSpace;
 
-use crate::{island::Island, player::Player, server_state::ServerState, utils::vectors::V2D};
+use crate::{
+    island::Island, player::Player, player_state::PlayerID, server_state::ServerState,
+    utils::vectors::V2D,
+};
 
 enum BotState {
     WaitingShips,
@@ -19,7 +22,7 @@ pub struct BotPlayer {
 }
 
 impl BotPlayer {
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: PlayerID) -> Self {
         Self {
             player: Player::new(id),
             bot_state: BotState::WaitingShips,

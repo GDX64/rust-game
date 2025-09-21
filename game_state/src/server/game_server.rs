@@ -1,8 +1,8 @@
 use crate::{
     bot_player::BotPlayer,
+    player_state::PlayerID,
     server_state::{ServerState, StateMessage, PLAYER_START_SHIPS},
     ship::ShipState,
-    utils::vectors::V2D,
     PlayerState,
 };
 use futures::channel::mpsc::Sender;
@@ -22,19 +22,20 @@ pub enum GameMessage {
     AddBot,
     AddBotShipAt(f64, f64),
     RemoveBot,
-    PlayerCreated { x: f64, y: f64, id: u64, seed: u32 },
-    AskBroadcast { player: u64 },
+    PlayerCreated {
+        x: f64,
+        y: f64,
+        id: PlayerID,
+        seed: u32,
+    },
+    AskBroadcast {
+        connection_id: ConnectionID,
+    },
     ConnectionDown,
-    Ping(u64),
+    Ping(ConnectionID),
     Pong,
     Reconnection,
     None,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum StateEvent {
-    MyID(u64),
-    PositionReset(V2D),
 }
 
 impl GameMessage {
@@ -58,10 +59,20 @@ pub enum DBStatsMessage {
     PlayerUpdate(PlayerState),
 }
 
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug, Default)]
+struct ConnectionID(u64);
+
+impl ConnectionID {
+    fn new(id: u64) -> ConnectionID {
+        ConnectionID(id)
+    }
+}
+
 pub struct GameServer {
     pub game_state: ServerState,
-    players: HashMap<u64, PlayerBufferSenderPair>,
+    connections: HashMap<ConnectionID, PlayerBufferSenderPair>,
     player_id_counter: u64,
+    connection_id_counter: u64,
     bots: Vec<BotPlayer>,
     frame_inputs: Vec<StateMessage>,
     rng: fastrand::Rng,
@@ -75,8 +86,9 @@ impl GameServer {
     pub fn new(db_sender: Option<Sender<DBStatsMessage>>, seed: u32) -> GameServer {
         GameServer {
             game_state: ServerState::new(seed),
-            players: HashMap::new(),
+            connections: HashMap::new(),
             player_id_counter: 0,
+            connection_id_counter: 0,
             bots: vec![],
             rng: fastrand::Rng::with_seed(1),
             frames: 0,
@@ -88,7 +100,7 @@ impl GameServer {
     }
 
     pub fn get_player_count(&self) -> usize {
-        self.players.len() + self.bots.len()
+        self.connections.len() + self.bots.len()
     }
 
     pub fn get_players_stats(&self) -> Vec<PlayerState> {
@@ -106,7 +118,7 @@ impl GameServer {
         for _ in 0..PLAYER_START_SHIPS {
             bot.player.create_ship(x, y)
         }
-        let name = format!("Bot {}", bot.player.id);
+        let name = format!("Bot {:?}", bot.player.id);
         self.add_to_frame(StateMessage::CreatePlayer {
             id: bot.player.id,
             name,
@@ -115,28 +127,33 @@ impl GameServer {
         self.bots.push(bot);
     }
 
-    fn remove_bot(&mut self, id: u64) {
+    fn remove_bot(&mut self, id: PlayerID) {
         if let Some(bot) = self.bots.iter().find(|bot| bot.player.id == id) {
             self.add_to_frame(StateMessage::RemovePlayer { id: bot.player.id });
         }
         self.bots.retain(|bot| bot.player.id != id);
     }
 
-    pub fn next_player_id(&mut self) -> u64 {
+    pub fn next_player_id(&mut self) -> PlayerID {
         self.player_id_counter += 1;
-        self.player_id_counter
+        PlayerID::new(self.player_id_counter)
     }
 
-    fn send_message_to_player(&mut self, id: u64, message: GameMessage) {
-        if let Some(sender) = self.players.get_mut(&id) {
+    pub fn next_connection_id(&mut self) -> ConnectionID {
+        self.player_id_counter += 1;
+        ConnectionID::new(self.player_id_counter)
+    }
+
+    fn send_message_to_connection(&mut self, id: ConnectionID, message: GameMessage) {
+        if let Some(sender) = self.connections.get_mut(&id) {
             sender.buffer.push(message);
         }
     }
 
     fn broadcast(&mut self, message: GameMessage) {
-        let player_ids: Vec<u64> = self.players.keys().cloned().collect();
+        let player_ids: Vec<ConnectionID> = self.connections.keys().cloned().collect();
         for id in player_ids {
-            self.send_message_to_player(id, message.clone());
+            self.send_message_to_connection(id, message.clone());
         }
     }
 
@@ -166,12 +183,15 @@ impl GameServer {
                     self.add_bot();
                 }
             }
-            GameMessage::AskBroadcast { player } => {
+            GameMessage::AskBroadcast { connection_id } => {
                 let state = self.game_state.state_message();
-                self.send_message_to_player(player, GameMessage::FrameMessage(vec![state]));
+                self.send_message_to_connection(
+                    connection_id,
+                    GameMessage::FrameMessage(vec![state]),
+                );
             }
             GameMessage::Ping(id) => {
-                self.send_message_to_player(id, GameMessage::Pong);
+                self.send_message_to_connection(id, GameMessage::Pong);
             }
             // Those messages should not be received in the server
             GameMessage::Pong => {}
@@ -188,32 +208,44 @@ impl GameServer {
         id: Option<u64>,
         name: &str,
         flag: Option<String>,
-    ) -> u64 {
+    ) -> ConnectionID {
+        let id: Option<ConnectionID> = id.map(ConnectionID::new);
         if let Some(id) = id {
-            if let Some(player) = self.players.get_mut(&id) {
+            if let Some(player) = self.connections.get_mut(&id) {
                 if player.connection_down_time.is_some() {
                     player.sender = Some(sender);
                     player.connection_down_time = None;
-                    log::info!("Player {} reconnected", id);
+                    log::info!("Player {:?} reconnected", id);
                     return id;
                 } else {
-                    log::warn!("Player {} already connected", id);
+                    log::warn!("Player {:?} already connected", id);
                 }
             }
-            log::warn!("Player {} not found", id);
+            log::warn!("Player {:?} not found", id);
         }
 
-        let id = self.next_player_id();
+        let id = self.next_connection_id();
         let pair = PlayerBufferSenderPair {
             buffer: vec![],
             sender: Some(sender),
             connection_down_time: None,
         };
 
-        let has_no_players = self.players.is_empty();
+        let has_no_players = self.connections.is_empty();
+        if has_no_players {
+            for _ in 0..MAX_BOTS {
+                self.add_bot();
+            }
+        }
 
-        self.players.insert(id, pair);
+        self.connections.insert(id, pair);
+        self.send_message_to_connection(id, GameMessage::Reconnection);
 
+        return id;
+    }
+
+    fn create_player(&mut self, name: &str, flag: Option<String>) {
+        let id = self.next_player_id();
         let flag = flag.unwrap_or(PlayerState::get_player_flag(id));
 
         let create_player_msg = StateMessage::CreatePlayer {
@@ -227,17 +259,12 @@ impl GameServer {
         let start_x = (self.rng.f64() - 0.5) * map_size;
         let start_y = (self.rng.f64() - 0.5) * map_size;
 
-        self.send_message_to_player(
+        self.broadcast(GameMessage::PlayerCreated {
+            x: start_x,
+            y: start_y,
             id,
-            GameMessage::PlayerCreated {
-                x: start_x,
-                y: start_y,
-                id,
-                seed: self.seed,
-            },
-        );
-
-        self.send_message_to_player(id, GameMessage::Reconnection);
+            seed: self.seed,
+        });
 
         for _ in 0..PLAYER_START_SHIPS {
             let mut ship = ShipState::default();
@@ -246,23 +273,15 @@ impl GameServer {
             ship.player_id = id;
             self.add_to_frame(StateMessage::CreateShip { ship });
         }
-
-        if has_no_players {
-            for _ in 0..MAX_BOTS {
-                self.add_bot();
-            }
-        }
-
-        return id;
     }
 
-    pub fn on_player_connection_down(&mut self, id: u64) {
+    pub fn on_player_connection_down(&mut self, id: ConnectionID) {
         info!(
-            "Player {} connection down, total players {}",
+            "Player {:?} connection down, total players {}",
             id,
-            self.players.len()
+            self.connections.len()
         );
-        if let Some(player) = self.players.get_mut(&id) {
+        if let Some(player) = self.connections.get_mut(&id) {
             player.connection_down_time = Some(crate::utils::system_things::get_time());
             player.sender = None;
         }
@@ -293,7 +312,7 @@ impl GameServer {
     }
 
     pub fn tick(&mut self, dt: f64) {
-        if self.players.is_empty() {
+        if self.connections.is_empty() {
             return;
         }
 
@@ -317,7 +336,7 @@ impl GameServer {
     fn remove_inactive_players(&mut self) {
         let now = crate::utils::system_things::get_time();
         let mut to_remove = vec![];
-        for (id, player) in self.players.iter() {
+        for (id, player) in self.connections.iter() {
             if let Some(connection_down_time) = player.connection_down_time {
                 if now - connection_down_time > MAX_DOWN_TIME {
                     to_remove.push(*id);
@@ -325,14 +344,14 @@ impl GameServer {
             }
         }
         for id in to_remove {
-            match self.players.remove(&id) {
+            match self.connections.remove(&id) {
                 Some(player) => {
                     if let Some(mut sender) = player.sender {
                         sender.close_channel();
                     }
                 }
                 None => {
-                    log::warn!("Player {} not found to remove", id);
+                    log::warn!("Player {:?} not found to remove", id);
                 }
             }
             self.add_to_frame(StateMessage::RemovePlayer { id });
@@ -346,16 +365,16 @@ impl GameServer {
                 _ => {}
             }
 
-            log::warn!("Player {} removed because of inactivity", id);
+            log::warn!("Player {:?} removed because of inactivity", id);
         }
-        log::info!("Total players: {}", self.players.len());
+        log::info!("Total players: {}", self.connections.len());
     }
 
     pub fn flush_send_buffers(&mut self) {
-        let player_ids: Vec<u64> = self.players.keys().cloned().collect();
+        let connection_ids: Vec<ConnectionID> = self.connections.keys().cloned().collect();
         let mut player_errors = vec![];
-        for id in player_ids {
-            if let Some(player) = self.players.get_mut(&id) {
+        for id in connection_ids {
+            if let Some(player) = self.connections.get_mut(&id) {
                 let messages = GameMessage::serialize_arr(&player.buffer);
                 let sender = if let Some(sender) = &mut player.sender {
                     sender
@@ -365,8 +384,8 @@ impl GameServer {
                 match sender.try_send(messages) {
                     Ok(_) => {}
                     Err(e) => {
-                        log::error!("Error sending message to player {}: {:?}", id, e);
-                        log::info!("Player {} will be removed", id);
+                        log::error!("Error sending message to player {:?}: {:?}", id, e);
+                        log::info!("Player {:?} will be removed", id);
                         player_errors.push(id);
                     }
                 }

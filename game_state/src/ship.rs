@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     bullet::Bullet,
     hashgrid::{HashEntity, HashEntityKind},
+    player_state::PlayerID,
     utils::vectors::V2D,
 };
 
@@ -12,11 +13,11 @@ pub const SHIP_SIZE: f64 = 10.0;
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct ShipKey {
     pub id: u64,
-    pub player_id: u64,
+    pub player_id: PlayerID,
 }
 
 impl ShipKey {
-    pub fn new(id: u64, player_id: u64) -> Self {
+    pub fn new(id: u64, player_id: PlayerID) -> Self {
         Self { id, player_id }
     }
 }
@@ -27,16 +28,16 @@ pub struct ShipState {
     pub speed: V2D,
     pub orientation: V2D,
     pub id: u64,
-    pub player_id: u64,
+    pub player_id: PlayerID,
     pub cannon_times: [f64; 3],
     pub last_shoot_time: f64,
     pub hp: f64,
-    pub killed_by: Option<u64>,
+    pub killed_by: Option<PlayerID>,
 }
 
 impl ShipState {
     pub fn key(&self) -> ShipKey {
-        ShipKey::new(self.id, self.player_id)
+        ShipKey::new(self.id, self.player_id.into())
     }
 
     pub fn to_hash_entity(&self) -> HashEntity {
@@ -55,7 +56,7 @@ impl Default for ShipState {
             speed: (0.0, 0.0).into(),
             orientation: (1.0, 0.0).into(),
             id: 0,
-            player_id: 0,
+            player_id: PlayerID::new(0),
             cannon_times: [0.0, 0.0, 0.0],
             last_shoot_time: 0.0,
             hp: 100.0,
@@ -84,7 +85,7 @@ impl ShipState {
 
         let bullet = Bullet {
             bullet_id: 0,
-            player_id: self.player_id,
+            player_id: self.player_id.into(),
             ..Bullet::maybe_from_target(cannon_pos.into(), target.into())?
         };
         self.last_shoot_time = current_time;

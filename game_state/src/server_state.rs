@@ -3,9 +3,8 @@ use crate::{
     game_map::WorldGrid,
     hashgrid::HashGrid,
     island::IslandData,
-    player_state::PlayerState,
-    ship::SHIP_SIZE,
-    ship::{ShipKey, ShipState},
+    player_state::{PlayerID, PlayerState},
+    ship::{ShipKey, ShipState, SHIP_SIZE},
     utils::vectors::{V2D, V3D},
     world_gen::{self},
 };
@@ -65,7 +64,7 @@ impl ArtifactGen {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BroadCastState {
-    players: BTreeMap<u64, PlayerState>,
+    players: BTreeMap<PlayerID, PlayerState>,
     ships: BTreeMap<ShipKey, ShipState>,
     bullets: BTreeMap<(u64, u64), Bullet>,
     explosions: BTreeMap<u64, Explosion>,
@@ -98,12 +97,12 @@ impl BroadCastState {
 pub enum StateMessage {
     Shoot {
         ship_id: u64,
-        player_id: u64,
+        player_id: PlayerID,
         target: V2D,
     },
     SetPlayerName {
         name: String,
-        id: u64,
+        id: PlayerID,
     },
     CreateShip {
         ship: ShipState,
@@ -111,18 +110,18 @@ pub enum StateMessage {
     MoveShip {
         speed: V2D,
         id: u64,
-        player_id: u64,
+        player_id: PlayerID,
     },
     BroadCastState {
         state: BroadCastState,
     },
     CreatePlayer {
-        id: u64,
+        id: PlayerID,
         name: String,
         flag: String,
     },
     RemovePlayer {
-        id: u64,
+        id: PlayerID,
     },
     GameConstants {
         constants: GameConstants,
@@ -146,7 +145,7 @@ type ShipCollection = BTreeMap<ShipKey, ShipState>;
 pub struct Explosion {
     pub position: V2D,
     pub id: u64,
-    pub player_id: u64,
+    pub player_id: PlayerID,
     pub time_created: f64,
     pub kind: ExplosionKind,
 }
@@ -155,7 +154,7 @@ pub type GameMap = WorldGrid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IslandDynamicData {
-    pub owner: Option<u64>,
+    pub owner: Option<PlayerID>,
     pub take_progress: f64,
     pub production_progress: f64,
     pub id: u64,
@@ -170,7 +169,7 @@ pub struct ServerFlags {
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub players: BTreeMap<u64, PlayerState>,
+    pub players: BTreeMap<PlayerID, PlayerState>,
     pub explosions: BTreeMap<u64, Explosion>,
     pub game_map: Arc<GameMap>,
     pub world_gen: Arc<world_gen::WorldGen>,
@@ -227,7 +226,7 @@ impl ServerState {
                             .and_then(|island| island.owner)
                         {
                             //owner id
-                            return owner as i16;
+                            return owner.as_u64() as i16;
                         } else {
                             //island with no owner
                             -2
@@ -276,11 +275,14 @@ impl ServerState {
         self.artifact_gen.next()
     }
 
-    pub fn get_ship(&self, id: u64, player_id: u64) -> Option<&ShipState> {
-        self.ship_collection.get(&ShipKey { id, player_id })
+    pub fn get_ship(&self, id: u64, player_id: PlayerID) -> Option<&ShipState> {
+        self.ship_collection.get(&ShipKey {
+            id,
+            player_id: player_id.into(),
+        })
     }
 
-    fn handle_set_player_name(&mut self, name: String, id: u64) {
+    fn handle_set_player_name(&mut self, name: String, id: PlayerID) {
         if let Some(player) = self.players.get_mut(&id) {
             player.name = name;
         }
@@ -535,7 +537,7 @@ impl ServerState {
                         self.flags.map_changed = true;
                     }
                 });
-                log::info!("Player {} removed from the server", id);
+                log::info!("Player {:?} removed from the server", id);
             }
             StateMessage::BroadCastState { state } => {
                 self.ship_collection = state.ships;
@@ -572,7 +574,7 @@ impl ServerState {
                 {
                     ship.position = place.into();
                     self.ship_collection
-                        .insert(ShipKey::new(ship.id, ship.player_id), ship);
+                        .insert(ShipKey::new(ship.id, ship.player_id.into()), ship);
                 }
             }
             StateMessage::MoveShip {
@@ -599,10 +601,10 @@ impl ServerState {
         }
     }
 
-    fn handle_shoot(&mut self, ship_id: u64, player_id: u64, target: V2D) -> Option<()> {
+    fn handle_shoot(&mut self, ship_id: u64, player_id: PlayerID, target: V2D) -> Option<()> {
         let ship = self
             .ship_collection
-            .get_mut(&ShipKey::new(ship_id, player_id))?;
+            .get_mut(&ShipKey::new(ship_id, player_id.into()))?;
         let pos: V2D = ship.position.into();
         let target: V2D = target.into();
 
@@ -615,7 +617,7 @@ impl ServerState {
         bullet.bullet_id = self.artifact_gen.next();
 
         self.bullets
-            .insert((bullet.player_id, bullet.bullet_id), bullet);
+            .insert((bullet.player_id.into(), bullet.bullet_id), bullet);
 
         let bullet_pos = bullet.current_pos();
         let explosion = Explosion {

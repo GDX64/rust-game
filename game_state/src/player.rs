@@ -1,6 +1,7 @@
 use crate::{
     bullet::Bullet,
     hashgrid::HashEntityKind,
+    player_state::PlayerID,
     server_state::{ServerState, StateMessage},
     ship::{ShipKey, ShipState},
     utils::{spiral_search::SpiralSearch, vectors::V2D},
@@ -25,7 +26,7 @@ pub struct PlayerShip {
 }
 
 pub struct Player {
-    pub id: u64,
+    pub id: PlayerID,
     moving_ships: HashMap<u64, PlayerShip>,
     pub selected_ships: Vec<u64>,
     actions: Sender<StateMessage>,
@@ -35,7 +36,7 @@ pub struct Player {
 }
 
 impl Player {
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: PlayerID) -> Self {
         let (sender, receiver) = std::sync::mpsc::channel();
         Player {
             id,
@@ -43,7 +44,7 @@ impl Player {
             actions: sender,
             actions_buffer: receiver,
             selected_ships: Vec::new(),
-            rng: fastrand::Rng::with_seed(id),
+            rng: fastrand::Rng::with_seed(id.into()),
             shoot_radius: 10.0,
         }
     }
@@ -105,7 +106,7 @@ impl Player {
     ) -> Option<Vec<V2D>> {
         let server_ship = game_state
             .ship_collection
-            .get(&ShipKey::new(ship_id, self.id))?;
+            .get(&ShipKey::new(ship_id, self.id.into()))?;
         let path = game_state
             .game_map
             .find_path(server_ship.position, (x, y))?;

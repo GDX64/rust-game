@@ -1,7 +1,10 @@
 use cgmath::InnerSpace;
 use serde::{Deserialize, Serialize};
 
-use crate::utils::vectors::{V2D, V3D};
+use crate::{
+    player_state::PlayerID,
+    utils::vectors::{V2D, V3D},
+};
 
 const BULLET_SPEED: f64 = 100.0;
 const GRAVITY: f64 = 9.81;
@@ -11,7 +14,7 @@ const MAX_SHOOT_ANGLE: f64 = 3.14 / 180.0 * 10.0;
 pub struct Bullet {
     pub position: V3D,
     pub speed: V3D,
-    pub player_id: u64,
+    pub player_id: PlayerID,
     pub bullet_id: u64,
     pub target: V3D,
     pub time: f64,
@@ -20,7 +23,7 @@ pub struct Bullet {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct BulletSnapShot {
     pub position: V3D,
-    pub player_id: u64,
+    pub player_id: PlayerID,
     pub bullet_id: u64,
 }
 
@@ -60,7 +63,7 @@ impl Bullet {
         return Some(Bullet {
             position: initial.into(),
             speed,
-            player_id: 0,
+            player_id: PlayerID::new(0),
             bullet_id: 0,
             target: target.into(),
             time: 0.0,
