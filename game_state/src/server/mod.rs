@@ -9,7 +9,7 @@ pub mod ws_channel;
 pub mod online_client;
 pub mod running_mode;
 
-pub trait Client {
+pub trait Client: Send {
     fn send(&mut self, msg: GameMessage);
     fn tick(&mut self, dt: f64);
     fn next_message(&mut self) -> Option<GameMessage>;

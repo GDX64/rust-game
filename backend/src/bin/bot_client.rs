@@ -1,16 +1,37 @@
 use futures::{
     channel::mpsc::{Receiver, Sender},
+    future::join_all,
     SinkExt, StreamExt,
 };
 use game_state::{
-    BotPlayer, ChannelConstructor, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
+    BotPlayer, ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningMode,
 };
-use std::{env, time::Duration};
-use tokio::{net::TcpStream, select, time::interval};
+use std::{
+    env,
+    time::{Duration, SystemTime},
+};
+use tokio::{net::TcpStream, time::interval};
 use tokio_tungstenite::tungstenite::Message;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
+    let exec = GlExec::new_global(std::time::SystemTime::now());
+    tokio::spawn(async move {
+        loop {
+            exec.tick(SystemTime::now());
+            tokio::time::sleep(Duration::from_millis(16)).await;
+        }
+    });
+
+    let mut tasks = vec![];
+    for _ in 0..10 {
+        tasks.push(tokio::spawn(make_bot()));
+    }
+
+    join_all(tasks).await;
+}
+
+async fn make_bot() {
     let addr = env::var("SERVER_ADDR").unwrap_or("127.0.0.1:5000".into());
     let constructor = MyChannelConstructor { url: addr };
     let online_mode = OnlineClient::new(Box::new(constructor));
@@ -29,6 +50,10 @@ async fn main() {
         bot.player.collect_messages().into_iter().for_each(|msg| {
             runner.send_game_message(game_state::GameMessage::InputMessage(msg));
         });
+        if bot.is_dead() {
+            println!("bot is dead");
+            break;
+        }
     }
 }
 
@@ -56,7 +81,6 @@ impl MyChannel {
             let (mut write, mut read) = ws.split();
             let f1 = async move {
                 while let Some(msg) = w_receiver.next().await {
-                    println!("Sending a message to server");
                     write.send(Message::Binary(msg.into())).await.unwrap();
                 }
             };

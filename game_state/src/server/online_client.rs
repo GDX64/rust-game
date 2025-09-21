@@ -1,15 +1,10 @@
-use crate::server::Client;
+use crate::{server::Client, GlExec};
 
 use super::game_server::GameMessage;
 use actor::Actor;
 use futures::{join, SinkExt, StreamExt};
-use std::{
-    future::Future,
-    pin::Pin,
-    task::{Context, Waker},
-};
 
-pub trait ChannelConstructor {
+pub trait ChannelConstructor: Send {
     fn new(&self) -> Box<dyn OnlineClientChannel>;
 }
 
@@ -21,7 +16,6 @@ pub trait OnlineClientChannel {
 pub struct OnlineClient {
     actor: Option<Actor<GameMessage>>,
     constructor: Box<dyn ChannelConstructor>,
-    future: Option<Pin<Box<dyn Future<Output = ()>>>>,
 }
 
 impl OnlineClient {
@@ -29,7 +23,6 @@ impl OnlineClient {
         let mut client = OnlineClient {
             actor: None,
             constructor,
-            future: None,
         };
         client.reconnect();
         client
@@ -54,18 +47,7 @@ impl Client for OnlineClient {
         self.next()
     }
 
-    fn tick(&mut self, _dt: f64) {
-        // polls the future to keep the connection alive
-        if let Some(ref mut future) = self.future {
-            let result = future
-                .as_mut()
-                .poll(&mut Context::from_waker(Waker::noop()));
-            if result.is_ready() {
-                self.future = None;
-                self.actor = None;
-            }
-        }
-    }
+    fn tick(&mut self, _dt: f64) {}
 
     fn reconnect(&mut self) {
         let mut ws = self.constructor.new();
@@ -115,7 +97,7 @@ impl Client for OnlineClient {
                 join!(receiver_future, sender_future);
             };
         });
-        self.future = Some(Box::pin(future));
+        GlExec::spawn_global(future).detach();
         self.actor = Some(actor);
     }
 }
