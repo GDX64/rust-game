@@ -3,9 +3,7 @@ use futures::{
     future::join_all,
     SinkExt, StreamExt,
 };
-use game_state::{
-    BotPlayer, ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningMode,
-};
+use game_state::{ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningMode};
 use std::{
     env,
     time::{Duration, SystemTime},

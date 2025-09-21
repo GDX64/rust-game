@@ -26,6 +26,7 @@ pub enum GameMessage {
         x: f64,
         y: f64,
         id: PlayerID,
+        bot: bool,
     },
     AskBroadcast {
         connection_id: ConnectionID,
@@ -41,6 +42,7 @@ pub enum GameMessage {
     CreatePlayer {
         name: Option<String>,
         flag: Option<String>,
+        bot: bool,
     },
 }
 
@@ -200,8 +202,8 @@ impl GameServer {
             GameMessage::Ping(id) => {
                 self.send_message_to_connection(id, GameMessage::Pong);
             }
-            GameMessage::CreatePlayer { name, flag } => {
-                self.create_player(name.as_deref().unwrap_or("Unknown"), flag);
+            GameMessage::CreatePlayer { name, flag, bot } => {
+                self.create_player(name.as_deref().unwrap_or("Unknown"), flag, bot);
             }
             // Those messages should not be received in the server
             GameMessage::Pong => {}
@@ -256,7 +258,7 @@ impl GameServer {
         return id;
     }
 
-    fn create_player(&mut self, name: &str, flag: Option<String>) {
+    fn create_player(&mut self, name: &str, flag: Option<String>, bot: bool) {
         let id = self.next_player_id();
         let flag = flag.unwrap_or(PlayerState::get_player_flag(id));
 
@@ -275,6 +277,7 @@ impl GameServer {
             x: start_x,
             y: start_y,
             id,
+            bot,
         });
 
         for _ in 0..PLAYER_START_SHIPS {

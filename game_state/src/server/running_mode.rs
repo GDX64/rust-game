@@ -59,11 +59,16 @@ impl RunningMode {
                 GameMessage::FrameMessage(msg) => {
                     self.frame_buffer.insert(0, msg);
                 }
-                GameMessage::PlayerCreated { id, x, y } => {
+                GameMessage::PlayerCreated { id, x, y, bot } => {
                     info!("Player Created with id: {:?}", id);
                     self.events.notify(RunningEvent::PlayerCreated { id, x, y });
                     self.events
                         .notify(RunningEvent::PositionChanged(self.start_position));
+                    if bot {
+                        self.create_bot(id, x, y);
+                    } else {
+                        self.create_player(id, x, y);
+                    }
                 }
                 GameMessage::Reconnection { id, seed } => {
                     self.game_state = ServerState::new(seed);
@@ -117,37 +122,24 @@ impl RunningMode {
         }
     }
 
-    pub async fn create_bot(&mut self) {
-        if let Ok((id, x, y)) = self._create_player().await {
-            let mut bot = BotPlayer::new(id);
-            bot.player.position = V2D::new(x, y);
-            self.bots.insert(id, bot);
-        }
+    fn create_bot(&mut self, player_id: PlayerID, x: f64, y: f64) {
+        let mut bot = BotPlayer::new(player_id);
+        bot.player.position = V2D::new(x, y);
+        self.bots.insert(player_id, bot);
     }
 
-    pub async fn create_player(&mut self) {
-        if let Ok((player_id, x, y)) = self._create_player().await {
-            let mut player = Player::new(player_id);
-            player.position = V2D::new(x, y);
-            self.players.insert(player_id, player);
-        }
+    fn create_player(&mut self, player_id: PlayerID, x: f64, y: f64) {
+        let mut player = Player::new(player_id);
+        player.position = V2D::new(x, y);
+        self.players.insert(player_id, player);
     }
 
-    async fn _create_player(&mut self) -> anyhow::Result<(PlayerID, f64, f64)> {
+    pub fn ask_create_player(&mut self, bot: bool) {
         self.send_game_message(GameMessage::CreatePlayer {
             name: None,
             flag: None,
+            bot,
         });
-        let player_id = self
-            .events
-            .when(|e| {
-                let RunningEvent::PlayerCreated { id, x, y } = e else {
-                    return None;
-                };
-                return Some((id, x, y));
-            })
-            .await;
-        return player_id;
     }
 
     pub fn clear_flags(&mut self) {
