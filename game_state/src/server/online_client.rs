@@ -9,7 +9,7 @@ pub trait ChannelConstructor: Send {
     fn new(&self) -> Box<dyn OnlineClientChannel>;
 }
 
-pub trait OnlineClientChannel {
+pub trait OnlineClientChannel: Send {
     fn send(&mut self, msg: Vec<u8>);
     fn receiver(&mut self) -> Option<futures::channel::mpsc::Receiver<Vec<u8>>>;
 }
@@ -100,7 +100,7 @@ impl Client for OnlineClient {
                 join!(receiver_future, sender_future);
             };
         });
-        let task = GlExec::spawn_global(future);
+        let task = GlExec::spawn(future);
         self.task = Some(task);
         self.actor = Some(actor);
     }
@@ -117,7 +117,7 @@ mod actor {
     }
 
     impl<T> Actor<T> {
-        pub fn spawn<F: Future<Output = ()> + 'static>(
+        pub fn spawn<F: Future<Output = ()> + 'static + Send>(
             f: impl FnOnce(Sender<T>, Receiver<T>) -> F,
         ) -> (Actor<T>, F) {
             let (sender_actor, receiver_main) = channel(10_000);

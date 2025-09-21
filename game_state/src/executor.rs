@@ -87,10 +87,10 @@ impl GlExec {
         log::info!("Global executor registered");
     }
 
-    pub fn spawn_global<F, T>(future: F) -> Task<T>
+    pub fn spawn<F, T>(future: F) -> Task<T>
     where
-        F: Future<Output = T> + 'static,
-        T: 'static,
+        F: Future<Output = T> + 'static + Send,
+        T: 'static + Send,
     {
         // Create a task that is scheduled by pushing itself into the queue.
         let sender = GLOBAL_EXECUTOR_SENDER
@@ -100,7 +100,7 @@ impl GlExec {
         let schedule = move |runnable| {
             sender.send(runnable).unwrap();
         };
-        let (runnable, task) = async_task::spawn_local(future, schedule);
+        let (runnable, task) = async_task::spawn(future, schedule);
 
         // Schedule the task by pushing it into the queue.
         runnable.schedule();
@@ -133,8 +133,8 @@ mod tests {
     #[test]
     fn executor() {
         let exec = GlExec::new_global(SystemTime::now());
-        let task2 = GlExec::spawn_global(async move {
-            let task1 = GlExec::spawn_global(async {
+        let task2 = GlExec::spawn(async move {
+            let task1 = GlExec::spawn(async {
                 return 10;
             });
             let result = task1.await;

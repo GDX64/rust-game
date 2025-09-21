@@ -13,7 +13,7 @@ use std::{
 use tokio::{net::TcpStream, time::interval};
 use tokio_tungstenite::tungstenite::Message;
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() {
     let exec = GlExec::new_global(std::time::SystemTime::now());
     tokio::spawn(async move {
@@ -24,7 +24,8 @@ async fn main() {
     });
 
     let mut tasks = vec![];
-    for _ in 0..20 {
+
+    for _ in 0..10 {
         tasks.push(tokio::spawn(async move {
             loop {
                 make_bot().await;
