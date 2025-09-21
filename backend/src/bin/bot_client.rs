@@ -19,7 +19,7 @@ async fn main() {
     tokio::spawn(async move {
         loop {
             exec.tick(SystemTime::now());
-            tokio::time::sleep(Duration::from_millis(16)).await;
+            tokio::time::sleep(Duration::from_millis(5)).await;
         }
     });
 
@@ -74,8 +74,8 @@ struct MyChannel {
 
 impl MyChannel {
     fn new(url: String) -> Self {
-        let (w_sender, mut w_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(100);
-        let (mut r_sender, r_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(100);
+        let (w_sender, mut w_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(10_000);
+        let (mut r_sender, r_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(10_000);
         tokio::spawn(async move {
             let ws = make_client(&url).await;
             let (mut write, mut read) = ws.split();

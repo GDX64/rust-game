@@ -120,8 +120,8 @@ mod actor {
         pub fn spawn<F: Future<Output = ()> + 'static>(
             f: impl FnOnce(Sender<T>, Receiver<T>) -> F,
         ) -> (Actor<T>, F) {
-            let (sender_actor, receiver_main) = channel(100);
-            let (sender_main, receiver_actor) = channel(100);
+            let (sender_actor, receiver_main) = channel(10_000);
+            let (sender_main, receiver_actor) = channel(10_000);
             let future = f(sender_actor, receiver_actor);
             return (
                 Actor {
