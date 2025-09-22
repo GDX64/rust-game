@@ -31,10 +31,10 @@ async fn main() {
         }
     });
 
-    make_bot_pool().await;
+    make_bot_pool(10).await;
 }
 
-async fn make_bot_pool() {
+async fn make_bot_pool(bots: usize) {
     let addr = env::var("SERVER_ADDR").unwrap_or("127.0.0.1:5000".into());
     let constructor = MyChannelConstructor { url: addr };
     let online_mode = OnlineClient::new(Box::new(constructor));
@@ -54,7 +54,7 @@ async fn make_bot_pool() {
             break;
         }
     }
-    for _ in 0..10 {
+    for _ in 0..bots {
         runner.send(RunningModeMessage::CreateBot).await;
     }
     let t2 = runner.listener(async |mut runner| {
