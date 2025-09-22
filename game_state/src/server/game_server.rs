@@ -43,6 +43,7 @@ pub enum GameMessage {
         name: Option<String>,
         flag: Option<String>,
         bot: bool,
+        connection_id: ConnectionID,
     },
 }
 
@@ -155,6 +156,9 @@ impl GameServer {
 
     fn send_message_to_connection(&mut self, id: ConnectionID, message: GameMessage) {
         if let Some(sender) = self.connections.get_mut(&id) {
+            if let GameMessage::CreatePlayer { .. } = &message {
+                log::info!("Adding player to connection {:?}", id);
+            }
             sender.buffer.push(message);
         }
     }
@@ -202,8 +206,18 @@ impl GameServer {
             GameMessage::Ping(id) => {
                 self.send_message_to_connection(id, GameMessage::Pong);
             }
-            GameMessage::CreatePlayer { name, flag, bot } => {
-                self.create_player(name.as_deref().unwrap_or("Unknown"), flag, bot);
+            GameMessage::CreatePlayer {
+                name,
+                flag,
+                bot,
+                connection_id,
+            } => {
+                self.create_player(
+                    name.as_deref().unwrap_or("Unknown"),
+                    flag,
+                    bot,
+                    connection_id,
+                );
             }
             // Those messages should not be received in the server
             GameMessage::Pong => {}
@@ -258,7 +272,13 @@ impl GameServer {
         return id;
     }
 
-    fn create_player(&mut self, name: &str, flag: Option<String>, bot: bool) {
+    fn create_player(
+        &mut self,
+        name: &str,
+        flag: Option<String>,
+        bot: bool,
+        connection_id: ConnectionID,
+    ) {
         let id = self.next_player_id();
         let flag = flag.unwrap_or(PlayerState::get_player_flag(id));
 
@@ -273,12 +293,17 @@ impl GameServer {
         let start_x = (self.rng.f64() - 0.5) * map_size;
         let start_y = (self.rng.f64() - 0.5) * map_size;
 
-        self.broadcast(GameMessage::PlayerCreated {
-            x: start_x,
-            y: start_y,
-            id,
-            bot,
-        });
+        log::info!("Player {:?} created at ({}, {})", id, start_x, start_y);
+
+        self.send_message_to_connection(
+            connection_id,
+            GameMessage::PlayerCreated {
+                x: start_x,
+                y: start_y,
+                id,
+                bot,
+            },
+        );
 
         for _ in 0..PLAYER_START_SHIPS {
             let mut ship = ShipState::default();
@@ -336,8 +361,6 @@ impl GameServer {
 
         if self.frames % SYNC_EVERY_N_FRAMES == 0 {
             self.remove_inactive_players();
-            // let state = self.game_state.state_message();
-            // self.broadcast(GameMessage::FrameMessage(vec![state]));
         }
 
         self.add_to_frame(StateMessage::Tick(dt));

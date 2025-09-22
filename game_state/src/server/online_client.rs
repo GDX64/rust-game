@@ -3,7 +3,7 @@ use crate::{server::Client, GlExec};
 use super::game_server::GameMessage;
 use actor::Actor;
 use async_task::Task;
-use futures::{join, SinkExt, StreamExt};
+use futures::{channel::mpsc::Receiver, join, SinkExt, StreamExt};
 
 pub trait ChannelConstructor: Send {
     fn new(&self) -> Box<dyn OnlineClientChannel>;
@@ -30,10 +30,6 @@ impl OnlineClient {
         client.reconnect();
         client
     }
-
-    fn next(&mut self) -> Option<GameMessage> {
-        self.actor.as_mut()?.receiver.try_next().ok()?
-    }
 }
 
 impl Client for OnlineClient {
@@ -46,8 +42,8 @@ impl Client for OnlineClient {
         }
     }
 
-    fn next_message(&mut self) -> Option<GameMessage> {
-        self.next()
+    fn take_receiver(&mut self) -> Option<Receiver<GameMessage>> {
+        return self.actor.as_mut()?.receiver.take();
     }
 
     fn tick(&mut self, _dt: f64) {}
@@ -113,7 +109,7 @@ mod actor {
 
     pub struct Actor<T> {
         pub sender: Sender<T>,
-        pub receiver: Receiver<T>,
+        pub receiver: Option<Receiver<T>>,
     }
 
     impl<T> Actor<T> {
@@ -126,7 +122,7 @@ mod actor {
             return (
                 Actor {
                     sender: sender_main,
-                    receiver: receiver_main,
+                    receiver: Some(receiver_main),
                 },
                 future,
             );

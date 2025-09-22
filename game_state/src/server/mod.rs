@@ -1,3 +1,5 @@
+use futures::channel::mpsc::Receiver;
+
 use crate::server::game_server::GameMessage;
 
 pub mod game_server;
@@ -12,6 +14,6 @@ pub mod running_mode;
 pub trait Client: Send {
     fn send(&mut self, msg: GameMessage);
     fn tick(&mut self, dt: f64);
-    fn next_message(&mut self) -> Option<GameMessage>;
+    fn take_receiver(&mut self) -> Option<Receiver<GameMessage>>;
     fn reconnect(&mut self);
 }

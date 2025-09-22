@@ -1,11 +1,13 @@
 use super::game_server::GameMessage;
 use crate::player::Player;
 use crate::player_state::PlayerID;
+use crate::server::game_server::ConnectionID;
 use crate::server::Client;
 use crate::server_state::{ServerState, StateMessage};
 use crate::utils::event_hub::{EventHub, EventKey};
 use crate::utils::vectors::V2D;
-use crate::{BotPlayer, TICK_TIME};
+use crate::{BotPlayer, GlActor, GlExec, WrappedActor, TICK_TIME};
+use futures::StreamExt;
 use log::info;
 use std::collections::BTreeMap;
 
@@ -14,6 +16,7 @@ pub enum RunningEvent {
     PlayerCreated { id: PlayerID, x: f64, y: f64 },
     PositionChanged(V2D),
     Pong,
+    Connected,
 }
 
 impl EventKey for RunningEvent {}
@@ -21,6 +24,7 @@ impl EventKey for RunningEvent {}
 pub struct RunningMode {
     game_state: ServerState,
     client: Box<dyn Client>,
+    connection_id: Option<ConnectionID>,
     frame_acc: f64,
     frame_buffer: Vec<Vec<StateMessage>>,
     players: BTreeMap<PlayerID, Player>,
@@ -34,55 +38,34 @@ impl RunningMode {
         &self.game_state
     }
 
-    pub fn new(client: Box<dyn Client>) -> RunningMode {
-        RunningMode {
+    pub fn wrapped(mut client: Box<dyn Client>) -> WrappedActor<RunningMode> {
+        let mut receiver = client.take_receiver().expect("Failed to take receiver");
+        let rn = RunningMode {
             game_state: ServerState::new(0),
             client,
+            connection_id: None,
             frame_acc: 0.0,
             frame_buffer: vec![],
             players: BTreeMap::new(),
             bots: BTreeMap::new(),
             start_position: V2D::new(0.0, 0.0),
             events: EventHub::new(),
-        }
+        };
+        let wr = rn.to_wrapped();
+        let mut wr_clone = wr.clone();
+
+        //possible leak here
+        GlExec::spawn(async move {
+            while let Some(msg) = receiver.next().await {
+                wr_clone.send(RunningModeMessage::GameMessage(msg)).await;
+            }
+        })
+        .detach();
+        return wr;
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    fn tick(&mut self, dt: f64) {
         self.client.tick(dt);
-        loop {
-            let msg = self.client.next_message();
-            let msg = match msg {
-                Some(msg) => msg,
-                _ => break,
-            };
-            match msg {
-                GameMessage::FrameMessage(msg) => {
-                    self.frame_buffer.insert(0, msg);
-                }
-                GameMessage::PlayerCreated { id, x, y, bot } => {
-                    info!("Player Created with id: {:?}", id);
-                    self.events.notify(RunningEvent::PlayerCreated { id, x, y });
-                    self.events
-                        .notify(RunningEvent::PositionChanged(self.start_position));
-                    if bot {
-                        self.create_bot(id, x, y);
-                    } else {
-                        self.create_player(id, x, y);
-                    }
-                }
-                GameMessage::Reconnection { id, seed } => {
-                    self.game_state = ServerState::new(seed);
-                    self.send_game_message(GameMessage::AskBroadcast { connection_id: id });
-                }
-                GameMessage::ConnectionDown => {
-                    self.client.reconnect();
-                }
-                GameMessage::Pong => {
-                    self.events.notify(RunningEvent::Pong);
-                }
-                _ => {}
-            }
-        }
 
         self.frame_acc += dt;
         let completed_frames = (self.frame_acc / TICK_TIME).round();
@@ -110,7 +93,7 @@ impl RunningMode {
                 messages_to_send.push(msg);
             });
             if bot.is_dead() {
-                println!("bot is dead");
+                log::info!("bot is dead");
                 bots_to_remove.push(bot.player.id);
             }
         }
@@ -119,6 +102,38 @@ impl RunningMode {
         }
         for msg in messages_to_send {
             self.send_game_message(GameMessage::InputMessage(msg));
+        }
+    }
+
+    fn on_game_message(&mut self, msg: GameMessage) {
+        match msg {
+            GameMessage::FrameMessage(msg) => {
+                self.frame_buffer.insert(0, msg);
+            }
+            GameMessage::PlayerCreated { id, x, y, bot } => {
+                info!("Player Created with id: {:?}", id);
+                self.events.notify(RunningEvent::PlayerCreated { id, x, y });
+                self.events
+                    .notify(RunningEvent::PositionChanged(self.start_position));
+                if bot {
+                    self.create_bot(id, x, y);
+                } else {
+                    self.create_player(id, x, y);
+                }
+            }
+            GameMessage::Reconnection { id, seed } => {
+                self.events.notify(RunningEvent::Connected);
+                self.game_state = ServerState::new(seed);
+                self.connection_id = Some(id);
+                self.send_game_message(GameMessage::AskBroadcast { connection_id: id });
+            }
+            GameMessage::ConnectionDown => {
+                self.client.reconnect();
+            }
+            GameMessage::Pong => {
+                self.events.notify(RunningEvent::Pong);
+            }
+            _ => {}
         }
     }
 
@@ -135,10 +150,16 @@ impl RunningMode {
     }
 
     pub fn ask_create_player(&mut self, bot: bool) {
+        log::info!("Asking server to create player, bot={}", bot);
+        let Some(connection_id) = self.connection_id else {
+            log::error!("No connection ID set, cannot create player");
+            return;
+        };
         self.send_game_message(GameMessage::CreatePlayer {
             name: None,
             flag: None,
             bot,
+            connection_id,
         });
     }
 
@@ -152,6 +173,44 @@ impl RunningMode {
 
     pub fn send_game_message(&mut self, msg: GameMessage) {
         self.client.send(msg);
+    }
+}
+
+#[derive(Debug)]
+pub enum RunningModeMessage {
+    Tick(f64),
+    GameMessage(GameMessage),
+    CreateBot,
+}
+
+impl GlActor for RunningMode {
+    type Message = RunningModeMessage;
+    async fn on_message(&mut self, msg: Self::Message) -> () {
+        match msg {
+            RunningModeMessage::Tick(dt) => self.tick(dt),
+            RunningModeMessage::GameMessage(msg) => self.on_game_message(msg),
+            RunningModeMessage::CreateBot => self.ask_create_player(true),
+        }
+    }
+}
+
+impl WrappedActor<RunningMode> {
+    pub async fn when_connected(&mut self) {
+        let mut notification = self
+            .with_state(|state| {
+                return state.events.subscribe();
+            })
+            .await;
+        notification
+            .when(|event| {
+                if let RunningEvent::Connected = event {
+                    return Some(());
+                } else {
+                    return None;
+                }
+            })
+            .await
+            .expect("Failed to wait for connection");
     }
 }
 

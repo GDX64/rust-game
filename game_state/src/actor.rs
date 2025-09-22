@@ -34,6 +34,15 @@ pub struct WrappedActor<A: GlActor> {
     task: Arc<Task<()>>,
 }
 
+impl<A: GlActor> Clone for WrappedActor<A> {
+    fn clone(&self) -> Self {
+        Self {
+            sender: self.sender.clone(),
+            task: self.task.clone(),
+        }
+    }
+}
+
 impl<A: GlActor> WrappedActor<A> {
     pub fn new(actor: A) -> Self {
         let (sender, mut receiver) = channel(100);

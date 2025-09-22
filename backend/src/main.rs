@@ -96,8 +96,8 @@ async fn main() {
     let local_set = tokio::task::LocalSet::new();
     let tick_task = local_set.run_until(async {
         tokio::task::spawn_local(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_millis(5));
-            // let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK_TIME));
+            // let mut interval = tokio::time::interval(std::time::Duration::from_millis(5));
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK_TIME));
             loop {
                 interval.tick().await;
                 state.get_game_server().tick(TICK_TIME);

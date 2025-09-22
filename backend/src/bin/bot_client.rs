@@ -3,7 +3,9 @@ use futures::{
     future::join_all,
     SinkExt, StreamExt,
 };
-use game_state::{ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningMode};
+use game_state::{
+    ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningMode, RunningModeMessage,
+};
 use std::{
     env,
     time::{Duration, SystemTime},
@@ -11,8 +13,16 @@ use std::{
 use tokio::{net::TcpStream, time::interval};
 use tokio_tungstenite::tungstenite::Message;
 
+fn init_logger() {
+    env_logger::builder()
+        .target(env_logger::Target::Stdout)
+        .filter_level(log::LevelFilter::Info)
+        .init();
+}
+
 #[tokio::main]
 async fn main() {
+    init_logger();
     let exec = GlExec::new_global(std::time::SystemTime::now());
     tokio::spawn(async move {
         loop {
@@ -21,30 +31,24 @@ async fn main() {
         }
     });
 
-    let mut tasks = vec![];
-
-    for _ in 0..1 {
-        tasks.push(tokio::spawn(async move {
-            loop {
-                make_bot().await;
-            }
-        }));
-    }
-
-    join_all(tasks).await;
+    make_bot_pool().await;
 }
 
-async fn make_bot() {
+async fn make_bot_pool() {
     let addr = env::var("SERVER_ADDR").unwrap_or("127.0.0.1:5000".into());
     let constructor = MyChannelConstructor { url: addr };
     let online_mode = OnlineClient::new(Box::new(constructor));
-    let mut runner = RunningMode::new(Box::new(online_mode));
+    let mut runner = RunningMode::wrapped(Box::new(online_mode));
     let mut interval = interval(Duration::from_millis(16));
+    runner.when_connected().await;
+    for _ in 0..10 {
+        runner.send(RunningModeMessage::CreateBot).await;
+    }
     loop {
         let tick = interval.tick();
         tick.await;
         let dt = 0.016;
-        runner.tick(dt);
+        runner.send(RunningModeMessage::Tick(dt)).await;
     }
 }
 

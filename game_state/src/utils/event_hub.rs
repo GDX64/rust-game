@@ -16,6 +16,21 @@ pub struct Subscription<T> {
     receiver: Receiver<T>,
 }
 
+impl<M> Subscription<M> {
+    pub async fn when<T, F>(&mut self, f: F) -> anyhow::Result<T>
+    where
+        T: 'static,
+        F: Fn(M) -> Option<T> + 'static,
+    {
+        while let Some(event) = self.receiver.next().await {
+            if let Some(val) = f(event) {
+                return Ok(val);
+            }
+        }
+        return Err(anyhow::anyhow!("No event received"));
+    }
+}
+
 impl<K: EventKey> EventHub<K> {
     pub fn new() -> Self {
         Self {
@@ -23,7 +38,7 @@ impl<K: EventKey> EventHub<K> {
         }
     }
 
-    fn subscribe(&mut self) -> Subscription<K> {
+    pub fn subscribe(&mut self) -> Subscription<K> {
         let (sender, receiver) = futures::channel::mpsc::channel(10);
         self.senders.push(sender);
         Subscription { receiver }
@@ -96,4 +111,8 @@ fn as_promise<T: Serialize + 'static>(
         return res;
     };
     return wasm_bindgen_futures::future_to_promise(mapped);
+}
+
+pub struct Notification<T> {
+    receiver: Receiver<T>,
 }
