@@ -1,3 +1,4 @@
+mod actor;
 mod boidlike;
 mod bot_player;
 mod bullet;
@@ -13,6 +14,7 @@ mod server_state;
 mod ship;
 mod utils;
 mod world_gen;
+pub use actor::*;
 pub use bot_player::*;
 pub use executor::*;
 pub use player_state::PlayerState;

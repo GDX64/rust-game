@@ -108,6 +108,17 @@ impl GlExec {
         task
     }
 
+    pub fn block_on(&self, future: impl Future<Output = ()> + Send + 'static) {
+        let task = Self::spawn(future);
+        loop {
+            self.tick(SystemTime::now());
+            if task.is_finished() {
+                return;
+            }
+            std::thread::yield_now();
+        }
+    }
+
     pub fn tick(&self, time: SystemTime) {
         // Run all tasks that are ready to run.
         while let Ok(waker) = self.reactor.tick_receiver.try_recv() {
