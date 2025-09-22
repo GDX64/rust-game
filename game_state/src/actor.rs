@@ -89,6 +89,14 @@ impl<A: GlActor> WrappedActor<A> {
         self.sender.send(msg).await.unwrap();
         return receiver.await.unwrap();
     }
+
+    pub fn listener<T: Send + 'static, F: Future<Output = T> + Send + 'static>(
+        &self,
+        f: impl Fn(Self) -> F,
+    ) -> Task<T> {
+        let task = GlExec::spawn(f(self.clone()));
+        return task;
+    }
 }
 
 #[cfg(test)]

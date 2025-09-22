@@ -6,7 +6,7 @@ use std::sync::{OnceLock, RwLock};
 use std::task::Waker;
 use std::time::{Duration, SystemTime};
 
-use async_task::{Runnable, Task};
+pub use async_task::{Runnable, Task};
 
 static GLOBAL_EXECUTOR_SENDER: OnceLock<Sender<Runnable>> = OnceLock::new();
 static GLOBAL_REACTOR_SENDER: OnceLock<Sender<Waker>> = OnceLock::new();
@@ -98,7 +98,9 @@ impl GlExec {
             .expect("Global executor not initialized")
             .clone();
         let schedule = move |runnable| {
-            sender.send(runnable).unwrap();
+            if let Err(e) = sender.send(runnable) {
+                eprintln!("Error sending runnable: {}", e);
+            }
         };
         let (runnable, task) = async_task::spawn(future, schedule);
 

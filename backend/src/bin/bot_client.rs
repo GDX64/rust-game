@@ -1,10 +1,10 @@
 use futures::{
     channel::mpsc::{Receiver, Sender},
-    future::join_all,
     SinkExt, StreamExt,
 };
 use game_state::{
-    ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningMode, RunningModeMessage,
+    ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
+    RunningModeMessage,
 };
 use std::{
     env,
@@ -39,17 +39,33 @@ async fn make_bot_pool() {
     let constructor = MyChannelConstructor { url: addr };
     let online_mode = OnlineClient::new(Box::new(constructor));
     let mut runner = RunningMode::wrapped(Box::new(online_mode));
-    let mut interval = interval(Duration::from_millis(16));
-    runner.when_connected().await;
+    let t1 = runner.listener(async |mut runner| -> () {
+        let mut interval = interval(Duration::from_millis(16));
+        loop {
+            let tick = interval.tick();
+            tick.await;
+            let dt = 0.016;
+            runner.send(RunningModeMessage::Tick(dt)).await;
+        }
+    });
+    let mut sub = runner.subscribe().await;
+    while let Some(msg) = sub.receiver.next().await {
+        if let RunningEvent::Connected = msg {
+            break;
+        }
+    }
     for _ in 0..10 {
         runner.send(RunningModeMessage::CreateBot).await;
     }
-    loop {
-        let tick = interval.tick();
-        tick.await;
-        let dt = 0.016;
-        runner.send(RunningModeMessage::Tick(dt)).await;
-    }
+    let t2 = runner.listener(async |mut runner| {
+        let mut sub = runner.subscribe().await;
+        while let Some(event) = sub.receiver.next().await {
+            if let RunningEvent::BotDead(_) = event {
+                runner.send(RunningModeMessage::CreateBot).await;
+            }
+        }
+    });
+    futures::join!(t1, t2);
 }
 
 struct MyChannelConstructor {

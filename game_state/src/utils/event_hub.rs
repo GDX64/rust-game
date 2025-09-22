@@ -13,7 +13,7 @@ pub struct EventHub<K: EventKey> {
 }
 
 pub struct Subscription<T> {
-    receiver: Receiver<T>,
+    pub receiver: Receiver<T>,
 }
 
 impl<M> Subscription<M> {
@@ -38,8 +38,8 @@ impl<K: EventKey> EventHub<K> {
         }
     }
 
-    pub fn subscribe(&mut self) -> Subscription<K> {
-        let (sender, receiver) = futures::channel::mpsc::channel(10);
+    pub fn subscribe(&mut self, n: usize) -> Subscription<K> {
+        let (sender, receiver) = futures::channel::mpsc::channel(n);
         self.senders.push(sender);
         Subscription { receiver }
     }
@@ -66,7 +66,7 @@ impl<K: EventKey> EventHub<K> {
         T: Serialize + 'static,
         F: Fn(K) -> Option<T> + 'static,
     {
-        let mut recv = self.subscribe();
+        let mut recv = self.subscribe(10);
         while let Some(event) = recv.receiver.next().await {
             if let Some(val) = f(event) {
                 return Ok(val);
@@ -80,7 +80,7 @@ impl<K: EventKey> EventHub<K> {
         T: Serialize + 'static,
         F: Fn(K) -> Option<T> + 'static,
     {
-        let mut recv = self.subscribe();
+        let mut recv = self.subscribe(10);
         let future = async move {
             while let Some(event) = recv.receiver.next().await {
                 if let Some(val) = f(event) {

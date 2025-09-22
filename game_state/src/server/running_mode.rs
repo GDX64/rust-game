@@ -4,7 +4,7 @@ use crate::player_state::PlayerID;
 use crate::server::game_server::ConnectionID;
 use crate::server::Client;
 use crate::server_state::{ServerState, StateMessage};
-use crate::utils::event_hub::{EventHub, EventKey};
+use crate::utils::event_hub::{EventHub, EventKey, Subscription};
 use crate::utils::vectors::V2D;
 use crate::{BotPlayer, GlActor, GlExec, WrappedActor, TICK_TIME};
 use futures::StreamExt;
@@ -17,6 +17,7 @@ pub enum RunningEvent {
     PositionChanged(V2D),
     Pong,
     Connected,
+    BotDead(PlayerID),
 }
 
 impl EventKey for RunningEvent {}
@@ -95,6 +96,7 @@ impl RunningMode {
             if bot.is_dead() {
                 log::info!("bot is dead");
                 bots_to_remove.push(bot.player.id);
+                self.events.notify(RunningEvent::BotDead(bot.player.id));
             }
         }
         for id in bots_to_remove {
@@ -195,22 +197,13 @@ impl GlActor for RunningMode {
 }
 
 impl WrappedActor<RunningMode> {
-    pub async fn when_connected(&mut self) {
-        let mut notification = self
+    pub async fn subscribe(&mut self) -> Subscription<RunningEvent> {
+        let sub = self
             .with_state(|state| {
-                return state.events.subscribe();
+                return state.events.subscribe(1000);
             })
             .await;
-        notification
-            .when(|event| {
-                if let RunningEvent::Connected = event {
-                    return Some(());
-                } else {
-                    return None;
-                }
-            })
-            .await
-            .expect("Failed to wait for connection");
+        return sub;
     }
 }
 
