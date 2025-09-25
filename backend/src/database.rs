@@ -1,4 +1,4 @@
-use game_state::{DBStatsMessage, PlayerState};
+use game_state::{GameTrace, PlayerState};
 use serde::Serialize;
 use std::future::Future;
 
@@ -50,16 +50,23 @@ impl GameDatabase {
         return Self::new(DbKind::File(path.into()));
     }
 
-    pub fn actor(file: impl Into<String>) -> (Sender<DBStatsMessage>, impl Future<Output = ()>) {
-        let (sender, mut receiver) = channel::<DBStatsMessage>(100);
+    pub fn actor(file: impl Into<String>) -> (Sender<GameTrace>, impl Future<Output = ()>) {
+        let (sender, mut receiver) = channel::<GameTrace>(100);
         let future = async move {
             let mut db = GameDatabase::file(file).unwrap();
             while let Some(msg) = receiver.next().await {
                 match msg {
-                    DBStatsMessage::PlayerUpdate(player) => {
-                        db.increment_player_stats(&DBPlayer::from_player_state(&player))
+                    GameTrace::ShipDestroyed {
+                        killed_by,
+                        player_id,
+                        ship_id,
+                        frame,
+                        game_id,
+                    } => {
+                        db.handle_kill(killed_by.into(), player_id.into(), ship_id, frame, game_id)
                             .expect("Failed to update players");
                     }
+                    _ => {}
                 }
             }
         };
@@ -73,10 +80,13 @@ impl GameDatabase {
         };
 
         conn.execute(
-            "create table if not exists players (
-                 name text primary key,
-                 kills integer,
-                 deaths integer
+            "create table if not exists kills (
+                 id integer primary key,
+                 frame integer,
+                 game_id integer,
+                 ship_id integer,
+                 player_id integer,
+                 killed_by integer
              )",
             rusqlite::params![],
         )?;
@@ -124,18 +134,19 @@ impl GameDatabase {
         Ok(players)
     }
 
-    fn increment_player_stats(&mut self, player: &DBPlayer) -> anyhow::Result<()> {
+    fn handle_kill(
+        &mut self,
+        killed_by: u64,
+        player_id: u64,
+        ship_id: u64,
+        frame: u64,
+        game_id: u64,
+    ) -> anyhow::Result<()> {
         let tx = self.conn.transaction()?;
         tx.execute(
-            "INSERT OR IGNORE INTO players (name, kills, deaths) VALUES (?1, 0, 0)",
-            rusqlite::params![player.name],
+            "insert into kills (ship_id, player_id, killed_by, frame, game_id) values (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![ship_id, player_id, killed_by, frame, game_id],
         )?;
-
-        tx.execute(
-            "update players set kills = kills + ?1, deaths = deaths + ?2 where name = ?3",
-            rusqlite::params![player.kills, player.deaths, player.name],
-        )?;
-
         tx.commit()?;
         Ok(())
     }

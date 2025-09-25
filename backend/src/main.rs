@@ -6,12 +6,9 @@ use axum::{
     Json, Router,
 };
 use database::GameDatabase;
-use futures::{
-    channel::mpsc::{channel, Sender},
-    SinkExt,
-};
+use futures::{channel::mpsc::channel, SinkExt};
 use futures_util::StreamExt;
-use game_state::{DBStatsMessage, TICK_TIME};
+use game_state::{GameTrace, TICK_TIME};
 use server_pool::ServerPool;
 use std::sync::{Arc, Mutex, MutexGuard};
 use tower_http::{
@@ -31,8 +28,8 @@ struct Apps {
 }
 
 impl Apps {
-    fn new(db_sender: Sender<DBStatsMessage>) -> Apps {
-        let mut pool = ServerPool::new(db_sender);
+    fn new() -> Apps {
+        let mut pool = ServerPool::new();
         pool.create_server("AWS SP1", 5)
             .expect("Failed to create default server");
         pool.create_server("AWS SP2", 1)
@@ -75,10 +72,11 @@ async fn main() {
         .allow_headers(Any);
 
     let (sender, future) = GameDatabase::actor(DB_PATH);
+    GameTrace::init_sender(sender);
 
     let db_join = tokio::spawn(future);
 
-    let state: AppState = Apps::new(sender);
+    let state: AppState = Apps::new();
     let backend_app = Router::new()
         .nest_service("/", static_dir)
         .route("/hello", get(|| async { "Sanity Check" }))

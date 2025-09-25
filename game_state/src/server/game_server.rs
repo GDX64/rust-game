@@ -65,10 +65,6 @@ struct PlayerBufferSenderPair {
     players: Vec<PlayerID>,
 }
 
-pub enum DBStatsMessage {
-    PlayerUpdate(PlayerState),
-}
-
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize, Debug, Default)]
 pub struct ConnectionID(u64);
 
@@ -89,11 +85,10 @@ pub struct GameServer {
     frames: u64,
     pub name: String,
     pub seed: u32,
-    db_sender: Option<Sender<DBStatsMessage>>,
 }
 
 impl GameServer {
-    pub fn new(db_sender: Option<Sender<DBStatsMessage>>, seed: u32) -> GameServer {
+    pub fn new(seed: u32) -> GameServer {
         GameServer {
             game_state: ServerState::new(seed),
             connections: HashMap::new(),
@@ -104,7 +99,6 @@ impl GameServer {
             frames: 0,
             frame_inputs: vec![],
             name: "default".to_string(),
-            db_sender,
             seed,
         }
     }
@@ -398,15 +392,6 @@ impl GameServer {
         }
         for id in players_to_remove {
             self.add_to_frame(StateMessage::RemovePlayer { id });
-
-            let player_state = self.game_state.players.get(&id).cloned();
-            match (player_state, self.db_sender.as_mut()) {
-                (Some(player_state), Some(sender)) => {
-                    let msg = DBStatsMessage::PlayerUpdate(player_state);
-                    sender.try_send(msg).ok();
-                }
-                _ => {}
-            }
 
             log::warn!("Player {:?} removed because of inactivity", id);
         }

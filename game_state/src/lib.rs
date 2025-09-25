@@ -18,9 +18,10 @@ pub use actor::*;
 pub use bot_player::*;
 pub use executor::*;
 pub use player_state::PlayerState;
-pub use server::game_server::{DBStatsMessage, GameMessage, GameServer, TICK_TIME};
+pub use server::game_server::{GameMessage, GameServer, TICK_TIME};
 pub use server::online_client::*;
 pub use server::running_mode::*;
+pub use server_state::*;
 use std::sync::OnceLock;
 #[cfg(target_arch = "wasm32")]
 mod wasm_game;

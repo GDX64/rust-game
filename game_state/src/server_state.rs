@@ -9,10 +9,15 @@ use crate::{
     world_gen::{self},
 };
 use cgmath::InnerSpace;
+use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::{borrow::BorrowMut, collections::BTreeMap, sync::Arc};
+use std::{
+    borrow::BorrowMut,
+    collections::BTreeMap,
+    sync::{Arc, Mutex},
+};
 use wasm_bindgen::prelude::*;
 
 const TOTAL_HIT: f64 = 30.0;
@@ -183,6 +188,33 @@ pub struct ServerState {
     artifact_gen: ArtifactGen,
     pub flags: ServerFlags,
     frame: usize,
+}
+
+pub enum GameTrace {
+    PlayerConnected(PlayerID),
+    PlayerDisconnected(PlayerID),
+    ShipDestroyed {
+        ship_id: u64,
+        player_id: PlayerID,
+        killed_by: PlayerID,
+        frame: u64,
+        game_id: u64,
+    },
+}
+
+static STATS_SENDER: Mutex<Option<Sender<GameTrace>>> = Mutex::new(None);
+
+impl GameTrace {
+    pub fn send(self) {
+        if let Some(sender) = STATS_SENDER.lock().unwrap().as_mut() {
+            sender.try_send(self).ok();
+        }
+    }
+
+    pub fn init_sender(sender: Sender<GameTrace>) {
+        let mut guard = STATS_SENDER.lock().unwrap();
+        *guard = Some(sender);
+    }
 }
 
 impl ServerState {
@@ -386,6 +418,16 @@ impl ServerState {
 
             if let Some(killed_by) = ship.killed_by {
                 let player = self.players.get_mut(&killed_by);
+
+                GameTrace::ShipDestroyed {
+                    ship_id: ship.id,
+                    player_id: ship.player_id,
+                    killed_by,
+                    frame: self.frame as u64,
+                    game_id: 0, // TODO
+                }
+                .send();
+
                 if let Some(player) = player {
                     player.kills += 1;
                 }
@@ -527,6 +569,7 @@ impl ServerState {
             }
             StateMessage::CreatePlayer { id, name, flag } => {
                 self.players.insert(id, PlayerState::new(name, id, flag));
+                GameTrace::PlayerConnected(id).send();
             }
             StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);
@@ -537,6 +580,7 @@ impl ServerState {
                         self.flags.map_changed = true;
                     }
                 });
+                GameTrace::PlayerDisconnected(id).send();
                 log::info!("Player {:?} removed from the server", id);
             }
             StateMessage::BroadCastState { state } => {

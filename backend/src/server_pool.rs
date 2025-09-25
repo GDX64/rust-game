@@ -1,13 +1,12 @@
 use anyhow::Result;
 use futures::channel::mpsc::Sender;
-use game_state::{DBStatsMessage, GameServer};
+use game_state::GameServer;
 use std::{collections::HashMap, time::Duration};
 
 const MAX_SERVERS: usize = 3;
 
 pub struct ServerPool {
     servers: HashMap<String, GameServer>,
-    db_sender: Sender<DBStatsMessage>,
 }
 
 #[derive(serde::Serialize)]
@@ -18,10 +17,9 @@ pub struct ServerInfo {
 }
 
 impl ServerPool {
-    pub fn new(db_sender: Sender<DBStatsMessage>) -> ServerPool {
+    pub fn new() -> ServerPool {
         ServerPool {
             servers: HashMap::new(),
-            db_sender,
         }
     }
 
@@ -81,7 +79,7 @@ impl ServerPool {
         if self.servers.len() >= MAX_SERVERS {
             return Err(anyhow::anyhow!("Max servers reached"));
         }
-        let mut server = GameServer::new(Some(self.db_sender.clone()), seed);
+        let mut server = GameServer::new(seed);
         server.name = server_id.to_string();
         self.servers.insert(server_id.to_string(), server);
         return Ok(());
