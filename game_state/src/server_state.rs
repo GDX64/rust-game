@@ -188,11 +188,19 @@ pub struct ServerState {
     artifact_gen: ArtifactGen,
     pub flags: ServerFlags,
     frame: usize,
+    pub game_id: u64,
 }
 
 pub enum GameTrace {
-    PlayerConnected(PlayerID),
-    PlayerDisconnected(PlayerID),
+    PlayerConnected {
+        player_id: PlayerID,
+        game_id: u64,
+        player_name: String,
+    },
+    PlayerDisconnected {
+        player_id: PlayerID,
+        game_id: u64,
+    },
     ShipDestroyed {
         ship_id: u64,
         player_id: PlayerID,
@@ -218,7 +226,7 @@ impl GameTrace {
 }
 
 impl ServerState {
-    pub fn new(seed: u32) -> Self {
+    pub fn new(seed: u32, game_id: u64) -> Self {
         let world_gen = Arc::new(world_gen::WorldGen::new(seed));
         let game_map = Arc::new(world_gen.generate_grid());
         let hash_grid = HashGrid::new(game_map.dim, game_map.tile_size);
@@ -240,6 +248,7 @@ impl ServerState {
             rng: fastrand::Rng::with_seed(0),
             flags: ServerFlags { map_changed: true },
             frame: 0,
+            game_id,
         };
         me.fill_island_dynamic();
         return me;
@@ -424,7 +433,7 @@ impl ServerState {
                     player_id: ship.player_id,
                     killed_by,
                     frame: self.frame as u64,
-                    game_id: 0, // TODO
+                    game_id: self.game_id,
                 }
                 .send();
 
@@ -568,8 +577,13 @@ impl ServerState {
                 self.handle_set_player_name(name, id);
             }
             StateMessage::CreatePlayer { id, name, flag } => {
+                GameTrace::PlayerConnected {
+                    player_id: id,
+                    game_id: self.game_id,
+                    player_name: name.clone(),
+                }
+                .send();
                 self.players.insert(id, PlayerState::new(name, id, flag));
-                GameTrace::PlayerConnected(id).send();
             }
             StateMessage::RemovePlayer { id } => {
                 self.players.remove(&id);
@@ -580,7 +594,11 @@ impl ServerState {
                         self.flags.map_changed = true;
                     }
                 });
-                GameTrace::PlayerDisconnected(id).send();
+                GameTrace::PlayerDisconnected {
+                    player_id: id,
+                    game_id: self.game_id,
+                }
+                .send();
                 log::info!("Player {:?} removed from the server", id);
             }
             StateMessage::BroadCastState { state } => {

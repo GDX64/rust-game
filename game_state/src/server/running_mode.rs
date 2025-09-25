@@ -42,7 +42,7 @@ impl RunningMode {
     pub fn wrapped(mut client: Box<dyn Client>) -> WrappedActor<RunningMode> {
         let mut receiver = client.take_receiver().expect("Failed to take receiver");
         let rn = RunningMode {
-            game_state: ServerState::new(0),
+            game_state: ServerState::new(0, 1),
             client,
             connection_id: None,
             frame_acc: 0.0,
@@ -125,7 +125,7 @@ impl RunningMode {
             }
             GameMessage::Reconnection { id, seed } => {
                 self.events.notify(RunningEvent::Connected);
-                self.game_state = ServerState::new(seed);
+                self.game_state = ServerState::new(seed, 1);
                 self.connection_id = Some(id);
                 self.send_game_message(GameMessage::AskBroadcast { connection_id: id });
             }

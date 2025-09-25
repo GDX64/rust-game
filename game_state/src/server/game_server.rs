@@ -90,7 +90,7 @@ pub struct GameServer {
 impl GameServer {
     pub fn new(seed: u32) -> GameServer {
         GameServer {
-            game_state: ServerState::new(seed),
+            game_state: ServerState::new(seed, 1),
             connections: HashMap::new(),
             player_id_counter: 0,
             connection_id_counter: 0,
