@@ -1,5 +1,5 @@
 use anyhow::Result;
-use game_state::GameServer;
+use game_state::{GameServer, GameTrace};
 use std::{collections::HashMap, time::Duration};
 
 use crate::database::GameDatabase;
@@ -9,6 +9,7 @@ const MAX_SERVERS: usize = 100;
 pub struct ServerPool {
     servers: HashMap<String, GameServer>,
     db: GameDatabase,
+    tick_number: u64,
 }
 
 #[derive(serde::Serialize)]
@@ -23,6 +24,7 @@ impl ServerPool {
         ServerPool {
             servers: HashMap::new(),
             db: GameDatabase::new_prod().expect("Failed to create db"),
+            tick_number: 0,
         }
     }
 
@@ -31,26 +33,18 @@ impl ServerPool {
     }
 
     pub fn tick(&mut self, dt: f64) {
-        let elapsed = measure_time(|| {
-            for (_, server) in self.servers.iter_mut() {
-                let elapsed = measure_time(|| {
-                    server.tick(dt);
-                });
-                if elapsed.as_millis() > 16 {
-                    let server_name = server.name.as_str();
-                    log::warn!(
-                        "Tick of server {server_name} took longer than a frame time: {}ms",
-                        elapsed.as_millis()
-                    );
-                }
+        for (_, server) in self.servers.iter_mut() {
+            let elapsed = measure_time(|| {
+                server.tick(dt);
+            });
+            GameTrace::ServerTick {
+                game_id: server.game_id,
+                tick: self.tick_number,
+                micros_elapsed: elapsed.as_micros() as u64,
             }
-        });
-        if elapsed.as_millis() > 16 {
-            log::warn!(
-                "Tick took longer than a frame time: {}ms",
-                elapsed.as_millis()
-            );
+            .send();
         }
+        self.tick_number += 1;
     }
 
     pub fn get_server_info(&self) -> Vec<ServerInfo> {

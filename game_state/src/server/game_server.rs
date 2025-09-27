@@ -85,6 +85,7 @@ pub struct GameServer {
     frames: u64,
     pub name: String,
     pub seed: u32,
+    pub game_id: u64,
 }
 
 impl GameServer {
@@ -100,6 +101,7 @@ impl GameServer {
             frame_inputs: vec![],
             name: "default".to_string(),
             seed,
+            game_id: id,
         }
     }
 

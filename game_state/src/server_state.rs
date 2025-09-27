@@ -208,6 +208,11 @@ pub enum GameTrace {
         frame: u64,
         game_id: u64,
     },
+    ServerTick {
+        game_id: u64,
+        tick: u64,
+        micros_elapsed: u64,
+    },
 }
 
 static STATS_SENDER: Mutex<Option<Sender<GameTrace>>> = Mutex::new(None);

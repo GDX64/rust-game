@@ -106,6 +106,19 @@ impl GameDatabase {
                 tx.commit()?;
                 return Ok(());
             }
+            GameTrace::ServerTick {
+                game_id,
+                tick,
+                micros_elapsed,
+            } => {
+                let tx = self.conn.transaction()?;
+                tx.execute(
+                    "insert into server_ticks (game_id, tick, micros_elapsed) values (?1, ?2, ?3)",
+                    rusqlite::params![game_id, tick, micros_elapsed],
+                )?;
+                tx.commit()?;
+                return Ok(());
+            }
             _ => {
                 return Ok(());
             }
@@ -153,6 +166,18 @@ impl GameDatabase {
                 seed INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+             ",
+            rusqlite::params![],
+        )?;
+
+        conn.execute(
+            "
+            create table if not exists server_ticks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            game_id INTEGER not null,
+            tick INTEGER not null,
+            micros_elapsed INTEGER not null
+        );
              ",
             rusqlite::params![],
         )?;
