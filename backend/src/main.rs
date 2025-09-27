@@ -19,8 +19,6 @@ use tower_http::{
 mod database;
 mod server_pool;
 
-const DB_PATH: &str = "./data/game.db";
-
 #[derive(Clone)]
 struct Apps {
     game_server: Arc<Mutex<ServerPool>>,
@@ -35,7 +33,7 @@ impl Apps {
         pool.create_server("AWS SP2", 1)
             .expect("Failed to create default server");
 
-        let stats_db = GameDatabase::file(DB_PATH).expect("Failed to create db");
+        let stats_db = GameDatabase::new_prod().expect("Failed to create db");
 
         Apps {
             game_server: Arc::new(Mutex::new(pool)),
@@ -71,7 +69,7 @@ async fn main() {
         .allow_methods(Any)
         .allow_headers(Any);
 
-    let (sender, future) = GameDatabase::actor(DB_PATH);
+    let (sender, future) = GameDatabase::actor();
     GameTrace::init_sender(sender);
 
     let db_join = tokio::spawn(future);

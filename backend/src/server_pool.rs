@@ -1,12 +1,14 @@
 use anyhow::Result;
-use futures::channel::mpsc::Sender;
 use game_state::GameServer;
 use std::{collections::HashMap, time::Duration};
 
-const MAX_SERVERS: usize = 3;
+use crate::database::GameDatabase;
+
+const MAX_SERVERS: usize = 100;
 
 pub struct ServerPool {
     servers: HashMap<String, GameServer>,
+    db: GameDatabase,
 }
 
 #[derive(serde::Serialize)]
@@ -20,6 +22,7 @@ impl ServerPool {
     pub fn new() -> ServerPool {
         ServerPool {
             servers: HashMap::new(),
+            db: GameDatabase::new_prod().expect("Failed to create db"),
         }
     }
 
@@ -75,13 +78,15 @@ impl ServerPool {
         return Ok(());
     }
 
-    pub fn create_server(&mut self, server_id: &str, seed: u32) -> Result<()> {
+    pub fn create_server(&mut self, server_name: &str, seed: u32) -> Result<()> {
         if self.servers.len() >= MAX_SERVERS {
             return Err(anyhow::anyhow!("Max servers reached"));
         }
-        let mut server = GameServer::new(seed);
-        server.name = server_id.to_string();
-        self.servers.insert(server_id.to_string(), server);
+        log::info!("Creating server {server_name} with seed {seed}");
+        let id = self.db.create_server(&server_name, seed)?;
+        let mut server = GameServer::new(seed, id);
+        server.name = server_name.to_string();
+        self.servers.insert(server_name.to_string(), server);
         return Ok(());
     }
 }

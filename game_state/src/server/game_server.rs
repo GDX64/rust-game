@@ -88,9 +88,9 @@ pub struct GameServer {
 }
 
 impl GameServer {
-    pub fn new(seed: u32) -> GameServer {
+    pub fn new(seed: u32, id: u64) -> GameServer {
         GameServer {
-            game_state: ServerState::new(seed, 1),
+            game_state: ServerState::new(seed, id),
             connections: HashMap::new(),
             player_id_counter: 0,
             connection_id_counter: 0,

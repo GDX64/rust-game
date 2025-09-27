@@ -50,10 +50,10 @@ impl GameDatabase {
         return Self::new(DbKind::File(path.into()));
     }
 
-    pub fn actor(file: impl Into<String>) -> (Sender<GameTrace>, impl Future<Output = ()>) {
+    pub fn actor() -> (Sender<GameTrace>, impl Future<Output = ()>) {
         let (sender, mut receiver) = channel::<GameTrace>(100);
         let future = async move {
-            let mut db = GameDatabase::file(file).unwrap();
+            let mut db = GameDatabase::new_prod().unwrap();
             while let Some(msg) = receiver.next().await {
                 if let Err(e) = db.handle_message(msg) {
                     eprintln!("Error handling DB message: {}", e);
@@ -61,6 +61,17 @@ impl GameDatabase {
             }
         };
         return (sender, future);
+    }
+
+    pub fn create_server(&mut self, server: &str, seed: u32) -> anyhow::Result<u64> {
+        let tx = self.conn.transaction()?;
+        tx.execute(
+            "insert into servers (name, seed) values (?1, ?2)",
+            rusqlite::params![server, seed],
+        )?;
+        let id = tx.last_insert_rowid();
+        tx.commit()?;
+        Ok(id as u64)
     }
 
     fn handle_message(&mut self, msg: GameTrace) -> anyhow::Result<()> {
@@ -99,6 +110,12 @@ impl GameDatabase {
         }
     }
 
+    pub fn new_prod() -> anyhow::Result<Self> {
+        const DB_PATH: &str = "./data/game.db";
+        let kind = DbKind::File(DB_PATH.to_string());
+        return Self::new(kind);
+    }
+
     fn new(kind: DbKind) -> anyhow::Result<Self> {
         let conn = match kind {
             DbKind::InMemory => rusqlite::Connection::open_in_memory()?,
@@ -125,6 +142,17 @@ impl GameDatabase {
                  player_id integer,
                  unique(player_id, game_id)
              )",
+            rusqlite::params![],
+        )?;
+
+        conn.execute(
+            "create table if not EXISTS servers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                seed INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+             ",
             rusqlite::params![],
         )?;
 
