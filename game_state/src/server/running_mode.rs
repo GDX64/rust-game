@@ -32,6 +32,7 @@ pub struct RunningMode {
     bots: BTreeMap<PlayerID, BotPlayer>,
     pub start_position: V2D,
     pub events: EventHub<RunningEvent>,
+    rng: fastrand::Rng,
 }
 
 impl RunningMode {
@@ -51,6 +52,7 @@ impl RunningMode {
             bots: BTreeMap::new(),
             start_position: V2D::new(0.0, 0.0),
             events: EventHub::new(),
+            rng: fastrand::Rng::with_seed(0),
         };
         let wr = rn.to_wrapped();
         let mut wr_clone = wr.clone();
@@ -157,8 +159,9 @@ impl RunningMode {
             log::error!("No connection ID set, cannot create player");
             return;
         };
+        let name = get_fake_name(&mut self.rng);
         self.send_game_message(GameMessage::CreatePlayer {
-            name: None,
+            name: Some(name),
             flag: None,
             bot,
             connection_id,
@@ -228,3 +231,37 @@ mod test {
         // );
     }
 }
+
+fn get_fake_name(rng: &mut fastrand::Rng) -> String {
+    let first = rng.u32(0..MOCK_NAME_SET.len() as u32);
+    let last = rng.u32(0..MOCK_LAST_NAMES.len() as u32);
+    let first = MOCK_NAME_SET[first as usize];
+    let last = MOCK_LAST_NAMES[last as usize];
+    return format!("{} {}", first, last);
+}
+
+const MOCK_NAME_SET: [&str; 32] = [
+    "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet",
+    "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango",
+    "Uniform", "Victor", "Whiskey", "X-ray", "Yankee", "Zulu", "Red", "Blue", "Green", "Yellow",
+    "Purple", "Orange",
+];
+
+const MOCK_LAST_NAMES: [&str; 16] = [
+    "Warrior",
+    "Ranger",
+    "Mage",
+    "Knight",
+    "Assassin",
+    "Paladin",
+    "Druid",
+    "Hunter",
+    "Berserker",
+    "Monk",
+    "Ninja",
+    "Samurai",
+    "Viking",
+    "Gladiator",
+    "Sorcerer",
+    "Alchemist",
+];

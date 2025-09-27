@@ -1,11 +1,13 @@
 use game_state::{GameTrace, PlayerState};
 use serde::Serialize;
-use std::future::Future;
+use std::{fs, future::Future};
 
 use futures::{
     channel::mpsc::{channel, Sender},
     StreamExt,
 };
+
+const DB_PATH: &str = "./data/game.db";
 
 #[derive(Serialize)]
 pub struct DBPlayer {
@@ -111,7 +113,6 @@ impl GameDatabase {
     }
 
     pub fn new_prod() -> anyhow::Result<Self> {
-        const DB_PATH: &str = "./data/game.db";
         let kind = DbKind::File(DB_PATH.to_string());
         return Self::new(kind);
     }
