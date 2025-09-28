@@ -119,6 +119,15 @@ impl GameDatabase {
                 tx.commit()?;
                 return Ok(());
             }
+            GameTrace::PingTime { micros, player_id } => {
+                let tx = self.conn.transaction()?;
+                tx.execute(
+                    "insert into pings (player_id, micros) values (?1, ?2)",
+                    rusqlite::params![player_id.as_u64(), micros],
+                )?;
+                tx.commit()?;
+                return Ok(());
+            }
             _ => {
                 return Ok(());
             }

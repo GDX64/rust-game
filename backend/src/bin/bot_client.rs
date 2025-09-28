@@ -2,9 +2,10 @@ use futures::{
     channel::mpsc::{Receiver, Sender},
     SinkExt, StreamExt,
 };
+use game::GameDatabase;
 use game_state::{
-    ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
-    RunningModeMessage, WrappedActor,
+    ChannelConstructor, GameTrace, GlExec, OnlineClient, OnlineClientChannel, RunningEvent,
+    RunningMode, RunningModeMessage, WrappedActor,
 };
 use std::{
     collections::HashMap,
@@ -31,6 +32,10 @@ async fn main() {
             tokio::time::sleep(Duration::from_millis(5)).await;
         }
     });
+
+    let (sender, fut) = GameDatabase::actor();
+    tokio::spawn(fut);
+    GameTrace::init_sender(sender);
 
     let t1 = tokio::spawn(make_bot_pool(10, false));
     let t2 = tokio::spawn(make_bot_pool(1, true));
@@ -80,12 +85,22 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
         }
         let mut sub = runner.subscribe().await;
         let mut ping_map = HashMap::<u64, Instant>::new();
+        let mut player_id = None;
         while let Some(event) = sub.receiver.next().await {
             match event {
+                RunningEvent::PlayerCreated { id, .. } => {
+                    player_id = Some(id);
+                }
                 RunningEvent::StatePong { id } => {
                     if let Some(start) = ping_map.remove(&id) {
                         let elapsed = start.elapsed();
-                        log::info!("Ping: {} ms", elapsed.as_millis());
+                        if let Some(player_id) = player_id {
+                            GameTrace::PingTime {
+                                micros: elapsed.as_micros() as u64,
+                                player_id,
+                            }
+                            .send();
+                        }
                     }
                 }
                 RunningEvent::Tick => {

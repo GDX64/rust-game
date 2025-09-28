@@ -30,3 +30,16 @@ create table if not exists server_ticks (
     micros_elapsed INTEGER not null,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+create table if not exists pings(
+    id integer primary key autoincrement,
+    player_id integer not null,
+    micros integer not null
+)
+
+-- drop all old values
+delete from kills;
+delete from players;
+delete from servers;
+delete from server_ticks;
+delete from pings;

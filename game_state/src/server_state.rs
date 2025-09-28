@@ -216,6 +216,10 @@ pub enum GameTrace {
         tick: u64,
         micros_elapsed: u64,
     },
+    PingTime {
+        micros: u64,
+        player_id: PlayerID,
+    },
 }
 
 static STATS_SENDER: Mutex<Option<Sender<GameTrace>>> = Mutex::new(None);
