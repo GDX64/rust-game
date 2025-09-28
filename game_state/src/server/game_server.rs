@@ -361,7 +361,6 @@ impl GameServer {
 
         self.add_to_frame(StateMessage::Tick(dt));
         self.run_inputs();
-
         self.flush_frame_inputs();
         self.flush_send_buffers();
     }

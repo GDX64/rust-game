@@ -4,11 +4,12 @@ use futures::{
 };
 use game_state::{
     ChannelConstructor, GlExec, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
-    RunningModeMessage,
+    RunningModeMessage, WrappedActor,
 };
 use std::{
+    collections::HashMap,
     env,
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 use tokio::{net::TcpStream, time::interval};
 use tokio_tungstenite::tungstenite::Message;
@@ -31,14 +32,21 @@ async fn main() {
         }
     });
 
-    make_bot_pool(10).await;
+    let t1 = tokio::spawn(make_bot_pool(10, false));
+    let t2 = tokio::spawn(make_bot_pool(1, true));
+    let _ = tokio::join!(t1, t2);
 }
 
-async fn make_bot_pool(bots: usize) {
+fn create_runner() -> WrappedActor<RunningMode> {
     let addr = env::var("SERVER_ADDR").unwrap_or("127.0.0.1:5000".into());
     let constructor = MyChannelConstructor { url: addr };
     let online_mode = OnlineClient::new(Box::new(constructor));
-    let mut runner = RunningMode::wrapped(Box::new(online_mode));
+    let runner = RunningMode::wrapped(Box::new(online_mode));
+    return runner;
+}
+
+async fn make_bot_pool(bots: usize, collect_stats: bool) {
+    let mut runner = create_runner();
     let t1 = runner.listener(async |mut runner| -> () {
         let mut interval = interval(Duration::from_millis(16));
         loop {
@@ -65,7 +73,31 @@ async fn make_bot_pool(bots: usize) {
             }
         }
     });
-    futures::join!(t1, t2);
+
+    let t3 = runner.listener(async move |mut runner| {
+        if !collect_stats {
+            return;
+        }
+        let mut sub = runner.subscribe().await;
+        let mut ping_map = HashMap::<u64, Instant>::new();
+        while let Some(event) = sub.receiver.next().await {
+            match event {
+                RunningEvent::StatePong { id } => {
+                    if let Some(start) = ping_map.remove(&id) {
+                        let elapsed = start.elapsed();
+                        log::info!("Ping: {} ms", elapsed.as_millis());
+                    }
+                }
+                RunningEvent::Tick => {
+                    let id = runner.with_state(|s| s.ask_ping()).await;
+                    ping_map.insert(id, Instant::now());
+                }
+                _ => {}
+            }
+        }
+    });
+
+    futures::join!(t1, t2, t3);
 }
 
 struct MyChannelConstructor {

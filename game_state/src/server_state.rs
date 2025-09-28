@@ -132,6 +132,9 @@ pub enum StateMessage {
         constants: GameConstants,
     },
     Tick(f64),
+    Ping {
+        id: u64,
+    },
     None,
 }
 
@@ -663,6 +666,9 @@ impl ServerState {
             }
             StateMessage::GameConstants { constants } => {
                 self.game_constants = constants;
+            }
+            StateMessage::Ping { .. } => {
+                //this is a noop, just to measure latency
             }
             StateMessage::None => {}
         }

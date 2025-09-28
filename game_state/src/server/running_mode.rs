@@ -18,6 +18,8 @@ pub enum RunningEvent {
     Pong,
     Connected,
     BotDead(PlayerID),
+    StatePong { id: u64 },
+    Tick,
 }
 
 impl EventKey for RunningEvent {}
@@ -68,6 +70,8 @@ impl RunningMode {
     }
 
     fn tick(&mut self, dt: f64) {
+        self.events.notify(RunningEvent::Tick);
+
         self.client.tick(dt);
 
         self.frame_acc += dt;
@@ -77,9 +81,12 @@ impl RunningMode {
         for _ in 0..completed_frames as usize {
             loop {
                 if let Some(frame) = self.frame_buffer.pop() {
-                    frame
-                        .into_iter()
-                        .for_each(|msg| self.game_state.on_message(msg));
+                    frame.into_iter().for_each(|msg| {
+                        if let StateMessage::Ping { id } = &msg {
+                            self.events.notify(RunningEvent::StatePong { id: *id });
+                        }
+                        self.game_state.on_message(msg);
+                    });
                 }
                 if self.frame_buffer.len() < 10 {
                     break;
@@ -151,6 +158,12 @@ impl RunningMode {
         let mut player = Player::new(player_id);
         player.position = V2D::new(x, y);
         self.players.insert(player_id, player);
+    }
+
+    pub fn ask_ping(&mut self) -> u64 {
+        let id = self.rng.u64(0..u64::MAX);
+        self.send_game_message(GameMessage::InputMessage(StateMessage::Ping { id }));
+        return id;
     }
 
     pub fn ask_create_player(&mut self, bot: bool) {
