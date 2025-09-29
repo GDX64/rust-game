@@ -1,3 +1,5 @@
+BEGIN;
+
 create table if not exists kills (
     id integer primary key,
     frame integer,
@@ -12,7 +14,6 @@ create table if not exists players(
   game_id integer,
   name text,
   player_id integer,
-  unique (player_id, game_id),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -35,11 +36,6 @@ create table if not exists pings(
     id integer primary key autoincrement,
     player_id integer not null,
     micros integer not null
-)
+);
 
--- drop all old values
-delete from kills;
-delete from players;
-delete from servers;
-delete from server_ticks;
-delete from pings;
+COMMIT;

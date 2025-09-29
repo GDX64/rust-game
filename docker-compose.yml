@@ -23,6 +23,8 @@ services:
       context: .
       dockerfile: bench.dockerfile
     hostname: bot_client
+    depends_on:
+      - game
     networks:
       - backend
     environment:

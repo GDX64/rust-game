@@ -7,7 +7,7 @@ use futures::{
     StreamExt,
 };
 
-const DB_PATH: &str = "./data/game.db";
+const DB_PATH: &str = "./data/game2.db";
 
 #[derive(Serialize)]
 pub struct DBPlayer {
@@ -146,7 +146,7 @@ impl GameDatabase {
         };
 
         let setup_sql = include_str!("./sql/setup.sql");
-        conn.execute(setup_sql, [])?;
+        conn.execute_batch(setup_sql)?;
 
         Ok(Self { conn })
     }
