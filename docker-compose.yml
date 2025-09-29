@@ -1,24 +1,39 @@
-version: '3'
 services:
-  game: 
-    image: gdx64/br_server
+  game:
+    build:
+      context: .
+      dockerfile: bench.dockerfile
+    hostname: game
+    networks:
+      - backend
+    environment:
+      - LISTEN_ADDR=0.0.0.0:5000
     ports:
       - "5000:5000"
-
-  nginx:
-    image: nginx
-    ports:
-      - "80:80"
-      - "443:443"
+    command: ["/game"]
+    deploy:
+      resources:
+          limits:
+            cpus: "1.0"
     volumes:
-      - ./data/nginx:/etc/nginx/conf.d
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-
-  certbot:
-    image: certbot/certbot
-    container_name: certbot
+      - db-data:/data
+  
+  bot_client:
+    build:
+      context: .
+      dockerfile: bench.dockerfile
+    hostname: bot_client
+    networks:
+      - backend
+    environment:
+      - SERVER_ADDR=game:5000
+    command: ["/bot_client"]
     volumes:
-      - ./data/certbot/conf:/etc/letsencrypt
-      - ./data/certbot/www:/var/www/certbot
-    command: certonly --webroot -w /var/www/certbot -d game.glmachado.com --email gabriel.delmachado@gmail.com --agree-tos
+      - db-data:/data
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  db-data:
