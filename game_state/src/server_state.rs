@@ -7,6 +7,7 @@ use crate::{
     ship::{ShipKey, ShipState, SHIP_SIZE},
     utils::vectors::{V2D, V3D},
     world_gen::{self},
+    GameTrace,
 };
 use cgmath::InnerSpace;
 use futures::channel::mpsc::Sender;
@@ -15,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{
     borrow::BorrowMut,
+    cell::Cell,
     collections::BTreeMap,
     sync::{Arc, Mutex},
 };
@@ -192,49 +194,6 @@ pub struct ServerState {
     pub flags: ServerFlags,
     frame: usize,
     pub game_id: u64,
-}
-
-pub enum GameTrace {
-    PlayerConnected {
-        player_id: PlayerID,
-        game_id: u64,
-        player_name: String,
-    },
-    PlayerDisconnected {
-        player_id: PlayerID,
-        game_id: u64,
-    },
-    ShipDestroyed {
-        ship_id: u64,
-        player_id: PlayerID,
-        killed_by: PlayerID,
-        frame: u64,
-        game_id: u64,
-    },
-    ServerTick {
-        game_id: u64,
-        tick: u64,
-        micros_elapsed: u64,
-    },
-    PingTime {
-        micros: u64,
-        player_id: PlayerID,
-    },
-}
-
-static STATS_SENDER: Mutex<Option<Sender<GameTrace>>> = Mutex::new(None);
-
-impl GameTrace {
-    pub fn send(self) {
-        if let Some(sender) = STATS_SENDER.lock().unwrap().as_mut() {
-            sender.try_send(self).ok();
-        }
-    }
-
-    pub fn init_sender(sender: Sender<GameTrace>) {
-        let mut guard = STATS_SENDER.lock().unwrap();
-        *guard = Some(sender);
-    }
 }
 
 impl ServerState {
