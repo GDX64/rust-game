@@ -1,5 +1,9 @@
-BEGIN;
 
+PRAGMA journal_mode = WAL;
+PRAGMA synchronous = OFF;
+PRAGMA temp_store = MEMORY;
+
+BEGIN;
 create table if not exists kills (
     id integer primary key,
     frame integer,
