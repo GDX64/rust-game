@@ -3,10 +3,7 @@ use rusqlite::Transaction;
 use serde::Serialize;
 use std::future::Future;
 
-use futures::{
-    channel::mpsc::{channel, Sender},
-    StreamExt,
-};
+use futures::channel::mpsc::{channel, Sender};
 
 const DB_PATH: &str = "./data/game.db";
 
@@ -54,7 +51,7 @@ impl GameDatabase {
     }
 
     pub fn actor() -> (Sender<GameTrace>, impl Future<Output = ()>) {
-        let (sender, mut receiver) = channel::<GameTrace>(100);
+        let (sender, mut receiver) = channel::<GameTrace>(999999999);
         let future = async move {
             let mut db = GameDatabase::new_prod().expect("Failed to create DB");
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));

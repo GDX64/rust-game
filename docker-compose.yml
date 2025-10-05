@@ -11,10 +11,10 @@ services:
     ports:
       - "5000:5000"
     command: ["/game"]
-    deploy:
-      resources:
-          limits:
-            cpus: "1.0"
+    # deploy:
+      # resources:
+      #     limits:
+      #       cpus: "2.0"
     volumes:
       - db-data:/data
     healthcheck:
