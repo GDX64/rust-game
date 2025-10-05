@@ -55,10 +55,10 @@ impl GameDatabase {
     pub fn actor() -> (Sender<GameTrace>, impl Future<Output = ()>) {
         let (sender, mut receiver) = channel::<GameTrace>(100);
         let future = async move {
-            let mut db = GameDatabase::new_prod().unwrap();
+            let mut db = GameDatabase::new_prod().expect("Failed to create DB");
             while let Some(msg) = receiver.next().await {
                 if let Err(e) = db.handle_message(msg) {
-                    eprintln!("Error handling DB message: {}", e);
+                    log::error!("Error handling DB message: {}", e);
                 }
             }
         };
@@ -141,8 +141,8 @@ impl GameDatabase {
             } => {
                 let tx = self.conn.transaction()?;
                 tx.execute(
-                    "insert into player_counts (game_id, count, tick) values (?1, ?2, ?3)",
-                    rusqlite::params![game_id, count as u64, tick],
+                    "insert into player_counts (game_id, tick, count) values (?1, ?2, ?3)",
+                    rusqlite::params![game_id, tick, count as u64],
                 )?;
                 tx.commit()?;
                 return Ok(());
@@ -188,7 +188,6 @@ impl GameDatabase {
             Ok(_) => {}
             Err(e) => {
                 log::error!("Error setting up DB: {}", e);
-                return Err(anyhow::anyhow!(e));
             }
         }
 

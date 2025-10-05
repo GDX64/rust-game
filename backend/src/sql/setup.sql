@@ -33,6 +33,7 @@ create table if not exists players(
   game_id integer,
   name text,
   player_id integer,
+  tick integer,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

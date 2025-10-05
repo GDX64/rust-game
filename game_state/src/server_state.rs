@@ -217,11 +217,6 @@ impl ServerState {
         };
         me.fill_island_dynamic();
 
-        log::info!("ServerState created with seed {}", seed);
-
-        #[cfg(feature = "state_traces")]
-        log::info!("State traces enabled on server_state");
-
         return me;
     }
 
@@ -711,5 +706,7 @@ fn calc_damage(distance: f64) -> f64 {
 
 fn log_trace(_trace: GameTrace) {
     #[cfg(feature = "state_traces")]
-    _trace.send();
+    {
+        _trace.send();
+    }
 }
