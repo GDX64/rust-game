@@ -4,6 +4,13 @@ PRAGMA synchronous = OFF;
 PRAGMA temp_store = MEMORY;
 
 BEGIN;
+
+drop Table if EXISTS kills;
+drop Table if EXISTS players;
+drop Table if EXISTS servers;
+drop Table if EXISTS server_ticks;
+drop Table if EXISTS pings;
+
 create table if not exists kills (
     id integer primary key,
     frame integer,
@@ -38,8 +45,10 @@ create table if not exists server_ticks (
 
 create table if not exists pings(
     id integer primary key autoincrement,
+    tick INTEGER not null,
     player_id integer not null,
     micros integer not null
 );
 
 COMMIT;
+VACUUM;

@@ -192,7 +192,7 @@ pub struct ServerState {
     rng: fastrand::Rng,
     artifact_gen: ArtifactGen,
     pub flags: ServerFlags,
-    frame: usize,
+    frame: u64,
     pub game_id: u64,
 }
 
@@ -319,6 +319,10 @@ impl ServerState {
             island_dynamic: self.island_dynamic.clone(),
             frame: 0,
         }
+    }
+
+    pub fn current_tick(&self) -> u64 {
+        return self.frame;
     }
 
     fn tick(&mut self, dt: f64) {
@@ -583,7 +587,7 @@ impl ServerState {
                 self.game_constants = state.game_constants;
                 self.island_dynamic = state.island_dynamic;
                 self.flags.map_changed = true;
-                self.frame = state.frame;
+                self.frame = state.frame as u64;
                 info!("Broadcast state received");
             }
             StateMessage::CreateShip { mut ship } => {

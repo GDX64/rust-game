@@ -29,6 +29,7 @@ pub enum GameTrace {
     PingTime {
         micros: u64,
         player_id: PlayerID,
+        tick: u64,
     },
 }
 

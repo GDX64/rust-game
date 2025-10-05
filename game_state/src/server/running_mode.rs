@@ -19,7 +19,7 @@ pub enum RunningEvent {
     Connected,
     BotDead(PlayerID),
     StatePong { id: u64 },
-    Tick,
+    Tick { tick: u64 },
 }
 
 impl EventKey for RunningEvent {}
@@ -70,8 +70,6 @@ impl RunningMode {
     }
 
     fn tick(&mut self, dt: f64) {
-        self.events.notify(RunningEvent::Tick);
-
         self.client.tick(dt);
 
         self.frame_acc += dt;
@@ -86,6 +84,9 @@ impl RunningMode {
                             self.events.notify(RunningEvent::StatePong { id: *id });
                         }
                         self.game_state.on_message(msg);
+                        let current_tick = self.game_state.current_tick();
+                        self.events
+                            .notify(RunningEvent::Tick { tick: current_tick });
                     });
                 }
                 if self.frame_buffer.len() < 10 {

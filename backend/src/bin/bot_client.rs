@@ -84,7 +84,11 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
             return;
         }
         let mut sub = runner.subscribe().await;
-        let mut ping_map = HashMap::<u64, Instant>::new();
+        struct PingData {
+            start: Instant,
+            tick: u64,
+        }
+        let mut ping_map = HashMap::<u64, PingData>::new();
         let mut player_id = None;
         while let Some(event) = sub.receiver.next().await {
             match event {
@@ -92,20 +96,27 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
                     player_id = Some(id);
                 }
                 RunningEvent::StatePong { id } => {
-                    if let Some(start) = ping_map.remove(&id) {
-                        let elapsed = start.elapsed();
+                    if let Some(data) = ping_map.remove(&id) {
+                        let elapsed = data.start.elapsed();
                         if let Some(player_id) = player_id {
                             GameTrace::PingTime {
                                 micros: elapsed.as_micros() as u64,
                                 player_id,
+                                tick: data.tick,
                             }
                             .send();
                         }
                     }
                 }
-                RunningEvent::Tick => {
+                RunningEvent::Tick { tick } => {
                     let id = runner.with_state(|s| s.ask_ping()).await;
-                    ping_map.insert(id, Instant::now());
+                    ping_map.insert(
+                        id,
+                        PingData {
+                            start: Instant::now(),
+                            tick,
+                        },
+                    );
                 }
                 _ => {}
             }
