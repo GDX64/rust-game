@@ -63,6 +63,7 @@ async fn main() {
     #[cfg(feature = "state_traces")]
     log::info!("State traces enabled");
 
+    let state: AppState = Apps::new();
     let static_dir = ServeDir::new("./dist");
     let static_dir = static_dir.fallback(ServeFile::new("./dist/index.html"));
 
@@ -77,7 +78,6 @@ async fn main() {
 
     let db_join = tokio::spawn(future);
 
-    let state: AppState = Apps::new();
     let backend_app = Router::new()
         .nest_service("/", static_dir)
         .route("/hello", get(|| async { "Sanity Check" }))
@@ -88,6 +88,7 @@ async fn main() {
         .route("/get_player_id", get(handle_get_player_id))
         .route("/ranking", get(handle_ranking_stats))
         .route("/error", post(handle_post_error))
+        .route("/health", get(|| async { "OK" }))
         .layer(CompressionLayer::new().gzip(true))
         .layer(cors)
         .with_state(state.clone());

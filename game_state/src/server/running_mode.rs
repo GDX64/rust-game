@@ -85,10 +85,10 @@ impl RunningMode {
                         if let StateMessage::Ping { id } = &msg {
                             self.events.notify(RunningEvent::StatePong { id: *id });
                         }
+                        if let StateMessage::Tick { tick, .. } = &msg {
+                            self.events.notify(RunningEvent::Tick { tick: *tick });
+                        }
                         self.game_state.on_message(msg);
-                        let current_tick = self.game_state.current_tick();
-                        self.events
-                            .notify(RunningEvent::Tick { tick: current_tick });
                     });
                 }
                 if self.frame_buffer.len() < BUFFER_MARGIN {

@@ -127,7 +127,10 @@ pub enum StateMessage {
     GameConstants {
         constants: GameConstants,
     },
-    Tick(f64),
+    Tick {
+        dt: f64,
+        tick: u64,
+    },
     Ping {
         id: u64,
     },
@@ -539,8 +542,9 @@ impl ServerState {
 
     pub fn on_message(&mut self, msg: StateMessage) {
         match msg {
-            StateMessage::Tick(dt) => {
+            StateMessage::Tick { dt, tick } => {
                 self.tick(dt);
+                self.frame = tick;
             }
             StateMessage::SetPlayerName { name, id } => {
                 self.handle_set_player_name(name, id);

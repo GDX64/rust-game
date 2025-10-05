@@ -183,15 +183,17 @@ impl GameDatabase {
             }
         };
 
+        Ok(Self { conn })
+    }
+
+    pub fn setup(&self) {
         let setup_sql = include_str!("./sql/setup.sql");
-        match conn.execute_batch(setup_sql) {
+        match self.conn.execute_batch(setup_sql) {
             Ok(_) => {}
             Err(e) => {
                 log::error!("Error setting up DB: {}", e);
             }
         }
-
-        Ok(Self { conn })
     }
 
     pub fn get_leaderboard(&self, n: usize) -> anyhow::Result<Vec<DBPlayer>> {

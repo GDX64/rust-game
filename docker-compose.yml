@@ -17,6 +17,11 @@ services:
             cpus: "1.0"
     volumes:
       - db-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
   
   bot_client:
     build:
@@ -25,7 +30,7 @@ services:
     hostname: bot_client
     depends_on:
       game:
-        condition: service_started
+        condition: service_healthy
     networks:
       - backend
     environment:
@@ -41,7 +46,7 @@ services:
     hostname: python
     depends_on:
       game:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "8888:8888"
     volumes:

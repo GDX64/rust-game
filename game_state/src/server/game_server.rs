@@ -82,7 +82,7 @@ pub struct GameServer {
     bots: Vec<BotPlayer>,
     frame_inputs: Vec<StateMessage>,
     rng: fastrand::Rng,
-    frames: u64,
+    current_tick: u64,
     pub name: String,
     pub seed: u32,
     pub game_id: u64,
@@ -97,7 +97,7 @@ impl GameServer {
             connection_id_counter: 0,
             bots: vec![],
             rng: fastrand::Rng::with_seed(1),
-            frames: 0,
+            current_tick: 0,
             frame_inputs: vec![],
             name: "default".to_string(),
             seed,
@@ -351,15 +351,18 @@ impl GameServer {
             return;
         }
 
-        self.frames += 1;
+        self.current_tick += 1;
 
         self.handle_bots();
 
-        if self.frames % SYNC_EVERY_N_FRAMES == 0 {
+        if self.current_tick % SYNC_EVERY_N_FRAMES == 0 {
             self.remove_inactive_players();
         }
 
-        self.add_to_frame(StateMessage::Tick(dt));
+        self.add_to_frame(StateMessage::Tick {
+            dt,
+            tick: self.current_tick,
+        });
         self.run_inputs();
         self.flush_frame_inputs();
         self.flush_send_buffers();

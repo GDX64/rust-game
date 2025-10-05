@@ -27,5 +27,7 @@ RUN --mount=type=cache,target=/app/backend/target,sharing=locked \
 
 FROM ubuntu:24.04 AS runner
 
+RUN apt-get -y update && apt-get -y install curl
+
 COPY --from=builder /app/game /game
 COPY --from=builder /app/bot_client /bot_client

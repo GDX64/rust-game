@@ -21,10 +21,12 @@ pub struct ServerInfo {
 
 impl ServerPool {
     pub fn new() -> ServerPool {
+        let db = GameDatabase::new_prod().expect("Failed to create db");
+        db.setup();
         ServerPool {
             servers: HashMap::new(),
-            db: GameDatabase::new_prod().expect("Failed to create db"),
             tick_number: 0,
+            db,
         }
     }
 
