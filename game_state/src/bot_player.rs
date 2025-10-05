@@ -12,7 +12,7 @@ enum BotState {
     Dead,
 }
 
-const UNITS_PER_ISLAND_TO_ATTACK_AGAIN: usize = 20;
+const UNITS_PER_ISLAND_TO_ATTACK_AGAIN: usize = 50;
 const TIME_FOR_ACTION: f64 = 1.0;
 
 pub struct BotPlayer {

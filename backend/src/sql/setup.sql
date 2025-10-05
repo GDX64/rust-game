@@ -10,6 +10,9 @@ drop Table if EXISTS players;
 drop Table if EXISTS servers;
 drop Table if EXISTS server_ticks;
 drop Table if EXISTS pings;
+drop table if EXISTS player_counts;
+drop table if EXISTS ships_destroyed;
+drop table if EXISTS ships_created;
 
 create table if not exists ships_destroyed (
     id integer primary key,

@@ -19,10 +19,10 @@ use wasm_bindgen::prelude::*;
 const TOTAL_HIT: f64 = 30.0;
 const BLAST_RADIUS: f64 = 20.0;
 const EXPLOSION_TTL: f64 = 1.0;
-const SHIP_PRODUCTION_TIME: f64 = 10.0;
+const SHIP_PRODUCTION_TIME: f64 = 2.0;
 const ISLAND_TAKE_TIME: f64 = 1.0;
-const MAX_PLAYER_SHIPS: usize = 100;
-pub const PLAYER_START_SHIPS: usize = 20;
+const MAX_PLAYER_SHIPS: usize = 200;
+pub const PLAYER_START_SHIPS: usize = 50;
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct GameConstants {

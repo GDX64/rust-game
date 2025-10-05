@@ -67,9 +67,7 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
             break;
         }
     }
-    for _ in 0..bots {
-        runner.send(RunningModeMessage::CreateBot).await;
-    }
+
     let t2 = runner.listener(async |mut runner| {
         let mut sub = runner.subscribe().await;
         while let Some(event) = sub.receiver.next().await {
@@ -89,23 +87,21 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
             tick: u64,
         }
         let mut ping_map = HashMap::<u64, PingData>::new();
-        let mut player_id = None;
+        let mut player_id = runner.with_state(|s| s.id()).await;
         while let Some(event) = sub.receiver.next().await {
             match event {
                 RunningEvent::PlayerCreated { id, .. } => {
-                    player_id = Some(id);
+                    player_id = id;
                 }
                 RunningEvent::StatePong { id } => {
                     if let Some(data) = ping_map.remove(&id) {
                         let elapsed = data.start.elapsed();
-                        if let Some(player_id) = player_id {
-                            GameTrace::PingTime {
-                                micros: elapsed.as_micros() as u64,
-                                player_id,
-                                tick: data.tick,
-                            }
-                            .send();
+                        GameTrace::PingTime {
+                            micros: elapsed.as_micros() as u64,
+                            player_id,
+                            tick: data.tick,
                         }
+                        .send();
                     }
                 }
                 RunningEvent::Tick { tick } => {
@@ -127,10 +123,10 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
         if collect_stats {
             return;
         }
-        let mut interval = interval(Duration::from_secs(60));
-        loop {
-            interval.tick().await;
+        let mut interval = interval(Duration::from_secs(1));
+        for _ in 0..bots {
             runner.send(RunningModeMessage::CreateBot).await;
+            interval.tick().await;
         }
     });
 
