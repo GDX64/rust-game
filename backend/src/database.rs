@@ -1,13 +1,13 @@
 use game_state::{GameTrace, PlayerState};
 use serde::Serialize;
-use std::{fs, future::Future};
+use std::future::Future;
 
 use futures::{
     channel::mpsc::{channel, Sender},
     StreamExt,
 };
 
-const DB_PATH: &str = "./data/game2.db";
+const DB_PATH: &str = "./data/game.db";
 
 #[derive(Serialize)]
 pub struct DBPlayer {
@@ -172,11 +172,25 @@ impl GameDatabase {
     fn new(kind: DbKind) -> anyhow::Result<Self> {
         let conn = match kind {
             DbKind::InMemory => rusqlite::Connection::open_in_memory()?,
-            DbKind::File(path) => rusqlite::Connection::open(path)?,
+            DbKind::File(path) => {
+                match rusqlite::Connection::open(path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        log::error!("Error opening DB file: {}", e);
+                        return Err(anyhow::anyhow!(e));
+                    }
+                }
+            }
         };
 
         let setup_sql = include_str!("./sql/setup.sql");
-        conn.execute_batch(setup_sql)?;
+        match conn.execute_batch(setup_sql) {
+            Ok(_) => {}
+            Err(e) => {
+                log::error!("Error setting up DB: {}", e);
+                return Err(anyhow::anyhow!(e));
+            }
+        }
 
         Ok(Self { conn })
     }

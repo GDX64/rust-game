@@ -60,6 +60,9 @@ async fn main() {
     init_logger();
     log::info!("Starting Axum Server");
 
+    #[cfg(feature = "state_traces")]
+    log::info!("State traces enabled");
+
     let static_dir = ServeDir::new("./dist");
     let static_dir = static_dir.fallback(ServeFile::new("./dist/index.html"));
 

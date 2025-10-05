@@ -216,7 +216,16 @@ impl OnlineClientChannel for MyChannel {
 
 pub async fn make_client(addr: &str) -> tokio_tungstenite::WebSocketStream<TcpStream> {
     log::info!("Connecting to server at {}", addr);
-    let stream = TcpStream::connect(addr).await.expect("Failed to connect");
+    let stream = loop {
+        let stream = TcpStream::connect(addr).await;
+        match stream {
+            Ok(s) => break s,
+            Err(e) => {
+                log::error!("Error connecting to server: {}", e);
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        }
+    };
     let addr = format!("ws://{}/ws?server_id=AWS+SP1", addr);
     log::info!("Connecting to WebSocket at {}", addr);
     let (ws_stream, _) = tokio_tungstenite::client_async(addr, stream)

@@ -33,6 +33,19 @@ services:
     command: ["/bot_client"]
     volumes:
       - db-data:/data
+    
+  python:
+    build:
+      context: .
+      dockerfile: python.dockerfile
+    hostname: python
+    depends_on:
+      game:
+        condition: service_started
+    ports:
+      - "8888:8888"
+    volumes:
+      - db-data:/data
 
 networks:
   backend:

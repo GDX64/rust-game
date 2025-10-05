@@ -11,7 +11,7 @@ COPY ./game_state ./game_state
 RUN --mount=type=cache,target=/app/backend/target,sharing=locked \
   --mount=type=cache,target=/usr/local/cargo/git/db \
   --mount=type=cache,target=/usr/local/cargo/registry/ \
-  cd ./backend && cargo build --release --bin game --target x86_64-unknown-linux-gnu 
+  cd ./backend && cargo build --release --bin game --target x86_64-unknown-linux-gnu --features state_traces
 
 RUN --mount=type=cache,target=/app/backend/target,sharing=locked \
   --mount=type=cache,target=/usr/local/cargo/git/db \

@@ -216,6 +216,12 @@ impl ServerState {
             game_id,
         };
         me.fill_island_dynamic();
+
+        log::info!("ServerState created with seed {}", seed);
+
+        #[cfg(feature = "state_traces")]
+        log::info!("State traces enabled on server_state");
+
         return me;
     }
 
