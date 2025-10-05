@@ -79,29 +79,24 @@ impl GameDatabase {
     fn handle_message(&mut self, msg: GameTrace) -> anyhow::Result<()> {
         match msg {
             GameTrace::ShipDestroyed {
-                killed_by,
-                player_id,
+                killer,
+                owner,
                 ship_id,
                 frame,
                 game_id,
             } => {
-                return self.handle_kill(
-                    killed_by.into(),
-                    player_id.into(),
-                    ship_id,
-                    frame,
-                    game_id,
-                );
+                return self.handle_kill(killer.into(), owner.into(), ship_id, frame, game_id);
             }
             GameTrace::PlayerConnected {
                 player_id,
                 game_id,
                 player_name,
+                tick,
             } => {
                 let tx = self.conn.transaction()?;
                 tx.execute(
-                    "insert or ignore into players (player_id, name, game_id) values (?1, ?2, ?3)",
-                    rusqlite::params![player_id.as_u64(), player_name, game_id],
+                    "insert into players (player_id, name, game_id, tick) values (?1, ?2, ?3, ?4)",
+                    rusqlite::params![player_id.as_u64(), player_name, game_id, tick],
                 )?;
                 tx.commit()?;
                 return Ok(());
@@ -132,7 +127,38 @@ impl GameDatabase {
                 tx.commit()?;
                 return Ok(());
             }
-            _ => {
+            GameTrace::PlayerDisconnected {
+                player_id,
+                game_id,
+                tick,
+            } => {
+                return Ok(());
+            }
+            GameTrace::NumberOfPlayers {
+                game_id,
+                count,
+                tick,
+            } => {
+                let tx = self.conn.transaction()?;
+                tx.execute(
+                    "insert into player_counts (game_id, count, tick) values (?1, ?2, ?3)",
+                    rusqlite::params![game_id, count as u64, tick],
+                )?;
+                tx.commit()?;
+                return Ok(());
+            }
+            GameTrace::ShipCreated {
+                ship_id,
+                owner,
+                frame,
+                game_id,
+            } => {
+                let tx = self.conn.transaction()?;
+                tx.execute(
+                    "insert into ships_created (ship_id, owner, frame, game_id) values (?1, ?2, ?3, ?4)",
+                    rusqlite::params![ship_id, owner.as_u64(), frame, game_id],
+                )?;
+                tx.commit()?;
                 return Ok(());
             }
         }
@@ -178,16 +204,16 @@ impl GameDatabase {
 
     fn handle_kill(
         &mut self,
-        killed_by: u64,
-        player_id: u64,
+        killer: u64,
+        owner: u64,
         ship_id: u64,
         frame: u64,
         game_id: u64,
     ) -> anyhow::Result<()> {
         let tx = self.conn.transaction()?;
         tx.execute(
-            "insert into kills (ship_id, player_id, killed_by, frame, game_id) values (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![ship_id, player_id, killed_by, frame, game_id],
+            "insert into ships_destroyed (ship_id, owner, killer, frame, game_id) values (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![ship_id, owner, killer, frame, game_id],
         )?;
         tx.commit()?;
         Ok(())

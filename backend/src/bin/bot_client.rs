@@ -123,7 +123,18 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
         }
     });
 
-    futures::join!(t1, t2, t3);
+    let t4 = runner.listener(async move |mut runner| {
+        if collect_stats {
+            return;
+        }
+        let mut interval = interval(Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            runner.send(RunningModeMessage::CreateBot).await;
+        }
+    });
+
+    futures::join!(t1, t2, t3, t4);
 }
 
 struct MyChannelConstructor {

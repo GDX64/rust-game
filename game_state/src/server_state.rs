@@ -10,16 +10,10 @@ use crate::{
     GameTrace,
 };
 use cgmath::InnerSpace;
-use futures::channel::mpsc::Sender;
 use log::info;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::{
-    borrow::BorrowMut,
-    cell::Cell,
-    collections::BTreeMap,
-    sync::{Arc, Mutex},
-};
+use std::{borrow::BorrowMut, collections::BTreeMap, sync::Arc};
 use wasm_bindgen::prelude::*;
 
 const TOTAL_HIT: f64 = 30.0;
@@ -403,14 +397,13 @@ impl ServerState {
             if let Some(killed_by) = ship.killed_by {
                 let player = self.players.get_mut(&killed_by);
 
-                GameTrace::ShipDestroyed {
+                log_trace(GameTrace::ShipDestroyed {
                     ship_id: ship.id,
-                    player_id: ship.player_id,
-                    killed_by,
+                    owner: ship.player_id,
+                    killer: killed_by,
                     frame: self.frame as u64,
                     game_id: self.game_id,
-                }
-                .send();
+                });
 
                 if let Some(player) = player {
                     player.kills += 1;
@@ -552,12 +545,17 @@ impl ServerState {
                 self.handle_set_player_name(name, id);
             }
             StateMessage::CreatePlayer { id, name, flag } => {
-                GameTrace::PlayerConnected {
+                log_trace(GameTrace::PlayerConnected {
                     player_id: id,
                     game_id: self.game_id,
                     player_name: name.clone(),
-                }
-                .send();
+                    tick: self.frame,
+                });
+                log_trace(GameTrace::NumberOfPlayers {
+                    game_id: self.game_id,
+                    count: self.players.len(),
+                    tick: self.frame,
+                });
                 self.players.insert(id, PlayerState::new(name, id, flag));
             }
             StateMessage::RemovePlayer { id } => {
@@ -569,11 +567,16 @@ impl ServerState {
                         self.flags.map_changed = true;
                     }
                 });
-                GameTrace::PlayerDisconnected {
+                log_trace(GameTrace::PlayerDisconnected {
                     player_id: id,
                     game_id: self.game_id,
-                }
-                .send();
+                    tick: self.frame,
+                });
+                log_trace(GameTrace::NumberOfPlayers {
+                    game_id: self.game_id,
+                    count: self.players.len(),
+                    tick: self.frame,
+                });
                 log::info!("Player {:?} removed from the server", id);
             }
             StateMessage::BroadCastState { state } => {
@@ -612,6 +615,13 @@ impl ServerState {
                     ship.position = place.into();
                     self.ship_collection
                         .insert(ShipKey::new(ship.id, ship.player_id.into()), ship);
+
+                    log_trace(GameTrace::ShipCreated {
+                        ship_id: ship.id,
+                        owner: ship.player_id.into(),
+                        frame: self.frame,
+                        game_id: self.game_id,
+                    });
                 }
             }
             StateMessage::MoveShip {
@@ -691,4 +701,9 @@ fn calc_damage(distance: f64) -> f64 {
         return TOTAL_HIT * hit_factor * hit_factor;
     }
     return 0.0;
+}
+
+fn log_trace(_trace: GameTrace) {
+    #[cfg(feature = "state_traces")]
+    _trace.send();
 }

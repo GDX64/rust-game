@@ -55,3 +55,6 @@ wasm-opt = ['-O4', '-g']
 debug = false
 opt-level = 3
 wasm-opt = false
+
+[features]
+state_traces = []

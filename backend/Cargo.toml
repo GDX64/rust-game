@@ -21,3 +21,8 @@ tokio-tungstenite = "0.27.0"
 tower-http = {version = "0.5.0", features = ["fs", "trace", "compression-gzip", "cors"]}
 # [build]
 # rustflags = ["-Clinker=rust-lld"]
+
+[[bin]]
+name = "bot_client"
+path = "src/bin/bot_client.rs"
+game_state = {path = "../game_state", features = ["state_traces"]}

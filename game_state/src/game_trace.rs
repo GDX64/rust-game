@@ -9,15 +9,22 @@ pub enum GameTrace {
         player_id: PlayerID,
         game_id: u64,
         player_name: String,
+        tick: u64,
+    },
+    NumberOfPlayers {
+        game_id: u64,
+        count: usize,
+        tick: u64,
     },
     PlayerDisconnected {
         player_id: PlayerID,
         game_id: u64,
+        tick: u64,
     },
     ShipDestroyed {
         ship_id: u64,
-        player_id: PlayerID,
-        killed_by: PlayerID,
+        owner: PlayerID,
+        killer: PlayerID,
         frame: u64,
         game_id: u64,
     },
@@ -30,6 +37,12 @@ pub enum GameTrace {
         micros: u64,
         player_id: PlayerID,
         tick: u64,
+    },
+    ShipCreated {
+        ship_id: u64,
+        owner: PlayerID,
+        frame: u64,
+        game_id: u64,
     },
 }
 

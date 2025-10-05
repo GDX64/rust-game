@@ -24,7 +24,8 @@ services:
       dockerfile: bench.dockerfile
     hostname: bot_client
     depends_on:
-      - game
+      game:
+        condition: service_started
     networks:
       - backend
     environment:

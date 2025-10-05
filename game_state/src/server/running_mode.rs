@@ -11,6 +11,8 @@ use futures::StreamExt;
 use log::info;
 use std::collections::BTreeMap;
 
+const BUFFER_MARGIN: usize = 5;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunningEvent {
     PlayerCreated { id: PlayerID, x: f64, y: f64 },
@@ -89,7 +91,7 @@ impl RunningMode {
                             .notify(RunningEvent::Tick { tick: current_tick });
                     });
                 }
-                if self.frame_buffer.len() < 10 {
+                if self.frame_buffer.len() < BUFFER_MARGIN {
                     break;
                 }
             }
