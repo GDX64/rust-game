@@ -346,12 +346,12 @@ impl GameServer {
         }
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    pub fn tick(&mut self, dt: f64, tick_number: u64) {
         if self.connections.is_empty() {
             return;
         }
 
-        self.current_tick += 1;
+        self.current_tick = tick_number;
 
         self.handle_bots();
 

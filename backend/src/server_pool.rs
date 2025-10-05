@@ -37,7 +37,7 @@ impl ServerPool {
     pub fn tick(&mut self, dt: f64) {
         for (_, server) in self.servers.iter_mut() {
             let elapsed = measure_time(|| {
-                server.tick(dt);
+                server.tick(dt, self.tick_number);
             });
             GameTrace::ServerTick {
                 game_id: server.game_id,

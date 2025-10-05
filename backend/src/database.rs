@@ -1,4 +1,5 @@
 use game_state::{GameTrace, PlayerState};
+use rusqlite::Transaction;
 use serde::Serialize;
 use std::future::Future;
 
@@ -56,9 +57,24 @@ impl GameDatabase {
         let (sender, mut receiver) = channel::<GameTrace>(100);
         let future = async move {
             let mut db = GameDatabase::new_prod().expect("Failed to create DB");
-            while let Some(msg) = receiver.next().await {
-                if let Err(e) = db.handle_message(msg) {
-                    log::error!("Error handling DB message: {}", e);
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+            loop {
+                interval.tick().await;
+                let tx = db.conn.transaction().expect("Failed to create transaction");
+                while let Ok(msg) = receiver.try_next() {
+                    match msg {
+                        Some(msg) => {
+                            if let Err(e) = handle_message(msg, &tx) {
+                                log::error!("Error handling DB message: {}", e);
+                            }
+                        }
+                        None => {
+                            break;
+                        }
+                    }
+                }
+                if let Err(e) = tx.commit() {
+                    log::error!("Error committing DB transaction: {}", e);
                 }
             }
         };
@@ -74,94 +90,6 @@ impl GameDatabase {
         let id = tx.last_insert_rowid();
         tx.commit()?;
         Ok(id as u64)
-    }
-
-    fn handle_message(&mut self, msg: GameTrace) -> anyhow::Result<()> {
-        match msg {
-            GameTrace::ShipDestroyed {
-                killer,
-                owner,
-                ship_id,
-                frame,
-                game_id,
-            } => {
-                return self.handle_kill(killer.into(), owner.into(), ship_id, frame, game_id);
-            }
-            GameTrace::PlayerConnected {
-                player_id,
-                game_id,
-                player_name,
-                tick,
-            } => {
-                let tx = self.conn.transaction()?;
-                tx.execute(
-                    "insert into players (player_id, name, game_id, tick) values (?1, ?2, ?3, ?4)",
-                    rusqlite::params![player_id.as_u64(), player_name, game_id, tick],
-                )?;
-                tx.commit()?;
-                return Ok(());
-            }
-            GameTrace::ServerTick {
-                game_id,
-                tick,
-                micros_elapsed,
-            } => {
-                let tx = self.conn.transaction()?;
-                tx.execute(
-                    "insert into server_ticks (game_id, tick, micros_elapsed) values (?1, ?2, ?3)",
-                    rusqlite::params![game_id, tick, micros_elapsed],
-                )?;
-                tx.commit()?;
-                return Ok(());
-            }
-            GameTrace::PingTime {
-                micros,
-                player_id,
-                tick,
-            } => {
-                let tx = self.conn.transaction()?;
-                tx.execute(
-                    "insert into pings (player_id, micros, tick) values (?1, ?2, ?3)",
-                    rusqlite::params![player_id.as_u64(), micros, tick],
-                )?;
-                tx.commit()?;
-                return Ok(());
-            }
-            GameTrace::PlayerDisconnected {
-                player_id,
-                game_id,
-                tick,
-            } => {
-                return Ok(());
-            }
-            GameTrace::NumberOfPlayers {
-                game_id,
-                count,
-                tick,
-            } => {
-                let tx = self.conn.transaction()?;
-                tx.execute(
-                    "insert into player_counts (game_id, tick, count) values (?1, ?2, ?3)",
-                    rusqlite::params![game_id, tick, count as u64],
-                )?;
-                tx.commit()?;
-                return Ok(());
-            }
-            GameTrace::ShipCreated {
-                ship_id,
-                owner,
-                frame,
-                game_id,
-            } => {
-                let tx = self.conn.transaction()?;
-                tx.execute(
-                    "insert into ships_created (ship_id, owner, frame, game_id) values (?1, ?2, ?3, ?4)",
-                    rusqlite::params![ship_id, owner.as_u64(), frame, game_id],
-                )?;
-                tx.commit()?;
-                return Ok(());
-            }
-        }
     }
 
     pub fn new_prod() -> anyhow::Result<Self> {
@@ -217,42 +145,88 @@ impl GameDatabase {
         Ok(players)
     }
 
-    fn handle_kill(
-        &mut self,
-        killer: u64,
-        owner: u64,
-        ship_id: u64,
-        frame: u64,
-        game_id: u64,
-    ) -> anyhow::Result<()> {
-        let tx = self.conn.transaction()?;
-        tx.execute(
-            "insert into ships_destroyed (ship_id, owner, killer, frame, game_id) values (?1, ?2, ?3, ?4, ?5)",
-            rusqlite::params![ship_id, owner, killer, frame, game_id],
-        )?;
-        tx.commit()?;
-        Ok(())
-    }
-
     fn get_player(&self, name: &str) -> anyhow::Result<DBPlayer> {
         todo!()
     }
 }
 
-#[cfg(test)]
-mod test {
-    use crate::database::DBPlayer;
-
-    use super::GameDatabase;
-
-    #[test]
-    fn test_db_start() {
-        // let db = GameDatabase::in_memory().unwrap();
-        // let player = DBPlayer::new("test");
-        // db.insert_player(&player).unwrap();
-        // let player = db.get_player("test").unwrap();
-        // assert_eq!(player.name, "test");
-        // assert_eq!(player.kills, 0);
-        // assert_eq!(player.deaths, 0);
+fn handle_message(msg: GameTrace, tx: &Transaction<'_>) -> anyhow::Result<()> {
+    match msg {
+        GameTrace::ShipDestroyed {
+            killer,
+            owner,
+            ship_id,
+            frame,
+            game_id,
+        } => {
+            tx.execute(
+                "insert into ships_destroyed (ship_id, owner, killer, frame, game_id) values (?1, ?2, ?3, ?4, ?5)",
+                    rusqlite::params![ship_id, owner.as_u64(), killer.as_u64(), frame, game_id])?;
+            return Ok(());
+        }
+        GameTrace::PlayerConnected {
+            player_id,
+            game_id,
+            player_name,
+            tick,
+        } => {
+            tx.execute(
+                "insert into players (player_id, name, game_id, tick) values (?1, ?2, ?3, ?4)",
+                rusqlite::params![player_id.as_u64(), player_name, game_id, tick],
+            )?;
+            return Ok(());
+        }
+        GameTrace::ServerTick {
+            game_id,
+            tick,
+            micros_elapsed,
+        } => {
+            tx.execute(
+                "insert into server_ticks (game_id, tick, micros_elapsed) values (?1, ?2, ?3)",
+                rusqlite::params![game_id, tick, micros_elapsed],
+            )?;
+            return Ok(());
+        }
+        GameTrace::PingTime {
+            micros,
+            player_id,
+            tick,
+        } => {
+            tx.execute(
+                "insert into pings (player_id, micros, tick) values (?1, ?2, ?3)",
+                rusqlite::params![player_id.as_u64(), micros, tick],
+            )?;
+            return Ok(());
+        }
+        GameTrace::PlayerDisconnected {
+            player_id,
+            game_id,
+            tick,
+        } => {
+            return Ok(());
+        }
+        GameTrace::NumberOfPlayers {
+            game_id,
+            count,
+            tick,
+        } => {
+            tx.execute(
+                "insert into player_counts (game_id, tick, count) values (?1, ?2, ?3)",
+                rusqlite::params![game_id, tick, count as u64],
+            )?;
+            return Ok(());
+        }
+        GameTrace::ShipCreated {
+            ship_id,
+            owner,
+            frame,
+            game_id,
+        } => {
+            tx.execute(
+                    "insert into ships_created (ship_id, owner, frame, game_id) values (?1, ?2, ?3, ?4)",
+                    rusqlite::params![ship_id, owner.as_u64(), frame, game_id],
+                )?;
+            return Ok(());
+        }
     }
 }

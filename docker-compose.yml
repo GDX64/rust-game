@@ -19,8 +19,8 @@ services:
       - db-data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 10s
-      timeout: 5s
+      interval: 2s
+      timeout: 2s
       retries: 3
   
   bot_client:
