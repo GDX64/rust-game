@@ -10,7 +10,8 @@
     "dev:front": "cd front && npm run dev",
     "build": "sh docker_build.sh build",
     "start": "sh docker_build.sh run",
-    "bench": "docker compose down -v && docker compose up --build"
+    "bench": "docker compose down -v && docker compose up --build",
+    "analyze": "docker compose -f docker-compose-analyze.yml up --build"
   },
   "repository": {
     "type": "git",
