@@ -29,7 +29,7 @@ async fn main() {
     tokio::spawn(async move {
         loop {
             exec.tick(SystemTime::now());
-            tokio::time::sleep(Duration::from_millis(5)).await;
+            tokio::time::sleep(Duration::from_millis(1)).await;
         }
     });
 
@@ -37,9 +37,14 @@ async fn main() {
     tokio::spawn(fut);
     GameTrace::init_sender(sender);
 
-    let t1 = tokio::spawn(make_bot_pool(10, false));
-    let t2 = tokio::spawn(make_bot_pool(1, true));
-    let _ = tokio::join!(t1, t2);
+    let collect_stats = env::var("COLLECT_STATS").unwrap_or("false".to_string()) == "true";
+
+    let result = if collect_stats {
+        tokio::spawn(make_bot_pool(1, true)).await
+    } else {
+        tokio::spawn(make_bot_pool(2, false)).await
+    };
+    result.unwrap();
 }
 
 fn create_runner() -> WrappedActor<RunningMode> {

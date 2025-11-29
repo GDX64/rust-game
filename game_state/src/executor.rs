@@ -1,12 +1,11 @@
 //! A simple single-threaded executor that can spawn non-`Send` futures.
 
+pub use async_task::{Runnable, Task};
 use std::future::Future;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{OnceLock, RwLock};
 use std::task::Waker;
 use std::time::{Duration, SystemTime};
-
-pub use async_task::{Runnable, Task};
 
 static GLOBAL_EXECUTOR_SENDER: OnceLock<Sender<Runnable>> = OnceLock::new();
 static GLOBAL_REACTOR_SENDER: OnceLock<Sender<Waker>> = OnceLock::new();

@@ -38,19 +38,35 @@ services:
     command: ["/bot_client"]
     volumes:
       - db-data:/data
-    
-  python:
+  bot_client_stats:
     build:
       context: .
-      dockerfile: python.dockerfile
-    hostname: python
+      dockerfile: bench.dockerfile
+    hostname: bot_client_stats
     depends_on:
       game:
         condition: service_healthy
-    ports:
-      - "8888:8888"
+    networks:
+      - backend
+    environment:
+      - SERVER_ADDR=game:5000
+      - COLLECT_STATS=true
+    command: ["/bot_client"]
     volumes:
       - db-data:/data
+    
+  # python:
+  #   build:
+  #     context: .
+  #     dockerfile: python.dockerfile
+  #   hostname: python
+  #   depends_on:
+  #     game:
+  #       condition: service_healthy
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - db-data:/data
 
 networks:
   backend:

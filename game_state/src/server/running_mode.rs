@@ -11,7 +11,7 @@ use futures::StreamExt;
 use log::info;
 use std::collections::BTreeMap;
 
-const BUFFER_MARGIN: usize = 5;
+const BUFFER_MARGIN: usize = 1;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunningEvent {
