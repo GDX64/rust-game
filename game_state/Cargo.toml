@@ -34,6 +34,7 @@ web-sys = {version = "0.3.69", features = [
   "WebSocket",
   "Window",
 ]}
+tokio = {version = "1.40.0", features = ["full"]}
 
 [alias]
 wasm = "wasm-pack build --target web"

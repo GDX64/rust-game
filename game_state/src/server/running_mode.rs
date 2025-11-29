@@ -6,12 +6,10 @@ use crate::server::Client;
 use crate::server_state::{ServerState, StateMessage};
 use crate::utils::event_hub::{EventHub, EventKey, Subscription};
 use crate::utils::vectors::V2D;
-use crate::{BotPlayer, GlActor, GlExec, WrappedActor, TICK_TIME};
+use crate::{BotPlayer, WrappedActor};
 use futures::StreamExt;
 use log::info;
 use std::collections::BTreeMap;
-
-const BUFFER_MARGIN: usize = 1;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RunningEvent {
@@ -30,8 +28,6 @@ pub struct RunningMode {
     game_state: ServerState,
     client: Box<dyn Client>,
     connection_id: Option<ConnectionID>,
-    frame_acc: f64,
-    frame_buffer: Vec<Vec<StateMessage>>,
     players: BTreeMap<PlayerID, Player>,
     bots: BTreeMap<PlayerID, BotPlayer>,
     pub start_position: V2D,
@@ -50,53 +46,30 @@ impl RunningMode {
             game_state: ServerState::new(0, 1),
             client,
             connection_id: None,
-            frame_acc: 0.0,
-            frame_buffer: vec![],
             players: BTreeMap::new(),
             bots: BTreeMap::new(),
             start_position: V2D::new(0.0, 0.0),
             events: EventHub::new(),
             rng: fastrand::Rng::with_seed(0),
         };
-        let wr = rn.to_wrapped();
+        let wr = WrappedActor::new(rn);
         let mut wr_clone = wr.clone();
 
         //possible leak here
-        GlExec::spawn(async move {
+        tokio::spawn(async move {
             while let Some(msg) = receiver.next().await {
-                wr_clone.send(RunningModeMessage::GameMessage(msg)).await;
+                wr_clone
+                    .with_state(|inner| {
+                        inner.on_game_message(msg);
+                    })
+                    .await;
             }
-        })
-        .detach();
+        });
         return wr;
     }
 
     fn tick(&mut self, dt: f64) {
         self.client.tick(dt);
-
-        self.frame_acc += dt;
-        let completed_frames = (self.frame_acc / TICK_TIME).round();
-        self.frame_acc -= (completed_frames) * TICK_TIME;
-
-        for _ in 0..completed_frames as usize {
-            loop {
-                if let Some(frame) = self.frame_buffer.pop() {
-                    frame.into_iter().for_each(|msg| {
-                        if let StateMessage::Ping { id } = &msg {
-                            self.events.notify(RunningEvent::StatePong { id: *id });
-                        }
-                        if let StateMessage::Tick { tick, .. } = &msg {
-                            self.events.notify(RunningEvent::Tick { tick: *tick });
-                        }
-                        self.game_state.on_message(msg);
-                    });
-                }
-                if self.frame_buffer.len() < BUFFER_MARGIN {
-                    break;
-                }
-            }
-        }
-
         let state = &self.game_state;
         let mut messages_to_send = vec![];
         let mut bots_to_remove = vec![];
@@ -122,7 +95,16 @@ impl RunningMode {
     fn on_game_message(&mut self, msg: GameMessage) {
         match msg {
             GameMessage::FrameMessage(msg) => {
-                self.frame_buffer.insert(0, msg);
+                msg.into_iter().for_each(|msg| {
+                    if let StateMessage::Ping { id } = &msg {
+                        self.events.notify(RunningEvent::StatePong { id: *id });
+                    }
+                    if let StateMessage::Tick { tick, dt } = &msg {
+                        self.events.notify(RunningEvent::Tick { tick: *tick });
+                        self.tick(*dt);
+                    }
+                    self.game_state.on_message(msg);
+                });
             }
             GameMessage::PlayerCreated { id, x, y, bot } => {
                 info!("Player Created with id: {:?}", id);
@@ -204,17 +186,6 @@ pub enum RunningModeMessage {
     CreateBot,
 }
 
-impl GlActor for RunningMode {
-    type Message = RunningModeMessage;
-    async fn on_message(&mut self, msg: Self::Message) -> () {
-        match msg {
-            RunningModeMessage::Tick(dt) => self.tick(dt),
-            RunningModeMessage::GameMessage(msg) => self.on_game_message(msg),
-            RunningModeMessage::CreateBot => self.ask_create_player(true),
-        }
-    }
-}
-
 impl WrappedActor<RunningMode> {
     pub async fn subscribe(&mut self) -> Subscription<RunningEvent> {
         let sub = self
@@ -223,28 +194,6 @@ impl WrappedActor<RunningMode> {
             })
             .await;
         return sub;
-    }
-}
-
-#[cfg(test)]
-mod test {
-    // use crate::server::{game_server::GameMessage, local_client::LocalClient};
-
-    #[test]
-    fn running_mode() {
-        // let client = LocalClient::new("test_player".to_string(), 0, Some("us".to_string()));
-        // let mut local = super::RunningMode::new(Box::new(client));
-        // local.send_game_message(GameMessage::AddBot);
-        // local.send_game_message(GameMessage::AddBot);
-        // local.send_game_message(GameMessage::AddBot);
-        // local.send_game_message(GameMessage::AddBot);
-        // for _ in 0..1000 {
-        //     local.tick(0.016)
-        // }
-        // assert_eq!(
-        //     local.game_state.ship_collection.len(),
-        //     local.client.server_state().unwrap().ship_collection.len()
-        // );
     }
 }
 

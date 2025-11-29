@@ -4,13 +4,13 @@ use futures::{
 };
 use game::GameDatabase;
 use game_state::{
-    ChannelConstructor, GameTrace, GlExec, OnlineClient, OnlineClientChannel, RunningEvent,
-    RunningMode, RunningModeMessage, WrappedActor,
+    ChannelConstructor, GameTrace, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
+    WrappedActor,
 };
 use std::{
     collections::HashMap,
     env,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 use tokio::{net::TcpStream, time::interval};
 use tokio_tungstenite::tungstenite::Message;
@@ -25,14 +25,6 @@ fn init_logger() {
 #[tokio::main]
 async fn main() {
     init_logger();
-    let exec = GlExec::new_global(std::time::SystemTime::now());
-    tokio::spawn(async move {
-        loop {
-            exec.tick(SystemTime::now());
-            tokio::time::sleep(Duration::from_millis(1)).await;
-        }
-    });
-
     let (sender, fut) = GameDatabase::actor();
     tokio::spawn(fut);
     GameTrace::init_sender(sender);
@@ -57,15 +49,6 @@ fn create_runner() -> WrappedActor<RunningMode> {
 
 async fn make_bot_pool(bots: usize, collect_stats: bool) {
     let mut runner = create_runner();
-    let t1 = runner.listener(async |mut runner| -> () {
-        let mut interval = interval(Duration::from_millis(16));
-        loop {
-            let tick = interval.tick();
-            tick.await;
-            let dt = 0.016;
-            runner.send(RunningModeMessage::Tick(dt)).await;
-        }
-    });
     let mut sub = runner.subscribe().await;
     while let Some(msg) = sub.receiver.next().await {
         if let RunningEvent::Connected = msg {
@@ -77,7 +60,7 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
         let mut sub = runner.subscribe().await;
         while let Some(event) = sub.receiver.next().await {
             if let RunningEvent::BotDead(_) = event {
-                runner.send(RunningModeMessage::CreateBot).await;
+                runner.with_state(|s| s.ask_create_player(true)).await;
             }
         }
     });
@@ -130,12 +113,12 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
         }
         let mut interval = interval(Duration::from_secs(1));
         for _ in 0..bots {
-            runner.send(RunningModeMessage::CreateBot).await;
+            runner.with_state(|s| s.ask_create_player(true)).await;
             interval.tick().await;
         }
     });
 
-    futures::join!(t1, t2, t3, t4);
+    let _ = tokio::join!(t2, t3, t4);
 }
 
 struct MyChannelConstructor {

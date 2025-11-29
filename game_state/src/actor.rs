@@ -1,140 +1,39 @@
 use std::{future::Future, sync::Arc};
+use tokio::sync::Mutex;
 
-use async_task::Task;
-use futures::{
-    channel::{
-        mpsc::{channel, Sender},
-        oneshot,
-    },
-    SinkExt, StreamExt,
-};
-
-use crate::GlExec;
-
-pub trait GlActor: Send + 'static {
-    type Message: Send + 'static;
-    fn on_message(&mut self, msg: Self::Message) -> impl Future<Output = ()> + Send + '_;
-
-    fn to_wrapped(self) -> WrappedActor<Self>
-    where
-        Self: Sized,
-    {
-        WrappedActor::new(self)
-    }
+pub struct WrappedActor<A> {
+    inner: Arc<Mutex<A>>,
 }
 
-enum WrappedMessage<A: GlActor> {
-    Message(A::Message),
-    WithState(Box<dyn FnOnce(&mut A) + Send>),
-}
-
-pub struct WrappedActor<A: GlActor> {
-    sender: Sender<WrappedMessage<A>>,
-    #[allow(dead_code)]
-    task: Arc<Task<()>>,
-}
-
-impl<A: GlActor> Clone for WrappedActor<A> {
+impl<A> Clone for WrappedActor<A> {
     fn clone(&self) -> Self {
         Self {
-            sender: self.sender.clone(),
-            task: self.task.clone(),
+            inner: self.inner.clone(),
         }
     }
 }
 
-impl<A: GlActor> WrappedActor<A> {
+impl<A> WrappedActor<A> {
     pub fn new(actor: A) -> Self {
-        let (sender, mut receiver) = channel(100);
-        let task = GlExec::spawn(async move {
-            let mut actor = actor;
-            while let Some(msg) = receiver.next().await {
-                match msg {
-                    WrappedMessage::Message(msg) => {
-                        actor.on_message(msg).await;
-                    }
-                    WrappedMessage::WithState(f) => {
-                        f(&mut actor);
-                    }
-                }
-            }
-        });
         let wrapped = Self {
-            sender,
-            task: task.into(),
+            inner: Arc::new(Mutex::new(actor)),
         };
         return wrapped;
-    }
-
-    pub async fn send(&mut self, msg: A::Message) {
-        let msg = WrappedMessage::Message(msg);
-        self.sender.send(msg).await.unwrap();
     }
 
     pub async fn with_state<T: Send + 'static>(
         &mut self,
         f: impl FnOnce(&mut A) -> T + Send + 'static,
     ) -> T {
-        let (sender, receiver) = oneshot::channel();
-        let f: Box<dyn FnOnce(&mut A) + Send> = Box::new(move |actor: &mut A| {
-            let result = f(actor);
-            match sender.send(result) {
-                Ok(_) => {}
-                Err(_) => {
-                    eprintln!("Failed to send result");
-                }
-            }
-        });
-        let msg = WrappedMessage::WithState(f);
-        self.sender.send(msg).await.unwrap();
-        return receiver.await.unwrap();
+        let mut guard = self.inner.lock().await;
+        return f(&mut *guard);
     }
 
     pub fn listener<T: Send + 'static, F: Future<Output = T> + Send + 'static>(
         &self,
         f: impl FnOnce(Self) -> F,
-    ) -> Task<T> {
-        let task = GlExec::spawn(f(self.clone()));
+    ) -> tokio::task::JoinHandle<T> {
+        let task = tokio::spawn(f(self.clone()));
         return task;
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{GlActor, GlExec};
-
-    #[test]
-    fn interface_test() {
-        #[derive(Debug)]
-        enum Message {
-            Inc(u32),
-        }
-
-        struct TestActor {
-            counter: u32,
-        }
-
-        impl GlActor for TestActor {
-            type Message = Message;
-            async fn on_message(&mut self, msg: Self::Message) -> () {
-                match msg {
-                    Message::Inc(v) => self.counter += v,
-                }
-            }
-        }
-
-        let exec = GlExec::new_global(std::time::SystemTime::now());
-        let test_actor = TestActor { counter: 0 };
-        let mut wrapped = test_actor.to_wrapped();
-        exec.block_on(async move {
-            wrapped.send(Message::Inc(5)).await;
-            wrapped.send(Message::Inc(5)).await;
-            let counter = wrapped
-                .with_state(|actor| {
-                    return actor.counter;
-                })
-                .await;
-            assert_eq!(counter, 10);
-        })
     }
 }

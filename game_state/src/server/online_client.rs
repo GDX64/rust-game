@@ -1,8 +1,7 @@
-use crate::{server::Client, GlExec};
+use crate::server::Client;
 
 use super::game_server::GameMessage;
 use actor::Actor;
-use async_task::Task;
 use futures::{channel::mpsc::Receiver, join, SinkExt, StreamExt};
 
 pub trait ChannelConstructor: Send {
@@ -17,7 +16,6 @@ pub trait OnlineClientChannel: Send {
 pub struct OnlineClient {
     actor: Option<Actor<GameMessage>>,
     constructor: Box<dyn ChannelConstructor>,
-    task: Option<Task<()>>,
 }
 
 impl OnlineClient {
@@ -25,7 +23,6 @@ impl OnlineClient {
         let mut client = OnlineClient {
             actor: None,
             constructor,
-            task: None,
         };
         client.reconnect();
         client
@@ -96,8 +93,7 @@ impl Client for OnlineClient {
                 join!(receiver_future, sender_future);
             };
         });
-        let task = GlExec::spawn(future);
-        self.task = Some(task);
+        tokio::spawn(future);
         self.actor = Some(actor);
     }
 }
