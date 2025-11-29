@@ -730,6 +730,7 @@ dependencies = [
  "futures-util",
  "game_state",
  "log",
+ "rand 0.9.2",
  "rusqlite",
  "serde",
  "serde_json",

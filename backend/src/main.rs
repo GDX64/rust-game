@@ -28,10 +28,14 @@ struct Apps {
 impl Apps {
     fn new() -> Apps {
         let mut pool = ServerPool::new();
-        pool.create_server("AWS SP1", 5)
-            .expect("Failed to create default server");
-        pool.create_server("AWS SP2", 1)
-            .expect("Failed to create default server");
+        let number_of_servers: usize = std::env::var("INITIAL_SERVER_COUNT")
+            .unwrap_or("1".to_string())
+            .parse()
+            .unwrap();
+        for i in 0..number_of_servers {
+            pool.create_server(&format!("AWS SP{i}"), 5)
+                .expect("Failed to create default server");
+        }
 
         let stats_db = GameDatabase::new_prod().expect("Failed to create db");
 

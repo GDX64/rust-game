@@ -29,30 +29,36 @@ async fn main() {
     tokio::spawn(fut);
     GameTrace::init_sender(sender);
 
-    let collect_stats = env::var("COLLECT_STATS").unwrap_or("false".to_string()) == "true";
-
-    let result = if collect_stats {
-        tokio::spawn(make_bot_pool(1, true)).await
-    } else {
-        let bot_count: usize = env::var("BOT_COUNT")
-            .unwrap_or("2".to_string())
-            .parse()
-            .unwrap();
-        tokio::spawn(make_bot_pool(bot_count, false)).await
-    };
-    result.unwrap();
+    let server_count: usize = env::var("INITIAL_SERVER_COUNT").unwrap().parse().unwrap();
+    let mut handlers = vec![];
+    for i in 0..server_count {
+        let handler = tokio::spawn(async move {
+            let bot_count: usize = env::var("BOT_COUNT")
+                .unwrap_or("2".to_string())
+                .parse()
+                .unwrap();
+            make_bot_pool(bot_count, false, i).await;
+        });
+        handlers.push(handler);
+    }
+    for handler in handlers {
+        let _ = handler.await;
+    }
 }
 
-fn create_runner() -> WrappedActor<RunningMode> {
-    let addr = env::var("SERVER_ADDR").unwrap_or("127.0.0.1:5000".into());
-    let constructor = MyChannelConstructor { url: addr };
+fn create_runner(server_num: usize) -> WrappedActor<RunningMode> {
+    let addr = env::var("SERVER_ADDR").unwrap();
+    let constructor = MyChannelConstructor {
+        url: addr,
+        server_num,
+    };
     let online_mode = OnlineClient::new(Box::new(constructor));
     let runner = RunningMode::wrapped(Box::new(online_mode));
     return runner;
 }
 
-async fn make_bot_pool(bots: usize, collect_stats: bool) {
-    let mut runner = create_runner();
+async fn make_bot_pool(bots: usize, collect_stats: bool, server_num: usize) {
+    let mut runner = create_runner(server_num);
     let mut sub = runner.subscribe().await;
     while let Some(msg) = sub.receiver.next().await {
         if let RunningEvent::Connected = msg {
@@ -126,11 +132,12 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
 
 struct MyChannelConstructor {
     url: String,
+    server_num: usize,
 }
 
 impl ChannelConstructor for MyChannelConstructor {
     fn new(&self) -> Box<dyn OnlineClientChannel> {
-        Box::new(MyChannel::new(self.url.clone()))
+        Box::new(MyChannel::new(self.url.clone(), self.server_num))
     }
 }
 
@@ -147,11 +154,11 @@ impl Drop for MyChannel {
 }
 
 impl MyChannel {
-    fn new(url: String) -> Self {
+    fn new(url: String, server_num: usize) -> Self {
         let (w_sender, mut w_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(10_000);
         let (mut r_sender, r_receiver) = futures::channel::mpsc::channel::<Vec<u8>>(10_000);
         tokio::spawn(async move {
-            let ws = make_client(&url).await;
+            let ws = make_client(&url, server_num).await;
             let (mut write, mut read) = ws.split();
             let f1 = async move {
                 while let Some(msg) = w_receiver.next().await {
@@ -201,7 +208,10 @@ impl OnlineClientChannel for MyChannel {
     }
 }
 
-pub async fn make_client(addr: &str) -> tokio_tungstenite::WebSocketStream<TcpStream> {
+pub async fn make_client(
+    addr: &str,
+    server_num: usize,
+) -> tokio_tungstenite::WebSocketStream<TcpStream> {
     log::info!("Connecting to server at {}", addr);
     let stream = loop {
         let stream = TcpStream::connect(addr).await;
@@ -213,7 +223,8 @@ pub async fn make_client(addr: &str) -> tokio_tungstenite::WebSocketStream<TcpSt
             }
         }
     };
-    let addr = format!("ws://{}/ws?server_id=AWS+SP1", addr);
+
+    let addr = format!("ws://{}/ws?server_id=AWS+SP{}", addr, server_num);
     log::info!("Connecting to WebSocket at {}", addr);
     let (ws_stream, _) = tokio_tungstenite::client_async(addr, stream)
         .await
