@@ -8,7 +8,9 @@ services:
       - backend
     environment:
       - LISTEN_ADDR=0.0.0.0:5000
-      - INITIAL_SERVER_COUNT=5
+      - BOT_COUNT=${BOT_COUNT}
+      - INITIAL_SERVER_COUNT=${INITIAL_SERVER_COUNT}
+      - EXPERIMENT_ID=${EXPERIMENT_ID}
     ports:
       - "5000:5000"
     command: ["/game"]
@@ -36,8 +38,9 @@ services:
       - backend
     environment:
       - SERVER_ADDR=game:5000
-      - BOT_COUNT=10
-      - INITIAL_SERVER_COUNT=5
+      - BOT_COUNT=${BOT_COUNT}
+      - INITIAL_SERVER_COUNT=${INITIAL_SERVER_COUNT}
+      - EXPERIMENT_ID=${EXPERIMENT_ID}
     command: ["/bot_client"]
     volumes:
       - db-data:/data

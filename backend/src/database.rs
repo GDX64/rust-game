@@ -79,10 +79,11 @@ impl GameDatabase {
     }
 
     pub fn create_server(&mut self, server: &str, seed: u32) -> anyhow::Result<u64> {
+        let experiment_id = get_experiment_id();
         let tx = self.conn.transaction()?;
         tx.execute(
-            "insert into servers (name, seed) values (?1, ?2)",
-            rusqlite::params![server, seed],
+            "insert into games (name, seed, experiment_id) values (?1, ?2, ?3)",
+            rusqlite::params![server, seed, experiment_id],
         )?;
         let id = tx.last_insert_rowid();
         tx.commit()?;
@@ -119,6 +120,22 @@ impl GameDatabase {
                 log::error!("Error setting up DB: {}", e);
             }
         }
+        let experiment_id = get_experiment_id();
+        let number_of_bots: i32 = std::env::var("BOT_COUNT")
+            .unwrap_or("0".to_string())
+            .parse()
+            .unwrap_or(0);
+        let number_of_servers: i32 = std::env::var("INITIAL_SERVER_COUNT")
+            .unwrap_or("0".to_string())
+            .parse()
+            .unwrap_or(0);
+
+        self.conn
+            .execute(
+                "insert or replace into experiments (id, number_of_bots, number_of_servers) values (?1, ?2, ?3)",
+                rusqlite::params![experiment_id, number_of_bots, number_of_servers],
+            )
+            .expect("Failed to insert experiment data");
     }
 
     pub fn get_leaderboard(&self, n: usize) -> anyhow::Result<Vec<DBPlayer>> {
@@ -173,14 +190,25 @@ fn handle_message(msg: GameTrace, tx: &Transaction<'_>) -> anyhow::Result<()> {
             )?;
             return Ok(());
         }
-        GameTrace::ServerTick {
+        GameTrace::GameTick {
             game_id,
             tick,
             micros_elapsed,
         } => {
             tx.execute(
-                "insert into server_ticks (game_id, tick, micros_elapsed) values (?1, ?2, ?3)",
+                "insert into game_ticks (game_id, tick, micros_elapsed) values (?1, ?2, ?3)",
                 rusqlite::params![game_id, tick, micros_elapsed],
+            )?;
+            return Ok(());
+        }
+        GameTrace::ExperimentTick {
+            experiment_id,
+            tick,
+            micros_elapsed,
+        } => {
+            tx.execute(
+                "insert into experiment_ticks (experiment_id, tick, micros_elapsed) values (?1, ?2, ?3)",
+                rusqlite::params![experiment_id, tick, micros_elapsed],
             )?;
             return Ok(());
         }
@@ -226,4 +254,9 @@ fn handle_message(msg: GameTrace, tx: &Transaction<'_>) -> anyhow::Result<()> {
             return Ok(());
         }
     }
+}
+
+pub fn get_experiment_id() -> u64 {
+    let id = std::env::var("EXPERIMENT_ID").unwrap_or("0".to_string());
+    return id.parse::<u64>().unwrap_or(0);
 }

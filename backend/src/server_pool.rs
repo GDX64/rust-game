@@ -1,4 +1,5 @@
 use anyhow::Result;
+use game::get_experiment_id;
 use game_state::{GameServer, GameTrace};
 use std::{collections::HashMap, time::Duration};
 
@@ -10,6 +11,7 @@ pub struct ServerPool {
     servers: HashMap<String, GameServer>,
     db: GameDatabase,
     tick_number: u64,
+    experiment_id: u64,
 }
 
 #[derive(serde::Serialize)]
@@ -27,6 +29,7 @@ impl ServerPool {
             servers: HashMap::new(),
             tick_number: 0,
             db,
+            experiment_id: get_experiment_id(),
         }
     }
 
@@ -35,18 +38,26 @@ impl ServerPool {
     }
 
     pub fn tick(&mut self, dt: f64) {
-        for (_, server) in self.servers.iter_mut() {
-            let elapsed = measure_time(|| {
-                server.tick(dt, self.tick_number);
-            });
-            GameTrace::ServerTick {
-                game_id: server.game_id,
-                tick: self.tick_number,
-                micros_elapsed: elapsed.as_micros() as u64,
+        let elapsed = measure_time(|| {
+            for (_, server) in self.servers.iter_mut() {
+                let elapsed = measure_time(|| {
+                    server.tick(dt, self.tick_number);
+                });
+                GameTrace::GameTick {
+                    game_id: server.game_id,
+                    tick: self.tick_number,
+                    micros_elapsed: elapsed.as_micros() as u64,
+                }
+                .send();
             }
-            .send();
+            self.tick_number += 1;
+        });
+        GameTrace::ExperimentTick {
+            tick: self.tick_number,
+            micros_elapsed: elapsed.as_micros() as u64,
+            experiment_id: self.experiment_id,
         }
-        self.tick_number += 1;
+        .send();
     }
 
     pub fn get_server_info(&self) -> Vec<ServerInfo> {

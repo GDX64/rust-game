@@ -28,7 +28,12 @@ pub enum GameTrace {
         frame: u64,
         game_id: u64,
     },
-    ServerTick {
+    ExperimentTick {
+        experiment_id: u64,
+        tick: u64,
+        micros_elapsed: u64,
+    },
+    GameTick {
         game_id: u64,
         tick: u64,
         micros_elapsed: u64,
