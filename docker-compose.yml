@@ -11,10 +11,10 @@ services:
     ports:
       - "5000:5000"
     command: ["/game"]
-    # deploy:
-      # resources:
-      #     limits:
-      #       cpus: "2.0"
+    deploy:
+      resources:
+          limits:
+            cpus: "2.0"
     volumes:
       - db-data:/data
     healthcheck:
@@ -35,25 +35,30 @@ services:
       - backend
     environment:
       - SERVER_ADDR=game:5000
+      - BOT_COUNT=30
     command: ["/bot_client"]
     volumes:
       - db-data:/data
-  bot_client_stats:
-    build:
-      context: .
-      dockerfile: bench.dockerfile
-    hostname: bot_client_stats
-    depends_on:
-      game:
-        condition: service_healthy
-    networks:
-      - backend
-    environment:
-      - SERVER_ADDR=game:5000
-      - COLLECT_STATS=true
-    command: ["/bot_client"]
-    volumes:
-      - db-data:/data
+    deploy:
+      resources:
+          limits:
+            cpus: "2.0"
+  # bot_client_stats:
+  #   build:
+  #     context: .
+  #     dockerfile: bench.dockerfile
+  #   hostname: bot_client_stats
+  #   depends_on:
+  #     game:
+  #       condition: service_healthy
+  #   networks:
+  #     - backend
+  #   environment:
+  #     - SERVER_ADDR=game:5000
+  #     - COLLECT_STATS=true
+  #   command: ["/bot_client"]
+  #   volumes:
+  #     - db-data:/data
     
   # python:
   #   build:

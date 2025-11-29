@@ -12,7 +12,7 @@ use std::{
     env,
     time::{Duration, Instant},
 };
-use tokio::{net::TcpStream, time::interval};
+use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 
 fn init_logger() {
@@ -34,7 +34,11 @@ async fn main() {
     let result = if collect_stats {
         tokio::spawn(make_bot_pool(1, true)).await
     } else {
-        tokio::spawn(make_bot_pool(2, false)).await
+        let bot_count: usize = env::var("BOT_COUNT")
+            .unwrap_or("2".to_string())
+            .parse()
+            .unwrap();
+        tokio::spawn(make_bot_pool(bot_count, false)).await
     };
     result.unwrap();
 }
@@ -111,10 +115,9 @@ async fn make_bot_pool(bots: usize, collect_stats: bool) {
         if collect_stats {
             return;
         }
-        let mut interval = interval(Duration::from_secs(1));
         for _ in 0..bots {
             runner.with_state(|s| s.ask_create_player(true)).await;
-            interval.tick().await;
+            tokio::time::sleep(Duration::from_millis(500)).await;
         }
     });
 
