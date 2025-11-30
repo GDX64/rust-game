@@ -7,6 +7,7 @@ use game_state::{
     ChannelConstructor, GameTrace, OnlineClient, OnlineClientChannel, RunningEvent, RunningMode,
     WrappedActor,
 };
+use reqwest::StatusCode;
 use std::{
     collections::HashMap,
     env,
@@ -41,9 +42,8 @@ async fn main() {
         });
         handlers.push(handler);
     }
-    for handler in handlers {
-        let _ = handler.await;
-    }
+
+    let _ = health_check().await;
 }
 
 fn create_runner(server_num: usize) -> WrappedActor<RunningMode> {
@@ -123,7 +123,6 @@ async fn make_bot_pool(bots: usize, collect_stats: bool, server_num: usize) {
         }
         for _ in 0..bots {
             runner.with_state(|s| s.ask_create_player(true)).await;
-            tokio::time::sleep(Duration::from_millis(500)).await;
         }
     });
 
@@ -235,4 +234,17 @@ pub async fn make_client(
         .unwrap();
 
     return ws_stream;
+}
+
+async fn health_check() -> anyhow::Result<()> {
+    let addr = env::var("SERVER_ADDR").unwrap();
+    loop {
+        let status = reqwest::get(format!("http://{}/health", addr))
+            .await?
+            .status();
+        if StatusCode::OK != status {
+            return Ok(());
+        }
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
 }

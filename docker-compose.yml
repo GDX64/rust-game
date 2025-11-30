@@ -11,9 +11,11 @@ services:
       - BOT_COUNT=${BOT_COUNT}
       - INITIAL_SERVER_COUNT=${INITIAL_SERVER_COUNT}
       - EXPERIMENT_ID=${EXPERIMENT_ID}
+      - MAX_TICKS=10000
     ports:
       - "5000:5000"
     command: ["/game"]
+    restart: no
     deploy:
       resources:
           limits:
@@ -31,6 +33,7 @@ services:
       context: .
       dockerfile: bench.dockerfile
     hostname: bot_client
+    restart: no
     depends_on:
       game:
         condition: service_healthy
@@ -48,35 +51,6 @@ services:
       resources:
           limits:
             cpus: "2.0"
-  # bot_client_stats:
-  #   build:
-  #     context: .
-  #     dockerfile: bench.dockerfile
-  #   hostname: bot_client_stats
-  #   depends_on:
-  #     game:
-  #       condition: service_healthy
-  #   networks:
-  #     - backend
-  #   environment:
-  #     - SERVER_ADDR=game:5000
-  #     - COLLECT_STATS=true
-  #   command: ["/bot_client"]
-  #   volumes:
-  #     - db-data:/data
-    
-  # python:
-  #   build:
-  #     context: .
-  #     dockerfile: python.dockerfile
-  #   hostname: python
-  #   depends_on:
-  #     game:
-  #       condition: service_healthy
-  #   ports:
-  #     - "8888:8888"
-  #   volumes:
-  #     - db-data:/data
 
 networks:
   backend:

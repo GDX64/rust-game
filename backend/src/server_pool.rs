@@ -37,7 +37,7 @@ impl ServerPool {
         self.servers.get_mut(server_id)
     }
 
-    pub fn tick(&mut self, dt: f64) {
+    pub fn tick(&mut self, dt: f64) -> u64 {
         let elapsed = measure_time(|| {
             for (_, server) in self.servers.iter_mut() {
                 let elapsed = measure_time(|| {
@@ -58,6 +58,7 @@ impl ServerPool {
             experiment_id: self.experiment_id,
         }
         .send();
+        return self.tick_number;
     }
 
     pub fn get_server_info(&self) -> Vec<ServerInfo> {

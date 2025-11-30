@@ -84,7 +84,6 @@ async fn main() {
 
     let backend_app = Router::new()
         .nest_service("/", static_dir)
-        .route("/hello", get(|| async { "Sanity Check" }))
         .route("/ws", get(ws_handler))
         .route("/create_server", get(create_server_handler))
         .route("/get_server_list", get(get_server_list_handler))
@@ -99,12 +98,18 @@ async fn main() {
 
     let local_set = tokio::task::LocalSet::new();
     let tick_task = local_set.run_until(async {
+        let max_ticks = std::env::var("MAX_TICKS")
+            .unwrap_or("5000".to_string())
+            .parse::<u64>()
+            .unwrap();
         tokio::task::spawn_local(async move {
-            // let mut interval = tokio::time::interval(std::time::Duration::from_millis(5));
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK_TIME));
+            let mut interval = tokio::time::interval(std::time::Duration::from_millis(5));
             loop {
                 interval.tick().await;
-                state.get_game_server().tick(TICK_TIME);
+                let tick_number = state.get_game_server().tick(TICK_TIME);
+                if tick_number > max_ticks {
+                    return;
+                }
             }
         })
         .await
@@ -113,12 +118,25 @@ async fn main() {
 
     let listener_game = tokio::net::TcpListener::bind("0.0.0.0:5000").await.unwrap();
 
+    #[cfg(target_family = "unix")]
+    let signal_term = {
+        async {
+            let mut signal_term =
+                tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).unwrap();
+            signal_term.recv().await;
+        }
+    };
+
+    #[cfg(target_family = "windows")]
+    let signal_term = tokio::signal::ctrl_c();
+
     let game_axum = axum::serve(listener_game, backend_app);
-    let (_r1, _r2, _r3) = tokio::join!(
-        async { game_axum.await },
-        async { tick_task.await },
-        db_join
-    );
+    tokio::select! {
+        _ = game_axum => {},
+        _ = db_join => {},
+        _ = tick_task => {},
+        _ = signal_term =>{}
+    };
 }
 
 #[derive(serde::Deserialize)]
@@ -142,7 +160,7 @@ async fn ws_handler(
     let res = ws.on_upgrade(move |ws| {
         return async move {
             let (mut send, mut receive) = ws.split();
-            let (player_send, mut player_receive) = channel(100);
+            let (player_send, mut player_receive) = channel(10_000);
 
             tokio::spawn(async move {
                 while let Some(msg) = player_receive.next().await {

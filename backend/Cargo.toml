@@ -14,6 +14,7 @@ futures-util = "0.3.30"
 game_state = {path = "../game_state", features = []}
 log = "0.4.22"
 rand = "0.9.2"
+reqwest = "0.12.24"
 rusqlite = {version = "0.32.1", features = ["bundled"]}
 serde = {version = "1.0.202", features = ["derive"]}
 serde_json = "1.0.117"
