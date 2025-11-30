@@ -1,0 +1,150 @@
+%TC:macro \cite [option:text,text]
+%TC:macro \citep [option:text,text]
+%TC:macro \citet [option:text,text]
+%TC:envir table 0 1
+%TC:envir table* 0 1
+%TC:envir tabular [ignore] word
+%TC:envir displaymath 0 word
+%TC:envir math 0 word
+%TC:envir comment 0 0
+
+\documentclass[acmsmall]{acmart}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+\setcopyright{acmlicensed}
+\copyrightyear{2025}
+\acmYear{2025}
+
+\begin{document}
+
+\title{Performance Analysis of a Real-Time Strategy Game Server}
+
+\author{Gabriel Eduardo de Lima Machado}
+\email{gabriel.delmachado@gmail.com}
+
+\begin{abstract}
+  This paper presents a performance analysis of a real-time strategy game server under varying load conditions. We evaluate server behavior as a function of concurrent game sessions and player counts, employing linear regression models to predict processing time. Our experiments demonstrate a strong linear relationship between total bot count and average tick processing time, achieving $R^2=0.92$ with a two-parameter model.
+\end{abstract}
+
+\keywords{performance analysis, real-time systems, linear regression, websocket, scalability}
+
+\maketitle
+
+\section{Introduction}
+
+This work analyzes the performance characteristics of the application hosted at \url{https://archpelagus.glmachado.com}, a real-time strategy game. The objective is to investigate how the application behaves under varying numbers of concurrent game sessions and players running on a single server instance.
+
+\subsection{System Architecture}
+
+The analyzed application is a real-time game designed to run on a server infrastructure. A single server instance can execute multiple game sessions simultaneously. The game simulation runs both on the server and client sides. Players connect via web browser using WebSocket connections. Once connected, players can issue commands to the server (such as moving units and attacking enemy units). These commands are processed by the server and subsequently broadcast to all other players in the session.
+
+\subsection{Motivation}
+
+For proper application functioning and optimal user experience, the server must process all incoming commands within the frame generation time budget. For a game running at 60 frames per second, the server must process all inputs in less than 16ms. Understanding how the application scales with load is therefore essential for capacity planning and performance optimization.
+
+\section{Methodology}
+
+To conduct the experiments, we developed synthetic bot players that connect to a server instance. We performed experiments with various combinations of player counts per game session and numbers of concurrent sessions.
+
+\section{Experimental Setup}
+
+The simulations were conducted using Docker containerization. Synthetic bot players run in a dedicated container and connect to a server running in a separate container. The server container was allocated 2 vCPUs as maximum processing capacity, while the bot container had no resource limits. All experiments were executed on a machine equipped with 32GB DDR4 RAM and an Intel Core i5-10400F processor.
+
+\subsection{Data Collection}
+
+Data collection was performed using SQLite database with distributed tracing throughout the application. The most critical trace measures the time required to generate each frame (tick). Hereafter, each simulation step is referred to as a tick. The analysis therefore focuses primarily on tick processing time under different scenarios.
+
+\section{Results}
+
+Each experiment ran for approximately 30 seconds. Figure \ref{fig:summary} displays processing time per tick for several experiments. Figure \ref{fig:boxplot} presents a summary of the data distribution. The data exhibit high variance, particularly in experiments with larger bot populations. This behavior is also evident in Figure \ref{fig:std}.
+
+To summarize the data collected in each experiment, we calculated the mean processing time per tick with associated error, as shown in Figure \ref{fig:ci}. For each experiment, we recorded the number of bots per server (denoted by \emph{numberOfBots}), the number of servers (\emph{numberOfServers}), and the total number of bots (\emph{total\_bots}), calculated as numberOfBots $\times$ numberOfServers.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/experiment_ticks.jpg}
+  \caption{Processing time per tick for the first four experiments}
+  \label{fig:summary}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/boxplot_experiments.jpg}
+  \caption{Box plot of experiments, showing high variance particularly in experiments with larger bot populations}
+  \label{fig:boxplot}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/experiment_mean_ci.jpg}
+  \caption{Mean values with error margins for 95\% confidence interval}
+  \label{fig:ci}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/correlation_matrix.jpg}
+  \caption{Correlation matrix of observed parameters}
+  \label{fig:matrix}
+\end{figure}
+
+Analysis of the correlation matrix in Figure \ref{fig:matrix} reveals negligible correlation between numberOfServers and numberOfBots, while showing a very strong correlation between totalBots and mean processing time.
+
+\subsection{Linear Regression Analysis}
+
+The correlation matrix provides strong evidence of a relationship between total bot count and mean processing time. Based on this observation, we performed linear regression of mean processing time as a function of total bots on the server. The results are shown in Figure \ref{fig:mean_vs_total}, yielding $R^2=0.88$. Despite this high $R^2$ value, it is important to note the heteroscedastic characteristics of the data, visible in Figure \ref{fig:std}.
+
+\subsection{Two-Parameter Linear Model}
+
+To improve the model, we tested a linear model incorporating both experimental parameters. The results are shown in Figure \ref{fig:predicted}, yielding $R^2=0.92$. The coefficients associated with each variable are presented in Table \ref{table:coefs}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c|}
+\hline
+Coefficient & Value  \\
+\hline
+numberOfServers & 0.0238 \\
+\hline
+totalBots & 0.0067 \\
+\hline
+\end{tabular}
+\caption{Linear regression coefficients}
+\label{table:coefs}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/mean_time_vs_total_bots.jpg}
+  \caption{Linear regression plot with single parameter, bigger dots mean more game instances}
+  \label{fig:mean_vs_total}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/experiment_std_vs_bots.jpg}
+  \caption{Standard deviation as a function of bot count}
+  \label{fig:std}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width = 400pt]{assets/actual_vs_predicted_mean_time.jpg}
+  \caption{Predicted values using two-parameter linear model}
+  \label{fig:predicted}
+\end{figure}
+
+\section{Conclusions}
+
+Within the range of player counts and game sessions analyzed, the application exhibits predominantly linear scaling behavior with respect to player population. However, toward the end of the experiments, we observed degraded processing performance with increasing player counts. This is likely attributable to a bottleneck in the bot simulation subsystem, resulting in reduced command throughput to the server.
+
+It was not feasible to further increase player counts due to limitations of the experimental setup. Although the server was isolated from bot simulation, communication overhead between bots and server, along with bot simulation costs, became bottlenecks before the game simulation itself, making it difficult to determine the true limits of the application.
+
+Future work should investigate approaches to overcome this limitation and verify whether the system continues to exhibit linear scaling beyond the tested range.
+
+While the two-parameter model achieves higher $R^2$ than the single-parameter model, examination of the coefficients reveals that the contribution of numberOfServers is substantially lower than that of total player count, suggesting that total load is the primary performance determinant.
+
+\end{document}

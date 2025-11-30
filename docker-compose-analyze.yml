@@ -8,6 +8,7 @@ services:
       - "8888:8888"
     volumes:
       - db-data:/data
+      - ./benchmarks/assets:/assets
 
 volumes:
   db-data:
