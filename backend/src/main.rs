@@ -103,7 +103,7 @@ async fn main() {
             .parse::<u64>()
             .unwrap();
         tokio::task::spawn_local(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_millis(5));
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs_f64(TICK_TIME));
             loop {
                 interval.tick().await;
                 let tick_number = state.get_game_server().tick(TICK_TIME);
