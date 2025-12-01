@@ -1,0 +1,1 @@
+docker compose -f docker-compose-analyze-freeze.yml up --build

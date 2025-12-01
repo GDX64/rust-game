@@ -147,4 +147,9 @@ Future work should investigate approaches to overcome this limitation and verify
 
 While the two-parameter model achieves higher $R^2$ than the single-parameter model, examination of the coefficients reveals that the contribution of numberOfServers is substantially lower than that of total player count, suggesting that total load is the primary performance determinant.
 
+\section{Reproducibility}
+
+All code used is publicly available at \url{https://github.com/GDX64/rust-game} under the report branch. To reproduce the experiments, the host machine must have Docker and Docker Compose installed. After cloning the repository, navigate to the root and run the following script: \texttt{./bench.sh}. This will run all experiments and make a jupyter notebook available. All the charts can be generated using the notebook located at \texttt{benchmarks/main.ipynb}.
+
+To analyze previously collected data, run \texttt{./run-analyze.sh} and open the jupyter notebook as described above.
 \end{document}

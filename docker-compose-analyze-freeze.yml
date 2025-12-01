@@ -1,0 +1,11 @@
+services:
+  python:
+    build:
+      context: .
+      dockerfile: python.dockerfile
+    hostname: python
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./db-data:/data
+      - ./benchmarks/assets:/assets
